@@ -117,8 +117,12 @@ async def leave(sid, data):
     return {"status": "left"}
 
 # Define a function to emit events
-async def emit_to_room(event, data, room):
-    print(f"Emitting {event} to room {room}")
+async def emit_to_room(event, data, room,random):
+    print(f"printing {data}")
+    print(f"printing {event}")
+    print(f"printing {room}")
+    #print(f"Emitting {event} to room {room}")
+    print(f"printing {random}")
     await sio.emit(event, data, room=room)
 
 # Use this in place of socket_manager.emit
@@ -313,7 +317,7 @@ async def process_clusters(session_id: str):
     await socket_manager.emit(
         "clusters_updated", 
         {"session_id": session_id, "clusters": cluster_results},
-        room=session_id
+        session_id
     )
     
     return cluster_results
