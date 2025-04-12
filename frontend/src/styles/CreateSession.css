@@ -1,0 +1,71 @@
+.create-session-container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.create-form-container {
+    width: 100%;
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 40px;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+}
+
+    .create-form-container h1 {
+        margin-bottom: 10px;
+        color: var(--dark);
+    }
+
+    .create-form-container p {
+        color: var(--gray);
+        margin-bottom: 30px;
+    }
+
+.create-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+    .form-group label {
+        margin-bottom: 8px;
+        font-weight: 500;
+    }
+
+    .form-group input,
+    .form-group textarea {
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 16px;
+    }
+
+    .form-group textarea {
+        min-height: 120px;
+        resize: vertical;
+    }
+
+    .form-group small {
+        margin-top: 5px;
+        color: var(--gray);
+        align-self: flex-end;
+    }
+
+.checkbox-group {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+}
+
+    .checkbox-group input {
+        width: auto;
+        margin: 0;
+    }

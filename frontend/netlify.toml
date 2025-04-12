@@ -1,0 +1,13 @@
+[build]
+  command = "npm run build"
+  publish = "build"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "22.14.0"
+  REACT_APP_API_URL = "https://your-backend-url.vercel.app"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
