@@ -1,10 +1,10 @@
-# IdeaGroup: Transforming Collective Input into Actionable Insights
+# TopicTrends: Transforming Collective Input into Actionable Insights
 
 ## Executive Summary
 
-IdeaGroup is an innovative platform designed to revolutionize how organizations collect, organize, and prioritize ideas from large groups. By leveraging cutting-edge artificial intelligence, IdeaGroup automatically identifies patterns and similarities across hundreds or thousands of submissions, transforming scattered individual input into clear, actionable insights.
+TopicTrends is an innovative platform designed to revolutionize how organizations collect, organize, and prioritize ideas from large groups. By leveraging cutting-edge artificial intelligence, TopicTrends automatically identifies patterns and similarities across hundreds or thousands of submissions, transforming scattered individual input into clear, actionable insights.
 
-Whether addressing citizens in a town hall, employees in a corporate meeting, or audiences at large-scale events, IdeaGroup empowers leaders to understand the collective mind of their audience without the noise, bias, and inefficiency of traditional feedback methods.
+Whether addressing citizens in a town hall, employees in a corporate meeting, or audiences at large-scale events, TopicTrends empowers leaders to understand the collective mind of their audience without the noise, bias, and inefficiency of traditional feedback methods.
 
 ## The Problem We Solve
 
@@ -21,9 +21,9 @@ Leaders today face significant obstacles when trying to collect meaningful input
 
 These challenges often result in leaders making decisions based on incomplete understanding, missing critical insights, and leaving many participants feeling unheard.
 
-## Our Solution: The IdeaGroup Platform
+## Our Solution: The TopicTrends Platform
 
-IdeaGroup transforms group input through a simple yet powerful process:
+TopicTrends transforms group input through a simple yet powerful process:
 
 1. **Create a Discussion**: Leaders set up a focused topic or question
 2. **Share Access**: Participants join via link or QR code
@@ -47,7 +47,7 @@ Our platform's core technology is a sophisticated natural language processing sy
 
 #### 2. Inclusive Participation Design
 
-IdeaGroup is built to maximize participation and ensure every voice contributes equally to the final analysis.
+TopicTrends is built to maximize participation and ensure every voice contributes equally to the final analysis.
 
 **Key Elements**:
 - **Anonymous Submission Option**: Encourages honest feedback without fear of judgment
@@ -58,7 +58,7 @@ IdeaGroup is built to maximize participation and ensure every voice contributes 
 
 #### 3. Real-Time Insights
 
-Unlike traditional methods that take days or weeks to process, IdeaGroup provides immediate organization and visualization of input.
+Unlike traditional methods that take days or weeks to process, TopicTrends provides immediate organization and visualization of input.
 
 **Benefits**:
 - **Instant Feedback Loops**: Leaders can respond to emerging themes immediately
@@ -68,7 +68,7 @@ Unlike traditional methods that take days or weeks to process, IdeaGroup provide
 
 #### 4. Scalable Architecture
 
-Whether collecting ideas from 10 participants or 10,000, IdeaGroup maintains performance and accuracy.
+Whether collecting ideas from 10 participants or 10,000, TopicTrends maintains performance and accuracy.
 
 **Technical Highlights**:
 - **Optimized Processing**: Intelligent batching for high-volume scenarios
@@ -106,9 +106,9 @@ Whether collecting ideas from 10 participants or 10,000, IdeaGroup maintains per
 - **Post-Event Feedback**: Collect and organize attendee suggestions efficiently
 - **Conference Planning**: Identify the most desired topics for future events
 
-## The Science Behind IdeaGroup
+## The Science Behind TopicTrends
 
-IdeaGroup's core technology combines several cutting-edge approaches in artificial intelligence and natural language processing:
+TopicTrends's core technology combines several cutting-edge approaches in artificial intelligence and natural language processing:
 
 ### Semantic Understanding Through Transformer Models
 
@@ -126,7 +126,7 @@ The system automatically adjusts its similarity thresholds based on the volume a
 
 ### Deployment Options
 
-IdeaGroup is designed for flexibility and can be deployed through multiple approaches:
+TopicTrends is designed for flexibility and can be deployed through multiple approaches:
 
 1. **Cloud-Based SaaS**: Zero-infrastructure solution with immediate availability
 2. **Enterprise Integration**: Connects with existing systems through secure APIs
@@ -145,7 +145,7 @@ IdeaGroup is designed for flexibility and can be deployed through multiple appro
 
 ## Security & Privacy Considerations
 
-IdeaGroup is built with a security-first approach:
+TopicTrends is built with a security-first approach:
 
 - **Data Encryption**: All submissions and personal information are encrypted
 - **Privacy Options**: Flexible anonymous and verification modes
@@ -153,9 +153,9 @@ IdeaGroup is built with a security-first approach:
 - **Retention Controls**: Customizable data retention policies
 - **Access Management**: Role-based permissions for organizational deployments
 
-## Why IdeaGroup Matters
+## Why TopicTrends Matters
 
-In an era where collective intelligence is increasingly recognized as crucial to effective decision-making, IdeaGroup provides the missing link between the wisdom of crowds and the practical limitations of group communication.
+In an era where collective intelligence is increasingly recognized as crucial to effective decision-making, TopicTrends provides the missing link between the wisdom of crowds and the practical limitations of group communication.
 
 By eliminating the traditional obstacles to meaningful group input, we enable:
 
@@ -167,7 +167,7 @@ By eliminating the traditional obstacles to meaningful group input, we enable:
 
 ## Getting Started
 
-Experience how IdeaGroup can transform your next meeting, event, or public engagement:
+Experience how TopicTrends can transform your next meeting, event, or public engagement:
 
 1. **Schedule a Demo**: See the platform in action with a guided tour
 2. **Pilot Project**: Test with a small group before full-scale implementation
@@ -176,11 +176,11 @@ Experience how IdeaGroup can transform your next meeting, event, or public engag
 
 ## Conclusion
 
-In an increasingly complex world, the ability to efficiently harness collective intelligence is not just a competitive advantage—it's a necessity. IdeaGroup empowers leaders to move beyond the limitations of traditional feedback methods and tap into the full spectrum of perspectives within their organizations and communities.
+In an increasingly complex world, the ability to efficiently harness collective intelligence is not just a competitive advantage—it's a necessity. TopicTrends empowers leaders to move beyond the limitations of traditional feedback methods and tap into the full spectrum of perspectives within their organizations and communities.
 
-By transforming how we collect and process group input, IdeaGroup doesn't just improve decision-making—it fundamentally changes the relationship between leaders and those they serve, creating more responsive, transparent, and effective organizations.
+By transforming how we collect and process group input, TopicTrends doesn't just improve decision-making—it fundamentally changes the relationship between leaders and those they serve, creating more responsive, transparent, and effective organizations.
 
 ---
 
-*IdeaGroup: Where Every Voice Contributes to the Bigger Picture*
+*TopicTrends: Where Every Voice Contributes to the Bigger Picture*
 
