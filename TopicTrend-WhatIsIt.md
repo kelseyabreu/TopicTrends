@@ -1,6 +1,6 @@
-# IdeaGroup - Collaborative Idea Gathering and Grouping Platform
+# TopicTrends - Collaborative Idea Gathering and Grouping Platform
 
-IdeaGroup is a web application that allows organizers to collect ideas from participants and automatically groups similar ideas using AI. The platform is designed for town halls, meetings, education settings, and any scenario where getting organized input from multiple people is valuable.
+TopicTrends is a web application that allows organizers to collect ideas from participants and automatically groups similar ideas using AI. The platform is designed for town halls, meetings, education settings, and any scenario where getting organized input from multiple people is valuable.
 
 ## Features
 
@@ -23,16 +23,16 @@ IdeaGroup is a web application that allows organizers to collect ideas from part
 
 ### Prerequisites
 
-- Node.js 14+ and npm
-- Python 3.8+
+- Node.js 22+ and npm
+- Python 3.13+
 - MongoDB Atlas account (free tier)
 
 ### Backend Setup
 
 1. Clone the repository:
    ```
-   git clone https://github.com/yourusername/ideagroup.git
-   cd ideagroup/backend
+   git clone https://github.com/yourusername/topictrends.git
+   cd topictrends/backend
    ```
 
 2. Create a virtual environment and install dependencies:
@@ -44,7 +44,7 @@ IdeaGroup is a web application that allows organizers to collect ideas from part
 
 3. Create a `.env` file with your MongoDB connection string:
    ```
-   MONGODB_URL=mongodb+srv://<username>:<password>@cluster0.mongodb.net/ideagroup
+   MONGODB_URL=mongodb+srv://<username>:<password>@cluster0.mongodb.net/topictrends
    ```
 
 4. Start the backend server:

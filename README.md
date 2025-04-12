@@ -47,7 +47,7 @@ Whether used in town halls, corporate meetings, classrooms, or public forums, To
 ## Technology Stack
 
 - **Frontend**: React (v18)
-- **Backend**: FastAPI (Python 3.9)
+- **Backend**: FastAPI (Python 3.13)
 - **Database**: MongoDB
 - **AI/Machine Learning**: Sentence-BERT for semantic analysis
 - **Real-time Communication**: Socket.IO
@@ -58,7 +58,7 @@ Whether used in town halls, corporate meetings, classrooms, or public forums, To
 ### Prerequisites
 
 - **Node.js**: v22.14.0 (recommended)
-- **Python**: v3.9 (required)
+- **Python**: v3.13 (required)
 - **MongoDB**: Local instance or MongoDB Atlas account
 
 ### Backend Setup
