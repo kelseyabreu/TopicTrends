@@ -21,64 +21,84 @@ function SessionView() {
   const socketRef = useRef(null);
   
   // Check if user has joined this session
-  useEffect(() => {
-    const storedUserId = localStorage.getItem(`TopicTrends_${sessionId}_userId`);
-    const storedIsVerified = localStorage.getItem(`TopicTrends_${sessionId}_isVerified`) === 'true';
-    const storedVerificationMethod = localStorage.getItem(`TopicTrends_${sessionId}_verificationMethod`);
-    
-    if (!storedUserId) {
-      // User hasn't joined this session
-      navigate(`/join/${sessionId}`);
-      return;
-    }
-    
-    setUserId(storedUserId);
-    setIsVerified(storedIsVerified);
-    setVerificationMethod(storedVerificationMethod);
-    
-    // Fetch session details
-    const fetchSessionData = async () => {
-      try {
-        const sessionResponse = await api.get(`/api/sessions/${sessionId}`);
-        setSession(sessionResponse.data);
-        
-        const clustersResponse = await api.get(`/api/sessions/${sessionId}/clusters`);
-        setClusters(clustersResponse.data.clusters.sort((a, b) => b.count - a.count));
-      } catch (error) {
-        console.error('Error fetching session data:', error);
-        toast.error('Failed to load session data');
-        navigate('/');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchSessionData();
-    
-    // Set up Socket.IO connection
-    const socket = io(process.env.REACT_APP_API_URL, {
-      transports: ['websocket']
-    });
-    
-    socket.on('connect', () => {
-      console.log('Connected to Socket.IO');
-      socket.emit('join', sessionId);
-    });
-    
-    socket.on('clusters_updated', (data) => {
-      if (data.session_id === sessionId) {
-        setClusters(data.clusters.sort((a, b) => b.count - a.count));
-      }
-    });
-    
-    socketRef.current = socket;
-    
-    return () => {
-      socket.emit('leave', sessionId);
-      socket.disconnect();
-    };
-  }, [sessionId, navigate]);
-  
+    useEffect(() => {
+        const storedUserId = localStorage.getItem(`TopicTrends_${sessionId}_userId`);
+        const storedIsVerified = localStorage.getItem(`TopicTrends_${sessionId}_isVerified`) === 'true';
+        const storedVerificationMethod = localStorage.getItem(`TopicTrends_${sessionId}_verificationMethod`);
+
+        if (!storedUserId) {
+            // User hasn't joined this session
+            navigate(`/join/${sessionId}`);
+            return;
+        }
+
+        setUserId(storedUserId);
+        setIsVerified(storedIsVerified);
+        setVerificationMethod(storedVerificationMethod);
+
+        // Fetch session details
+        const fetchSessionData = async () => {
+            try {
+                const sessionResponse = await api.get(`/api/sessions/${sessionId}`);
+                setSession(sessionResponse.data);
+
+                const clustersResponse = await api.get(`/api/sessions/${sessionId}/clusters`);
+                setClusters(clustersResponse.data.clusters.sort((a, b) => b.count - a.count));
+            } catch (error) {
+                console.error('Error fetching session data:', error);
+                toast.error('Failed to load session data');
+                navigate('/');
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchSessionData();
+
+        // Set up Socket.IO connection
+        const socket = io(process.env.REACT_APP_API_URL || 'http://localhost:8000', {
+            transports: ['websocket', 'polling'],  // Try both transports
+            withCredentials: true,                 // Important for CORS
+            reconnectionAttempts: 5,               // Try to reconnect 5 times
+            reconnectionDelay: 1000,               // Start with 1s delay
+            reconnectionDelayMax: 5000,            // Max 5s delay
+            timeout: 20000,                        // Longer timeout
+            autoConnect: true,                     // Auto connect
+        });
+
+        socket.on('connect', () => {
+            console.log('Connected to Socket.IO with ID:', socket.id);
+            // Join room with session ID as a parameter object, not a string
+            socket.emit('join', sessionId);
+        });
+
+        socket.on('connect_error', (error) => {
+            console.error('Socket.IO connection error:', error);
+        });
+
+        socket.on('clusters_updated', (data) => {
+            console.log('Received clusters update:', data);
+            if (data.session_id === sessionId) {
+                setClusters(data.clusters.sort((a, b) => b.count - a.count));
+            }
+        });
+
+        // Debug any disconnect events
+        socket.on('disconnect', (reason) => {
+            console.warn('Socket.IO disconnected:', reason);
+        });
+
+        socketRef.current = socket;
+
+        // Important: disconnection cleanup
+        return () => {
+            if (socketRef.current) {
+                socketRef.current.emit('leave', sessionId);
+                socketRef.current.disconnect();
+            }
+        };
+    }, [sessionId, navigate]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     

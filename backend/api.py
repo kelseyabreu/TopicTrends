@@ -11,13 +11,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+import motor.motor_asyncio
+from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
+from bson import Binary, UuidRepresentation
 import numpy as np
 import uuid
+from sentence_transformers import SentenceTransformer
 from sklearn.cluster import AgglomerativeClustering
 import qrcode
 import io
 import base64
 import os
+import socketio
 
 # Initialize FastAPI app
 app = FastAPI(title="TopicTrends API")
@@ -25,23 +31,21 @@ app = FastAPI(title="TopicTrends API")
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Specifically allow your frontend origin
+    allow_origins=["http://localhost:3000"],  # Your React app's origin
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
-
-# Initialize MongoDB client with improved error handling for Python 3.13
-from motor.motor_asyncio import AsyncIOMotorClient
-from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 
 # Initialize MongoDB client - using free tier Atlas
 MONGODB_URL = os.environ.get("MONGODB_URL", "mongodb+srv://topictrends-dev:topictrendsdev@topictrends-dev.hy4hbpt.mongodb.net/?retryWrites=true&w=majority&appName=topictrends-dev")
 try:
-    client = AsyncIOMotorClient(
+    client = motor.motor_asyncio.AsyncIOMotorClient(
         MONGODB_URL,
         serverSelectionTimeoutMS=5000,  # 5 second timeout
         connectTimeoutMS=10000,         # 10 second timeout
+        uuidRepresentation='standard'   # Fix UUID encoding issues
     )
     # Force a connection to verify it works
     client.admin.command('ping')
@@ -50,12 +54,9 @@ try:
 except (ConnectionFailure, ServerSelectionTimeoutError) as e:
     print(f"Failed to connect to MongoDB: {e}")
     # In production, you might want to handle this differently
-    # For now, we'll let the app crash if MongoDB is unavailable
     raise
 
-# Initialize Sentence-BERT model with error handling
-from sentence_transformers import SentenceTransformer
-
+# Initialize Sentence-BERT model
 try:
     # For sentence-transformers 4.0.2, verify this model name is still available
     # If not, use a recommended alternative from the new version
@@ -75,58 +76,53 @@ except Exception as e:
     # Provide a fallback or raise a more informative error
     raise RuntimeError(f"Failed to load language model: {e}")
 
-# Socket.IO Integration with fallback option
-try:
-    from fastapi_socketio import SocketManager
-    
-    # Initialize Socket.IO for real-time updates
-    socket_manager = SocketManager(app=app)
-    
-    # Socket.IO event handlers
-    @socket_manager.on("join")
-    async def handle_join(sid, session_id):
-        """Join a session room for real-time updates"""
-        await socket_manager.enter_room(sid, session_id)
-        return {"status": "joined"}
-    
-    @socket_manager.on("leave")
-    async def handle_leave(sid, session_id):
-        """Leave a session room"""
-        await socket_manager.leave_room(sid, session_id)
-        return {"status": "left"}
+# Create a Socket.IO server with CORS settings that match your frontend
+sio = socketio.AsyncServer(
+    async_mode='asgi',
+    cors_allowed_origins=['http://localhost:3000'],
+    logger=True,
+    engineio_logger=True
+)
 
-except ImportError:
-    # If fastapi-socketio isn't available, use python-socketio directly
-    import socketio
-    
-    # Create a Socket.IO server
-    sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
-    
-    # Wrap with ASGI application
-    socket_app = socketio.ASGIApp(sio)
-    
-    # Mount it to FastAPI
-    app.mount('/socket.io', socket_app)
-    
-    # Socket.IO event handlers
-    @sio.event
-    async def join(sid, session_id):
-        """Join a session room for real-time updates"""
-        sio.enter_room(sid, session_id)
-        return {"status": "joined"}
-    
-    @sio.event
-    async def leave(sid, session_id):
-        """Leave a session room"""
-        sio.leave_room(sid, session_id)
-        return {"status": "left"}
-    
-    # Define an async function to emit events (to replace socket_manager.emit)
-    async def emit_to_room(event, data, room):
-        await sio.emit(event, data, room=room)
-    
-    # Replace socket_manager with this function
-    socket_manager = type('', (), {'emit': emit_to_room})()
+# Wrap with ASGI application
+socket_app = socketio.ASGIApp(sio)
+
+# Mount it to FastAPI
+app.mount('/socket.io', socket_app)
+
+# Socket.IO event handlers
+@sio.event
+async def connect(sid, environ):
+    print(f"Socket.IO client connected: {sid}")
+    return {"status": "connected"}
+
+@sio.event
+async def disconnect(sid):
+    print(f"Socket.IO client disconnected: {sid}")
+
+@sio.event
+async def join(sid, data):
+    """Join a session room for real-time updates"""
+    session_id = data
+    print(f"Client {sid} joining room {session_id}")
+    await sio.enter_room(sid, session_id)
+    return {"status": "joined"}
+
+@sio.event
+async def leave(sid, data):
+    """Leave a session room"""
+    session_id = data
+    print(f"Client {sid} leaving room {session_id}")
+    await sio.leave_room(sid, session_id)
+    return {"status": "left"}
+
+# Define a function to emit events
+async def emit_to_room(event, data, room):
+    print(f"Emitting {event} to room {room}")
+    await sio.emit(event, data, room=room)
+
+# Use this in place of socket_manager.emit
+socket_manager = type('', (), {'emit': emit_to_room})()
 
 # Pydantic models for request/response validation
 class SessionCreate(BaseModel):
@@ -220,7 +216,7 @@ async def process_clusters(session_id: str):
     clustering = AgglomerativeClustering(
         n_clusters=None,
         distance_threshold=distance_threshold,
-        affinity='cosine',
+        metric='cosine',    # Use metric instead of affinity
         linkage='average'
     ).fit(embeddings)
     
@@ -280,7 +276,7 @@ async def process_clusters(session_id: str):
         # Update each idea with its cluster
         for idea in cluster_ideas:
             await db.ideas.update_one(
-                {"_id": uuid.UUID(idea["id"])},
+                {"_id": idea["id"]},  # Note: Using string ID now, not UUID
                 {"$set": {"cluster_id": cluster_id}}
             )
         
@@ -309,6 +305,9 @@ async def process_clusters(session_id: str):
             "last_processed": datetime.utcnow()
         }}
     )
+    
+    # Log before emitting
+    print(f"Emitting clusters_updated to room {session_id} with {len(cluster_results)} clusters")
     
     # Emit socket event with new clusters
     await socket_manager.emit(
@@ -367,10 +366,10 @@ async def submit_idea(
             detail="Verification required for this session"
         )
     
-    # Create idea
+    # Create idea with string ID instead of UUID object
     idea_id = uuid.uuid4()
     idea_data = {
-        "_id": idea_id,
+        "_id": str(idea_id),  # Convert UUID to string
         "session_id": session_id,
         "text": idea.text,
         "user_id": idea.user_id,
@@ -401,7 +400,7 @@ async def get_session_ideas(session_id: str):
     
     # Get ideas
     ideas = await db.ideas.find({"session_id": session_id}).to_list(length=None)
-    return {"ideas": [{**idea, "id": str(idea["_id"])} for idea in ideas]}
+    return {"ideas": [{**idea, "id": idea["_id"]} for idea in ideas]}
 
 @app.get("/api/sessions/{session_id}/clusters")
 async def get_session_clusters(session_id: str):
