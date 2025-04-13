@@ -13,107 +13,166 @@ function SessionView() {
     const [idea, setIdea] = useState('');
     const [clusters, setClusters] = useState([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(true); // Keep loading state
     const [userId, setUserId] = useState('');
     const [isVerified, setIsVerified] = useState(false);
     const [verificationMethod, setVerificationMethod] = useState(null);
     const [showShareModal, setShowShareModal] = useState(false);
     const socketRef = useRef(null);
 
-    // Check if user has joined this session
+    // *** COMBINED useEffect Hook ***
     useEffect(() => {
+        console.log(`[SessionView Effect ${sessionId}] Starting effect...`);
+        let isMounted = true; // Flag to check if component is still mounted
+
+        // 1. Check if user has joined this session
         const storedUserId = localStorage.getItem(`TopicTrends_${sessionId}_userId`);
         const storedIsVerified = localStorage.getItem(`TopicTrends_${sessionId}_isVerified`) === 'true';
         const storedVerificationMethod = localStorage.getItem(`TopicTrends_${sessionId}_verificationMethod`);
 
         if (!storedUserId) {
-            // User hasn't joined this session
+            console.log(`[SessionView Effect ${sessionId}] No stored user ID. Navigating back to join.`);
+            // User hasn't joined this session, navigate back immediately
             navigate(`/join/${sessionId}`);
-            return;
+            return; // Exit the effect early
         }
 
+        console.log(`[SessionView Effect ${sessionId}] User ID found: ${storedUserId}. Proceeding.`);
+        // Set user state based on localStorage
         setUserId(storedUserId);
         setIsVerified(storedIsVerified);
         setVerificationMethod(storedVerificationMethod);
+        setIsLoading(true); // Set loading true while fetching data
 
-        // Fetch session details
+        // 2. Fetch session details and initial clusters
         const fetchSessionData = async () => {
             try {
-                const sessionResponse = await api.get(`/api/sessions/${sessionId}`);
-                setSession(sessionResponse.data);
+                const [sessionResponse, clustersResponse] = await Promise.all([
+                    api.get(`/api/sessions/${sessionId}`),
+                    api.get(`/api/sessions/${sessionId}/clusters`)
+                ]);
 
-                const clustersResponse = await api.get(`/api/sessions/${sessionId}/clusters`);
-                setClusters(clustersResponse.data.clusters.sort((a, b) => b.count - a.count));
+                if (isMounted) {
+                    setSession(sessionResponse.data);
+
+                    // Handle both formats - either direct array or nested in .clusters property
+                    const fetchedClusters = Array.isArray(clustersResponse.data)
+                        ? clustersResponse.data  // New API format (direct array)
+                        : (clustersResponse.data.clusters || []);  // Old format (nested in .clusters)
+
+                    setClusters(fetchedClusters.sort((a, b) => b.count - a.count));
+                }
             } catch (error) {
-                console.error('Error fetching session data:', error);
-                toast.error('Failed to load session data');
-                navigate('/');
+                console.error(`[SessionView Effect ${sessionId}] Error fetching session data:`, error);
+                if (isMounted) {
+                    toast.error(error.response?.data?.detail || 'Failed to load session data. Returning home.');
+                    navigate('/'); // Navigate home on critical fetch error
+                }
             } finally {
-                setIsLoading(false);
+                if (isMounted) {
+                    setIsLoading(false); // Stop loading only after fetch attempt
+                }
             }
         };
 
-        fetchSessionData();
+        fetchSessionData(); // Fetch data only if user check passed
 
-        // Set up Socket.IO connection
+        // 3. Set up Socket.IO connection (only if user check passed)
+        console.log(`[SessionView Effect ${sessionId}] Setting up Socket.IO...`);
+        // Ensure existing socket is disconnected before creating a new one if effect re-runs
+        if (socketRef.current) {
+            console.log(`[SessionView Effect ${sessionId}] Disconnecting existing socket before reconnecting.`);
+            socketRef.current.disconnect();
+        }
+
         const socket = io(process.env.REACT_APP_API_URL || 'http://localhost:8000', {
-            transports: ['websocket', 'polling'],  // Try both transports
-            withCredentials: true,                 // Important for CORS
-            reconnectionAttempts: 5,               // Try to reconnect 5 times
-            reconnectionDelay: 1000,               // Start with 1s delay
-            reconnectionDelayMax: 5000,            // Max 5s delay
-            timeout: 20000,                        // Longer timeout
-            autoConnect: true,                     // Auto connect
+            transports: ['websocket', 'polling'],
+            withCredentials: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
+            timeout: 20000,
+            autoConnect: true, // Let it auto-connect
         });
 
         socket.on('connect', () => {
-            console.log('Connected to Socket.IO with ID:', socket.id);
-            // Join room with session ID
+            console.log(`[Socket ${sessionId}] Connected with ID: ${socket.id}. Emitting join.`);
+            // Join room with session ID *after* connection established
             socket.emit('join', sessionId);
         });
 
         socket.on('connect_error', (error) => {
-            console.error('Socket.IO connection error:', error);
+            console.error(`[Socket ${sessionId}] Connection error:`, error);
+            // Maybe show a toast notification about connection issues
+            if (isMounted) {
+                toast.warning('Connection issue. Trying to reconnect...');
+            }
+        });
+
+        socket.on('disconnect', (reason) => {
+            console.warn(`[Socket ${sessionId}] Disconnected:`, reason);
+            if (isMounted) {
+                // Only show toast if disconnect wasn't initiated by cleanup
+                if (reason !== 'io client disconnect') {
+                    toast.error('Disconnected. Please refresh if issues persist.');
+                }
+            }
         });
 
         socket.on('clusters_updated', (data) => {
-            console.log('Received clusters update:', data);
-            if (data.session_id === sessionId) {
-                console.log(`Updating clusters in state: ${data.clusters.length} clusters`);
-                // Force a UI refresh by creating a new array
-                const sortedClusters = [...data.clusters].sort((a, b) => b.count - a.count);
+            console.log(`[Socket ${sessionId}] Received clusters_updated event.`);
+            // Check if the update is for the correct session and component is mounted
+            if (data.session_id === sessionId && isMounted) {
+                console.log(`[Socket ${sessionId}] Updating clusters state with ${data.clusters.length} clusters.`);
+                // Ensure data.clusters is an array
+                const updatedClusters = Array.isArray(data.clusters) ? data.clusters : [];
+                const sortedClusters = [...updatedClusters].sort((a, b) => b.count - a.count);
                 setClusters(sortedClusters);
 
-                // Also update session data to reflect new idea count
+                // Update idea count in session state if session exists
                 if (session) {
-                    const updatedSession = {
-                        ...session,
-                        idea_count: data.clusters.reduce((total, cluster) => total + cluster.ideas.length, 0),
-                        cluster_count: data.clusters.length
-                    };
-                    setSession(updatedSession);
+                    const newIdeaCount = updatedClusters.reduce((total, cluster) => total + (cluster.ideas?.length || 0), 0);
+                    setSession(prevSession => ({
+                        ...prevSession,
+                        idea_count: newIdeaCount,
+                        cluster_count: updatedClusters.length
+                    }));
                 }
 
-                // Add success toast to confirm to user
-                toast.success('New idea added and grouped!');
+                // No need for separate success toast here, the info toast from submit is sufficient
+                // toast.success('Ideas updated!');
+            } else {
+                console.log(`[Socket ${sessionId}] Received clusters_updated for different session (${data.session_id}) or component unmounted.`);
             }
         });
 
-        // Debug any disconnect events
-        socket.on('disconnect', (reason) => {
-            console.warn('Socket.IO disconnected:', reason);
+        socket.on('processing_error', (data) => {
+            console.error(`[Socket ${sessionId}] Received processing_error:`, data);
+            if (data.session_id === sessionId && isMounted) {
+                toast.error(`Backend error: ${data.error || 'Failed to process update.'}`);
+            }
         });
 
-        socketRef.current = socket;
 
-        // Important: disconnection cleanup
+        socketRef.current = socket; // Store socket instance
+
+        // 4. Cleanup function for the combined effect
         return () => {
+            console.log(`[SessionView Effect ${sessionId}] Running cleanup function...`);
+            isMounted = false; // Prevent state updates after unmount
             if (socketRef.current) {
+                console.log(`[SessionView Cleanup ${sessionId}] Emitting leave and disconnecting socket ID: ${socketRef.current.id}`);
                 socketRef.current.emit('leave', sessionId);
                 socketRef.current.disconnect();
+                socketRef.current = null; // Clear the ref
+            } else {
+                console.log(`[SessionView Cleanup ${sessionId}] No socket found in ref to disconnect.`);
             }
         };
-    }, [sessionId, navigate]);
+
+        // Dependencies: Only sessionId and navigate.
+        // navigate function from react-router is generally stable.
+    }, [sessionId, navigate]); // Removed 'session' from deps to prevent loop on count update
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -122,43 +181,36 @@ function SessionView() {
             toast.error('Please enter an idea');
             return;
         }
-
         if (idea.length > 500) {
             toast.error('Idea text is too long (maximum 500 characters)');
+            return;
+        }
+        if (!socketRef.current || !socketRef.current.connected) {
+            toast.error('Not connected. Please wait or refresh.');
             return;
         }
 
         setIsSubmitting(true);
 
         try {
-            await api.post(`/api/sessions/${sessionId}/ideas`, {
+            console.log(`[Submit Idea ${sessionId}] Posting idea...`);
+            // Post the idea via API
+            const response = await api.post(`/api/sessions/${sessionId}/ideas`, {
                 text: idea,
                 user_id: userId,
                 verified: isVerified,
                 verification_method: verificationMethod
             });
+            console.log(`[Submit Idea ${sessionId}] API response:`, response.data);
 
-            // Clear the input field
-            setIdea('');
+            setIdea(''); // Clear input field immediately
+            toast.info('Idea submitted! Processing...'); // Give user feedback
 
-            // Add a temporary toast that will be replaced when clustering completes
-            toast.info('Processing your idea...');
-
-            // Optionally, refresh data if socket isn't working
-            setTimeout(async () => {
-                try {
-                    const clustersResponse = await api.get(`/api/sessions/${sessionId}/clusters`);
-                    if (clustersResponse.data && clustersResponse.data.clusters) {
-                        setClusters(clustersResponse.data.clusters.sort((a, b) => b.count - a.count));
-                    }
-                } catch (error) {
-                    console.error('Error fetching updated clusters:', error);
-                }
-            }, 2000); // Give the backend 2 seconds to process
+            // Removed setTimeout fallback fetch
 
         } catch (error) {
-            console.error('Error submitting idea:', error);
-            toast.error('Failed to submit idea. Please try again.');
+            console.error(`[Submit Idea ${sessionId}] Error submitting idea:`, error);
+            toast.error(error.response?.data?.detail || 'Failed to submit idea. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
@@ -166,11 +218,12 @@ function SessionView() {
 
     const copyShareLink = () => {
         if (!session) return;
-
-        navigator.clipboard.writeText(session.join_link);
-        toast.success('Link copied to clipboard!');
+        navigator.clipboard.writeText(session.join_link)
+            .then(() => toast.success('Link copied to clipboard!'))
+            .catch(err => toast.error('Failed to copy link.'));
     };
 
+    // Render Loading state
     if (isLoading) {
         return (
             <div className="session-view-container loading">
@@ -180,126 +233,146 @@ function SessionView() {
         );
     }
 
+    // Render main component content if not loading
     return (
         <div className="session-view-container">
             <div className="header">
                 <div className="logo" onClick={() => navigate('/')}>Idea<span>Group</span></div>
-                <button
-                    className="share-button"
-                    onClick={() => setShowShareModal(true)}
-                >
-                    Share
-                </button>
+                {session && ( // Only show share if session data loaded
+                    <button
+                        className="share-button"
+                        onClick={() => setShowShareModal(true)}
+                    >
+                        Share
+                    </button>
+                )}
             </div>
 
-            <div className="session-info">
-                <h1>{session.title}</h1>
-                <p className="prompt">{session.prompt}</p>
-                <div className="stats">
-                    <div className="stat">
-                        <span className="stat-value">{session.idea_count}</span>
-                        <span className="stat-label">Ideas</span>
+            {/* Only render content if session is loaded */}
+            {session ? (
+                <>
+                    <div className="session-info">
+                        <h1>{session.title}</h1>
+                        <p className="prompt">{session.prompt}</p>
+                        <div className="stats">
+                            <div className="stat">
+                                <span className="stat-value">{session.idea_count}</span>
+                                <span className="stat-label">Ideas</span>
+                            </div>
+                            <div className="stat">
+                                <span className="stat-value">{session.cluster_count}</span>
+                                <span className="stat-label">Groups</span>
+                            </div>
+                        </div>
                     </div>
-                    <div className="stat">
-                        <span className="stat-value">{clusters.length}</span>
-                        <span className="stat-label">Groups</span>
-                    </div>
-                </div>
-            </div>
 
-            <div className="main-content">
-                <div className="idea-input-section">
-                    <form onSubmit={handleSubmit}>
-                        <div className="form-group">
-                            <label htmlFor="idea-input">Your Idea</label>
-                            <textarea
-                                id="idea-input"
-                                value={idea}
-                                onChange={(e) => setIdea(e.target.value)}
-                                placeholder="Share your idea here..."
-                                maxLength="500"
-                                required
-                                disabled={isSubmitting}
-                            />
-                            <small>{idea.length}/500 characters</small>
+                    <div className="main-content">
+                        <div className="idea-input-section">
+                            <form onSubmit={handleSubmit}>
+                                <div className="form-group">
+                                    <label htmlFor="idea-input">Your Idea</label>
+                                    <textarea
+                                        id="idea-input"
+                                        value={idea}
+                                        onChange={(e) => setIdea(e.target.value)}
+                                        placeholder="Share your idea here..."
+                                        maxLength="500"
+                                        required
+                                        disabled={isSubmitting}
+                                    />
+                                    <small>{idea.length}/500 characters</small>
+                                </div>
+
+                                <div className="user-info">
+                                    {isVerified ? (
+                                        <span className="verification-badge">✓ Verified User</span>
+                                    ) : (
+                                        <span className="anonymous-badge">Anonymous</span>
+                                    )}
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    className="btn btn-primary"
+                                    disabled={isSubmitting || (!socketRef.current || !socketRef.current.connected)} // Disable if submitting or not connected
+                                >
+                                    {isSubmitting ? 'Submitting...' : 'Submit Idea'}
+                                </button>
+                            </form>
                         </div>
 
-                        <div className="user-info">
-                            {isVerified ? (
-                                <span className="verification-badge">✓ Verified User</span>
+                        <div className="clusters-section">
+                            <h2>Topic Trends</h2>
+                            {clusters.length === 0 ? (
+                                <div className="no-clusters">
+                                    <p>No ideas submitted yet. Be the first to contribute!</p>
+                                </div>
                             ) : (
-                                <span className="anonymous-badge">Anonymous</span>
+                                <div className="clusters-list">
+                                    {clusters.map((cluster) => (
+                                        <div className="cluster-card" key={cluster.id}>
+                                            <div className="cluster-header">
+                                                <span className="cluster-title">{cluster.representative_text}</span>
+                                                <span className="cluster-count">{cluster.count}</span>
+                                            </div>
+                                            <div className="cluster-ideas">
+                                                {(cluster.ideas || []).map((idea) => ( // Add safety check for ideas array
+                                                    <div className="idea-card" key={idea.id}>
+                                                        <p>{idea.text}</p>
+                                                        <div className="idea-meta">
+                                                            <span className="idea-user">
+                                                                {idea.verified ? (
+                                                                    <span className="verification-badge">✓ Verified</span>
+                                                                ) : (
+                                                                    <span className="anonymous-badge">Anonymous</span>
+                                                                )}
+                                                            </span>
+                                                            {/* Display timestamp if needed */}
+                                                            {/* <span className="idea-timestamp">
+                                                                {idea.timestamp ? new Date(idea.timestamp).toLocaleString() : ''}
+                                                            </span> */}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             )}
                         </div>
-
-                        <button
-                            type="submit"
-                            className="btn btn-primary"
-                            disabled={isSubmitting}
-                        >
-                            {isSubmitting ? 'Submitting...' : 'Submit Idea'}
-                        </button>
-                    </form>
+                    </div>
+                </>
+            ) : (
+                // Render something if session is null after loading (shouldn't happen if fetch error navigates away)
+                <div className="session-view-container error">
+                    <h2>Error</h2>
+                    <p>Could not load session details.</p>
                 </div>
+            )}
 
-                <div className="clusters-section">
-                    <h2>Topic Trends</h2>
-                    {clusters.length === 0 ? (
-                        <div className="no-clusters">
-                            <p>No ideas submitted yet. Be the first to contribute!</p>
-                        </div>
-                    ) : (
-                        <div className="clusters-list">
-                            {clusters.map((cluster) => (
-                                <div className="cluster-card" key={cluster.id}>
-                                    <div className="cluster-header">
-                                        <span className="cluster-title">{cluster.representative_text}</span>
-                                        <span className="cluster-count">{cluster.count}</span>
-                                    </div>
-                                    <div className="cluster-ideas">
-                                        {cluster.ideas.map((idea) => (
-                                            <div className="idea-card" key={idea.id}>
-                                                <p>{idea.text}</p>
-                                                <div className="idea-meta">
-                                                    <span className="idea-user">
-                                                        {idea.verified ? (
-                                                            <span className="verification-badge">✓ Verified</span>
-                                                        ) : (
-                                                            <span className="anonymous-badge">Anonymous</span>
-                                                        )}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
 
-            {showShareModal && (
-                <div className="modal-overlay">
-                    <div className="share-modal">
+            {/* Share Modal */}
+            {showShareModal && session && ( // Ensure session exists before rendering modal
+                <div className="modal-overlay" onClick={() => setShowShareModal(false)}> {/* Close on overlay click */}
+                    <div className="share-modal" onClick={(e) => e.stopPropagation()}> {/* Prevent modal close when clicking inside */}
                         <div className="modal-header">
                             <h2>Share This Discussion</h2>
                             <button
                                 className="close-button"
                                 onClick={() => setShowShareModal(false)}
+                                aria-label="Close share modal" // Accessibility
                             >
                                 ×
                             </button>
                         </div>
-
                         <div className="modal-content">
-                            <p>Share this link with others to invite them to contribute:</p>
-
+                            <p>Share this link with others to invite them:</p>
                             <div className="share-link">
                                 <input
                                     type="text"
                                     value={session.join_link}
                                     readOnly
+                                    aria-label="Session join link" // Accessibility
                                 />
                                 <button
                                     className="copy-button"
@@ -308,10 +381,9 @@ function SessionView() {
                                     Copy
                                 </button>
                             </div>
-
                             <div className="qr-code">
                                 <h3>Or scan this QR code:</h3>
-                                <img src={session.qr_code} alt="QR Code" />
+                                <img src={session.qr_code} alt="QR Code for session link" /> {/* Improved alt text */}
                             </div>
                         </div>
                     </div>
