@@ -2,6 +2,9 @@
 /node_modules
 /.pnp
 .pnp.js
+# Project specific
+frontend/node_modules/
+backend/model_cache/
 
 # testing
 /coverage
