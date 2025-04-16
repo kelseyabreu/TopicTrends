@@ -6,7 +6,7 @@ import uuid
 from app.models.schemas import Idea, IdeaSubmit
 from app.core.database import db
 from app.api.routes.sessions import get_session_by_id
-from app.services.clustering import process_clusters
+from app.services.genkit.ai import process_clusters
 
 # Create router
 router = APIRouter(tags=["ideas"])
