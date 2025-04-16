@@ -13,6 +13,12 @@ from app.api.socket import socket_app, sio
 # Create FastAPI app
 app = FastAPI(title="TopicTrends API")
 
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"message": exc.detail},
+    )
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,

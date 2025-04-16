@@ -8,6 +8,7 @@ import qrcode
 
 from app.models.schemas import Session, SessionCreate
 from app.core.database import db
+import logging
 
 # Create router
 router = APIRouter(tags=["sessions"])
@@ -41,6 +42,7 @@ async def get_session_by_id(session_id: str):
 # Routes
 @router.post("/sessions", response_model=Session)
 async def create_session(session: SessionCreate):
+    logging.info("Creating session with data: %s", session.dict())
     """Create a new discussion session"""
     session_id = str(uuid.uuid4())
     base_url = "https://TopicTrends.app"  # Replace with your domain
@@ -61,6 +63,7 @@ async def create_session(session: SessionCreate):
     }
 
     await db.sessions.insert_one(session_data)
+    logging.info("Session created with ID: %s", session_id)
     return {**session_data, "id": session_id}
 
 @router.get("/sessions/{session_id}", response_model=Session)
