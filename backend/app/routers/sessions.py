@@ -42,6 +42,18 @@ async def get_session_by_id(session_id: str):
     logging.info(f"Session found for ID: {session_id}") # Add logging here
     return session
 
+async def fetch_all_sessions():
+    """Get all sessions"""
+    logging.info("Attempting to find all sessions")
+    cursor = db.sessions.find()
+    sessions = await cursor.to_list(length=None)  # None means no limit
+    if not sessions:
+        logging.warning("No sessions found")
+        return []  # Return empty list instead of raising an exception
+    return sessions
+
+
+
 # Routes
 @router.post("/sessions", response_model=Session)
 async def create_session(session: SessionCreate):
@@ -74,3 +86,9 @@ async def get_session_details(session_id: str):
     """Get session details by ID"""
     session = await get_session_by_id(session_id)
     return {**session, "id": session["_id"]}
+
+@router.get("/sessions", response_model=List[Session])
+async def get_sessions():
+    """Get all sessions"""
+    sessions = await fetch_all_sessions()
+    return [{"id": session["_id"], **session} for session in sessions]
