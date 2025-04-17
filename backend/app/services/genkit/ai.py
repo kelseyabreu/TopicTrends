@@ -40,9 +40,14 @@ ai = Genkit(
     ],
 )
 # New Clustering method
-async def fetch_ideas(session_id: str) -> list:
-    """Fetch all ideas for the session"""
-    return await get_ideas_by_session_id(session_id)
+async def fetch_ideas(session_id: str | None = None, idea_ids: list[str] | None = None) -> list:
+    """Fetch ideas either by session_id or specific idea IDs"""
+    if idea_ids:
+        return await db.ideas.find({"_id": {"$in": idea_ids}}).to_list(None)
+    elif session_id:
+        return await get_ideas_by_session_id(session_id)
+    return []
+
 
 async def embed_ideas(ideas: list) -> list:
     """Create embeddings for the given texts"""
@@ -221,8 +226,59 @@ def calculate_distance_threshold(idea_count: int) -> float:
     
     # Run
 
-async def process_clusters(session_id: str) -> list:
-    ideas = await fetch_ideas(session_id)
+async def process_clusters(session_id: str | None = None, grouped_ideas: list[str] | None = None) -> list:
+    """Process and cluster ideas based on their semantic similarity.
+
+    This function performs semantic clustering on a set of ideas, either from a specific session
+    or from a provided list of idea IDs. It embeds the ideas using AI, clusters them based on
+    similarity, and updates the database with the clustering results.
+
+    Args:
+        session_id (str | None, optional): The ID of the session containing the ideas to cluster.
+            If provided without grouped_ideas, all ideas from this session will be processed.
+            Defaults to None.
+        grouped_ideas (list[str] | None, optional): A list of specific idea IDs to cluster.
+            If provided, these ideas will be processed regardless of their session.
+            Takes precedence over session_id if both are provided.
+            Defaults to None.
+
+    Returns:
+        list: A list of cluster results, where each cluster contains:
+            - id: The unique identifier for the cluster
+            - representative_idea_id: ID of the idea that best represents the cluster
+            - representative_text: A generated title/summary for the cluster
+            - count: Number of ideas in the cluster
+            - ideas: List of all ideas in the cluster
+
+    Raises:
+        ValueError: If neither session_id nor grouped_ideas is provided.
+
+    Example:
+        # Process all ideas in a session
+        clusters = await process_clusters(session_id="session123")
+
+        # Process specific ideas only
+        clusters = await process_clusters(grouped_ideas=["idea1", "idea2", "idea3"])
+
+        # Process specific ideas within a session context
+        clusters = await process_clusters(
+            session_id="session123",
+            grouped_ideas=["idea1", "idea2"]
+        )
+
+    Notes:
+        - When only grouped_ideas is provided, a temporary session ID will be generated
+          for database operations.
+        - The clustering algorithm adjusts its threshold based on the number of ideas
+          to ensure meaningful groupings.
+        - Results are stored in the database and broadcast via WebSocket to connected
+          clients in the session room.
+    """
+    if not session_id and not grouped_ideas:
+        raise ValueError("Either session_id or grouped_ideas must be provided")
+
+    # Fetch ideas based on either session_id or grouped_ideas
+    ideas = await fetch_ideas(session_id, grouped_ideas)
 
     if not ideas:
         return []
@@ -238,5 +294,8 @@ async def process_clusters(session_id: str) -> list:
 
     clusters_temp_data = await group_ideas_by_cluster(labels, ideas, texts, embedded_ideas)
 
+    # If we have grouped_ideas but no session_id, we'll use a temporary session ID
+    if grouped_ideas and not session_id:
+        session_id = f"temp_session_{datetime.utcnow().timestamp()}"
+
     return await update_database_and_emit(session_id, clusters_temp_data)
-  
