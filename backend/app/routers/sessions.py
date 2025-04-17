@@ -34,9 +34,12 @@ def generate_qr_code(url: str) -> str:
 
 async def get_session_by_id(session_id: str):
     """Get session by ID or raise 404"""
+    logging.info(f"Attempting to find session with ID: {session_id}") # Add logging here
     session = await db.sessions.find_one({"_id": session_id})
     if not session:
+        logging.warning(f"Session not found for ID: {session_id}") # Add logging here
         raise HTTPException(status_code=404, detail="Session not found")
+    logging.info(f"Session found for ID: {session_id}") # Add logging here
     return session
 
 # Routes

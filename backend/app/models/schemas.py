@@ -19,6 +19,7 @@ class Idea(BaseModel):
     user_id: str
     verified: bool
     timestamp: datetime
+    embedding: list[float] | None = None
     cluster_id: Optional[str] = None
 
 class Cluster(BaseModel):
