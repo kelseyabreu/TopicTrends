@@ -2,7 +2,7 @@
     "version": 2,
     "builds": [
         {
-            "src": "app/main.py",
+            "src": "backend/main.py",
             "use": "@vercel/python@3.13.0",
             "config": {
                 "runtime": "python3.13"
@@ -12,7 +12,7 @@
     "routes": [
         {
             "src": "/(.*)",
-            "dest": "app/main.py"
+            "dest": "backend/main.py"
         }
     ],
     "env": {
