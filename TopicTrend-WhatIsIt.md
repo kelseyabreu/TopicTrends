@@ -49,7 +49,7 @@ TopicTrends is a web application that allows organizers to collect ideas from pa
 
 4. Start the backend server:
    ```
-   uvicorn api:app --reload
+   uvicorn main:app --reload
    ```
 
 ### Frontend Setup

@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from typing import List
 
 from app.models.schemas import Cluster
 from app.core.database import db
-from app.api.routes.sessions import get_session_by_id
+from app.routers.sessions import get_session_by_id
+import logging
 
 # Create router
 router = APIRouter(tags=["clusters"])
@@ -42,4 +43,5 @@ async def get_session_clusters(session_id: str):
                 ideas=nested_ideas
             )
         )
+    logging.info("Fetched %d clusters for session %s", len(clusters), session_id)
     return results
