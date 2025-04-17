@@ -236,18 +236,6 @@ function SessionView() {
     // Render main component content if not loading
     return (
         <div className="session-view-container">
-            <div className="header">
-                <div className="logo" onClick={() => navigate('/')}>Idea<span>Group</span></div>
-                {session && ( // Only show share if session data loaded
-                    <button
-                        className="share-button"
-                        onClick={() => setShowShareModal(true)}
-                    >
-                        Share
-                    </button>
-                )}
-            </div>
-
             {/* Only render content if session is loaded */}
             {session ? (
                 <>
@@ -263,6 +251,16 @@ function SessionView() {
                                 <span className="stat-value">{session.cluster_count}</span>
                                 <span className="stat-label">Groups</span>
                             </div>
+                        </div>
+                        <div className="session-actions">
+                        {session && ( // Only show share if session data loaded
+                    <button
+                        className="share-button"
+                        onClick={() => setShowShareModal(true)}
+                    >
+                        Share
+                    </button>
+                )}
                         </div>
                     </div>
 

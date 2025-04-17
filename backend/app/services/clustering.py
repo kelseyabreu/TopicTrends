@@ -4,7 +4,7 @@ import numpy as np
 
 from app.core.database import db
 from app.core.ml import encode_texts, cluster_embeddings
-from app.api.socket import sio
+from app.core.socketio import sio
 
 async def process_clusters(session_id: str):
     """Process all ideas in a session and create clusters"""

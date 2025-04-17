@@ -1,14 +1,16 @@
 """Main FastAPI application entry point"""
+# Import routers
+from app.routers import sessions, ideas, clusters
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
-
-# Import routers
-from app.api.routes import sessions, ideas, clusters
+from fastapi.exceptions import HTTPException
+from fastapi.responses import JSONResponse
+from fastapi import Request
 
 # Import Socket.IO setup
-from app.api.socket import socket_app, sio
+from app.core.socketio import socket_app, sio
 
 # Create FastAPI app
 app = FastAPI(title="TopicTrends API")
@@ -28,11 +30,11 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],
 )
-
 # Include routers
 app.include_router(sessions.router, prefix="/api")
 app.include_router(ideas.router, prefix="/api")
 app.include_router(clusters.router, prefix="/api")
+
 
 # Mount Socket.IO app
 app.mount('/socket.io', socket_app)

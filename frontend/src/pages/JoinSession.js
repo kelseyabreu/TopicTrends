@@ -80,9 +80,6 @@ function JoinSession() {
   
   return (
     <div className="join-session-container">
-      <div className="header">
-        <div className="logo" onClick={() => navigate('/')}>Idea<span>Group</span></div>
-      </div>
       
       <div className="join-card">
         <h1>Join Discussion</h1>

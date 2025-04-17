@@ -34,10 +34,25 @@ def generate_qr_code(url: str) -> str:
 
 async def get_session_by_id(session_id: str):
     """Get session by ID or raise 404"""
+    logging.info(f"Attempting to find session with ID: {session_id}") # Add logging here
     session = await db.sessions.find_one({"_id": session_id})
     if not session:
+        logging.warning(f"Session not found for ID: {session_id}") # Add logging here
         raise HTTPException(status_code=404, detail="Session not found")
+    logging.info(f"Session found for ID: {session_id}") # Add logging here
     return session
+
+async def fetch_all_sessions():
+    """Get all sessions"""
+    logging.info("Attempting to find all sessions")
+    cursor = db.sessions.find()
+    sessions = await cursor.to_list(length=None)  # None means no limit
+    if not sessions:
+        logging.warning("No sessions found")
+        return []  # Return empty list instead of raising an exception
+    return sessions
+
+
 
 # Routes
 @router.post("/sessions", response_model=Session)
@@ -71,3 +86,9 @@ async def get_session_details(session_id: str):
     """Get session details by ID"""
     session = await get_session_by_id(session_id)
     return {**session, "id": session["_id"]}
+
+@router.get("/sessions", response_model=List[Session])
+async def get_sessions():
+    """Get all sessions"""
+    sessions = await fetch_all_sessions()
+    return [{"id": session["_id"], **session} for session in sessions]
