@@ -41,9 +41,6 @@ function CreateSession() {
   
   return (
     <div className="create-session-container">
-      <div className="header">
-        <div className="logo" onClick={() => navigate('/')}>Idea<span>Group</span></div>
-      </div>
       
       <div className="create-form-container">
         <h1>Create a Discussion</h1>
