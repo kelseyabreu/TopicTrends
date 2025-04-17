@@ -1,9 +1,10 @@
+
 import socketio
 
 # Create a Socket.IO server with CORS settings that match your frontend
 sio = socketio.AsyncServer(
     async_mode='asgi',
-    cors_allowed_origins=['http://localhost:3000'],
+    cors_allowed_origins=['http://localhost:3000'], # TODO: Use settings from config.py
     logger=True,
     engineio_logger=True
 )
@@ -37,8 +38,7 @@ async def leave(sid, data):
     await sio.leave_room(sid, session_id)
     return {"status": "left"}
 
-# Function to emit events to a room
-async def emit_to_room(event, data, room):
-    """Emit an event to all clients in a room"""
-    print(f"Emitting {event} to room {room}")
-    await sio.emit(event, data, room=room)
+# Optional: Define a helper for emitting if needed elsewhere, though direct sio.emit is often fine
+# async def emit_to_room(event, data, room):
+#     print(f"Emitting {event} to room {room}")
+#     await sio.emit(event, data, room=room)

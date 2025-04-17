@@ -1,16 +1,17 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks
-from typing import List
-from datetime import datetime
 import uuid
+from datetime import datetime
+from typing import List, Dict, Any
 
-from app.models.schemas import Idea, IdeaSubmit
+from fastapi import APIRouter, BackgroundTasks, HTTPException
+
+from app.routers.sessions import get_session_by_id
 from app.core.database import db
-from app.api.routes.sessions import get_session_by_id
+from app.models.schemas import Idea, IdeaSubmit
 from app.services.genkit.ai import process_clusters
+import logging
 
 # Create router
 router = APIRouter(tags=["ideas"])
-
 # Routes
 @router.post("/sessions/{session_id}/ideas")
 async def submit_idea(
@@ -21,6 +22,7 @@ async def submit_idea(
     """Submit a new idea to a session"""
     # Validate session exists
     session = await get_session_by_id(session_id)
+    logging.info("Submitting idea for session %s", session_id)
 
     # Validate verification if required
     if session["require_verification"] and not idea.verified:
@@ -43,6 +45,7 @@ async def submit_idea(
     }
 
     await db.ideas.insert_one(idea_data)
+    logging.info("Idea submitted with ID: %s", idea_id)
 
     # Increment idea count
     await db.sessions.update_one(
