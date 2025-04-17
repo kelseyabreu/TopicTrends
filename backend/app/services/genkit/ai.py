@@ -82,9 +82,9 @@ def find_nearest_ideas(input_embedding: list[float], top_n: int = 3, total_ideas
         A list of the nearest ideas.
     """
     if any(idea.embedding is None for idea in total_ideas):
-        raise AttributeError('Some Pokemon are not yet embedded')
+        raise AttributeError('Some ideas are not yet embedded')
 
-    # Calculate distances and keep track of the original Pokemon object.
+    # Calculate distances and keep track of the original Idea object.
     idea_distances = []
     for idea in total_ideas:
         if idea.embedding is not None:
@@ -94,8 +94,8 @@ def find_nearest_ideas(input_embedding: list[float], top_n: int = 3, total_ideas
     # Sort by distance (the first element of the tuple).
     idea_distances.sort(key=lambda item: item[0])
 
-    # Return the top_n PokemonInfo objects from the sorted list.
-    return [pokemon for distance, pokemon in idea_distances[:top_n]]
+    # Return the top_n Idea objects from the sorted list.
+    return [idea for distance, idea in idea_distances[:top_n]]
 
 async def perform_clustering(embedded_ideas: list, distance_threshold: float) -> list:
     """Perform clustering on embedded ideas using AgglomerativeClustering"""
