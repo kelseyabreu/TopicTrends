@@ -1,6 +1,6 @@
 """Main FastAPI application entry point"""
 # Import routers
-from app.routers import sessions, ideas, clusters
+from app.routers import sessions, ideas, clusters, auth  # Add auth router import
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -34,7 +34,7 @@ app.add_middleware(
 app.include_router(sessions.router, prefix="/api")
 app.include_router(ideas.router, prefix="/api")
 app.include_router(clusters.router, prefix="/api")
-
+app.include_router(auth.router, prefix="/api") 
 
 # Mount Socket.IO app
 app.mount('/socket.io', socket_app)
