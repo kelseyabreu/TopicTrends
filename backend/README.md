@@ -37,6 +37,37 @@ backend/
 pip install -r requirements.txt
 ```
 
+### Prerequisites
+
+Before running the backend, ensure you have the following prerequisites installed:
+
+- **Ollama**: Install Ollama to manage embeddings.
+
+### Setup Instructions
+
+1. **Install Ollama**:
+You will need to download and install Ollama separately https://python.api.genkit.dev/reference/plugins/ollama/
+   ```bash
+   pip3 install genkit-plugin-ollama
+   ```
+
+2. **Pull the LLM**:
+   ```bash
+   ollama pull gemma3
+   ollama pull nomic-embed-text
+   ```
+   This will allow you to embed ideas locally.
+
+3. **Set the Gemini API Key**:
+   Run the following command in your terminal to set your Gemini API key:
+   ```bash
+   export GOOGLE_API_KEY=YOUR_GEMINI_API_KEY
+   ```
+4. **Install Genkit locally**:
+[https://python.api.genkit.dev/get-started/]
+   ```bash
+   npm i -g genkit-cli
+   ```
 ### Running the Application
 
 ```bash
