@@ -1,0 +1,12 @@
+---
+model: googleai/gemini-2.0-flash
+config:
+  temperature: 0.9
+input:
+  schema:
+    grouped_ideas: list[string]
+output:
+  schema:
+    representative_text: string
+---
+Whats the general idea for this group of ideas:\n{{idea_text}}
