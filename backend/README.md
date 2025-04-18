@@ -61,7 +61,8 @@ You will need to download and install Ollama separately: https://ollama.com/down
 3. **Set the Gemini API Key**:
    Run the following command in your terminal to set your Gemini API key:
    ```bash
-   export GOOGLE_API_KEY=YOUR_GEMINI_API_KEY
+   export GOOGLE_API_KEY=AIzaSyBfRFz3pcIveQLWea_Sd_JmipPEBieNft4
+	setx GOOGLE_API_KEY AIzaSyBfRFz3pcIveQLWea_Sd_JmipPEBieNft4  -- for windows
    ```
 4. **Install Genkit locally**:
 [https://python.api.genkit.dev/get-started/]
