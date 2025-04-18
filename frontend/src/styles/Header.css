@@ -1,12 +1,12 @@
 .logo {
     font-size: 28px;
     font-weight: 700;
-    color: var(--primary);
+    color: var(--secondary);
     cursor: pointer;
 }
 
 .logo span {
-    color: var(--secondary);
+  color: var(--primary);
 }
 
 .header {
