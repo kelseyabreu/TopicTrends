@@ -4,23 +4,40 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import logging
 
-# Email configuration
-EMAIL_HOST = os.environ.get("EMAIL_HOST", "smtp.gmail.com")
-EMAIL_PORT = int(os.environ.get("EMAIL_PORT", 587))
-EMAIL_USERNAME = os.environ.get("EMAIL_USERNAME", "your-email@gmail.com")
-EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD", "your-app-password")
-EMAIL_FROM = os.environ.get("EMAIL_FROM", "noreply@topictrends.app")
-FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
-
-# Logger
+# Set up logger
 logger = logging.getLogger(__name__)
 
+# Environment variables
+APP_ENV = os.environ.get("APP_ENV", "development")
+DEV_MODE = APP_ENV.lower() == "development"
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+
+# SendGrid configuration
+SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "")
+SENDGRID_FROM_EMAIL = os.environ.get("SENDGRID_FROM_EMAIL", "noreply@topictrends.app")
+SENDGRID_FROM_NAME = os.environ.get("SENDGRID_FROM_NAME", "TopicTrends")
+
+# SendGrid SMTP settings
+SMTP_SERVER = "smtp.sendgrid.net"
+SMTP_PORT = 587
+SMTP_USERNAME = "apikey"  # This is always "apikey" for SendGrid
+SMTP_PASSWORD = SENDGRID_API_KEY  # Your SendGrid API key
+
 async def send_email(to_email: str, subject: str, html_content: str):
-    """Send email with HTML content"""
+    """Send email with HTML content using SendGrid"""
+    # Log the email attempt
+    logger.info(f"Preparing to send email to: {to_email}")
+    
+    # In development mode with no API key, just log and return success
+    if DEV_MODE and not SENDGRID_API_KEY:
+        logger.info("DEV MODE: No SendGrid API key found. Skipping actual email sending.")
+        logger.info(f"Email content: {html_content[:100]}...")  # Log just the beginning
+        return True
+    
     # Create message
     message = MIMEMultipart("alternative")
     message["Subject"] = subject
-    message["From"] = EMAIL_FROM
+    message["From"] = f"{SENDGRID_FROM_NAME} <{SENDGRID_FROM_EMAIL}>"
     message["To"] = to_email
     
     # Create HTML content
@@ -29,17 +46,19 @@ async def send_email(to_email: str, subject: str, html_content: str):
     
     try:
         # Create SMTP session
-        with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT) as server:
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
             server.starttls()
-            server.login(EMAIL_USERNAME, EMAIL_PASSWORD)
-            server.sendmail(EMAIL_FROM, to_email, message.as_string())
+            server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            server.sendmail(SENDGRID_FROM_EMAIL, to_email, message.as_string())
             
         logger.info(f"Email sent successfully to {to_email}")
         return True
     except Exception as e:
         logger.error(f"Failed to send email: {str(e)}")
-        # In development, we'll just log the error
-        # In production, you might want to implement a retry mechanism
+        # In development, we can be more forgiving
+        if DEV_MODE:
+            logger.warning("DEV MODE: Email sending failed, but continuing anyway")
+            return True
         return False
 
 async def send_verification_email(to_email: str, username: str, verification_code: str):
@@ -74,12 +93,9 @@ async def send_verification_email(to_email: str, username: str, verification_cod
     </html>
     """
     
-    # During development, let's just log the verification code
+    # Always log the verification code in any environment
     logger.info(f"Verification code for {to_email}: {verification_code}")
     logger.info(f"Verification URL: {verification_url}")
     
-    # For local development, we might skip actual email sending
-    if os.environ.get("APP_ENV") == "development":
-        return True
-    
+    # Send the email
     return await send_email(to_email, subject, html_content)
