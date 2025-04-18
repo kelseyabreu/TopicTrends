@@ -18,12 +18,13 @@ router = APIRouter(tags=["ideas"])
 async def submit_idea(
         session_id: str,
         idea: IdeaSubmit,
-        background_tasks: BackgroundTasks,
-        db=Depends(get_db)
+        background_tasks: BackgroundTasks
 ):
     """Submit a new idea to a session"""
+    db = await get_db()
     # Validate session exists
-    session = await get_session_by_id(session_id, db)
+
+    session = await get_session_by_id(session_id)
     logging.info("Submitting idea for session %s", session_id)
 
     # Validate verification if required
@@ -62,10 +63,10 @@ async def submit_idea(
 
 
 @router.get("/sessions/{session_id}/ideas", response_model=List[Idea])
-async def get_session_ideas(session_id: str, db=Depends(get_db)):
+async def get_session_ideas(session_id: str):
     """Get all ideas for a session"""
     # Validate session exists
-    await get_session_by_id(session_id, db)
+    await get_session_by_id(session_id)
 
     # Get ideas
     ideas = await db.ideas.find({"session_id": session_id}).to_list(length=None)

@@ -11,8 +11,9 @@ router = APIRouter(tags=["clusters"])
 
 # Routes
 @router.get("/sessions/{session_id}/clusters", response_model=List[Cluster])
-async def get_session_clusters(session_id: str, db=Depends(get_db)):
+async def get_session_clusters(session_id: str):
     """Get all clusters for a session"""
+    db = await get_db()
     # Validate session exists
     await get_session_by_id(session_id)
 

@@ -52,8 +52,8 @@ origins = [
     "http://127.0.0.1:8000",
 ]
 
-if os.environ.get("VITE_CLIENT_URL"):
-    origins.append(os.environ.get("VITE_CLIENT_URL"))
+if os.environ.get("FRONTEND_URL"):
+    origins.append(os.environ.get("FRONTEND_URL"))
 
 app.add_middleware(
     CORSMiddleware,

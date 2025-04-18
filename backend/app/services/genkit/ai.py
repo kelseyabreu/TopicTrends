@@ -40,7 +40,7 @@ ai = Genkit(
     ],
 )
 # New Clustering method
-async def fetch_ideas(session_id: str | None = None, cluster_id: str | None = None, db=Depends(get_db)) -> list:
+async def fetch_ideas(session_id: str | None = None, cluster_id: str | None = None) -> list:
     """Fetch ideas either by session_id or by cluster_id
     
     Args:
@@ -50,6 +50,7 @@ async def fetch_ideas(session_id: str | None = None, cluster_id: str | None = No
     Returns:
         A list of ideas matching the criteria
     """
+    db = await get_db()
     if cluster_id:
         return await db.ideas.find({"cluster_id": cluster_id}).to_list(None)
     elif session_id:
@@ -145,8 +146,9 @@ async def group_ideas_by_cluster(labels: list, ideas: list, texts: list, embedde
     
     return clusters_temp_data
 
-async def update_database_and_emit(session_id: str, clusters_temp_data: dict, db=Depends(get_db)) -> list:
+async def update_database_and_emit(session_id: str, clusters_temp_data: dict) -> list:
     """Update database with clustering results and emit to clients"""
+    db = await get_db()
     cluster_results = []
     
     for label, cluster_ideas_data in clusters_temp_data.items():

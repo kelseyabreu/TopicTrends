@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException
 from typing import List
 import uuid
 from datetime import datetime
@@ -34,9 +34,10 @@ def generate_qr_code(url: str) -> str:
     return f"data:image/png;base64,{base64.b64encode(buffer.getvalue()).decode()}"
 
 
-async def get_session_by_id(session_id: str, db=Depends(get_db)) -> Session | HTTPException:
+async def get_session_by_id(session_id: str) -> Session | HTTPException:
     """Get session by ID or raise 404"""
     logging.info(f"Attempting to find session with ID: {session_id}")
+    db = await get_db()
     session = await db.sessions.find_one({"_id": session_id})
     if not session:
         logging.warning(f"Session not found for ID: {session_id}")
@@ -45,9 +46,10 @@ async def get_session_by_id(session_id: str, db=Depends(get_db)) -> Session | HT
     return session
 
 
-async def fetch_all_sessions(db=Depends(get_db)):
+async def fetch_all_sessions():
     """Get all sessions"""
     logging.info("Attempting to find all sessions")
+    db= await get_db()
     cursor = db.sessions.find()
     sessions = await cursor.to_list(length=None)
     if not sessions:
@@ -58,8 +60,9 @@ async def fetch_all_sessions(db=Depends(get_db)):
 
 # Routes
 @router.post("/sessions", response_model=Session)
-async def create_session(session: SessionCreate, db=Depends(get_db)):
+async def create_session(session: SessionCreate):
     """Create a new discussion session"""
+    db = await get_db()
     logging.info("Creating session with data: %s", session.dict())
     session_id = str(uuid.uuid4())
     base_url = "https://TopicTrends.app"  # Replace with your domain
@@ -85,14 +88,14 @@ async def create_session(session: SessionCreate, db=Depends(get_db)):
 
 
 @router.get("/sessions/{session_id}", response_model=Session)
-async def get_session_details(session_id: str, db=Depends(get_db)):
+async def get_session_details(session_id: str):
     """Get session details by ID"""
-    session = await get_session_by_id(session_id, db)
+    session = await get_session_by_id(session_id)
     return {**session, "id": session["_id"]}
 
 
 @router.get("/sessions", response_model=List[Session])
-async def get_sessions(db=Depends(get_db)):
+async def get_sessions():
     """Get all sessions"""
-    sessions = await fetch_all_sessions(db)
+    sessions = await fetch_all_sessions()
     return [{"id": session["_id"], **session} for session in sessions]
