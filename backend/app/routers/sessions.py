@@ -7,11 +7,12 @@ import io
 import qrcode
 
 from app.models.schemas import Session, SessionCreate
-from app.core.database import db
 import logging
+from app.core.database import get_db
 
 # Create router
 router = APIRouter(tags=["sessions"])
+
 
 # Helper functions
 def generate_qr_code(url: str) -> str:
@@ -32,33 +33,34 @@ def generate_qr_code(url: str) -> str:
     img.save(buffer, format="PNG")
     return f"data:image/png;base64,{base64.b64encode(buffer.getvalue()).decode()}"
 
-async def get_session_by_id(session_id: str):
+
+async def get_session_by_id(session_id: str, db=Depends(get_db)) -> Session | HTTPException:
     """Get session by ID or raise 404"""
-    logging.info(f"Attempting to find session with ID: {session_id}") # Add logging here
+    logging.info(f"Attempting to find session with ID: {session_id}")
     session = await db.sessions.find_one({"_id": session_id})
     if not session:
-        logging.warning(f"Session not found for ID: {session_id}") # Add logging here
+        logging.warning(f"Session not found for ID: {session_id}")
         raise HTTPException(status_code=404, detail="Session not found")
-    logging.info(f"Session found for ID: {session_id}") # Add logging here
+    logging.info(f"Session found for ID: {session_id}")
     return session
 
-async def fetch_all_sessions():
+
+async def fetch_all_sessions(db=Depends(get_db)):
     """Get all sessions"""
     logging.info("Attempting to find all sessions")
     cursor = db.sessions.find()
-    sessions = await cursor.to_list(length=None)  # None means no limit
+    sessions = await cursor.to_list(length=None)
     if not sessions:
         logging.warning("No sessions found")
-        return []  # Return empty list instead of raising an exception
+        return []
     return sessions
-
 
 
 # Routes
 @router.post("/sessions", response_model=Session)
-async def create_session(session: SessionCreate):
-    logging.info("Creating session with data: %s", session.dict())
+async def create_session(session: SessionCreate, db=Depends(get_db)):
     """Create a new discussion session"""
+    logging.info("Creating session with data: %s", session.dict())
     session_id = str(uuid.uuid4())
     base_url = "https://TopicTrends.app"  # Replace with your domain
     join_link = f"{base_url}/join/{session_id}"
@@ -81,14 +83,16 @@ async def create_session(session: SessionCreate):
     logging.info("Session created with ID: %s", session_id)
     return {**session_data, "id": session_id}
 
+
 @router.get("/sessions/{session_id}", response_model=Session)
-async def get_session_details(session_id: str):
+async def get_session_details(session_id: str, db=Depends(get_db)):
     """Get session details by ID"""
-    session = await get_session_by_id(session_id)
+    session = await get_session_by_id(session_id, db)
     return {**session, "id": session["_id"]}
 
+
 @router.get("/sessions", response_model=List[Session])
-async def get_sessions():
+async def get_sessions(db=Depends(get_db)):
     """Get all sessions"""
-    sessions = await fetch_all_sessions()
+    sessions = await fetch_all_sessions(db)
     return [{"id": session["_id"], **session} for session in sessions]

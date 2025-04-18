@@ -1,8 +1,8 @@
-from fastapi import APIRouter, BackgroundTasks, Body
+from fastapi import APIRouter, BackgroundTasks, Body, Depends
 from typing import List
 from app.services.genkit.ai import process_clusters
 from app.models.schemas import Cluster
-from app.core.database import db
+from app.core.database import get_db
 from app.routers.sessions import get_session_by_id
 import logging
 
@@ -11,7 +11,7 @@ router = APIRouter(tags=["clusters"])
 
 # Routes
 @router.get("/sessions/{session_id}/clusters", response_model=List[Cluster])
-async def get_session_clusters(session_id: str):
+async def get_session_clusters(session_id: str, db=Depends(get_db)):
     """Get all clusters for a session"""
     # Validate session exists
     await get_session_by_id(session_id)
