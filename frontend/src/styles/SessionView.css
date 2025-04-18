@@ -137,7 +137,7 @@
 
 .cluster-count {
     background-color: var(--primary);
-    color: white;
+    color: white!important;
     padding: 3px 10px;
     border-radius: 20px;
     font-size: 14px;

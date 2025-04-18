@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import io from 'socket.io-client';
 import '../styles/SessionView.css';
 import api from '../utils/api';
+import { Link } from 'react-router-dom';
 
 function SessionView() {
     const { sessionId } = useParams();
@@ -348,17 +349,16 @@ function SessionView() {
                                         <div 
                                             className="cluster-card" 
                                             key={cluster.id} 
-                                            onClick={() => {
-                                                // Store cluster data in sessionStorage before navigation
-                                                sessionStorage.setItem(`TopicTrends_${sessionId}_cluster_${cluster.id}`, JSON.stringify(cluster));
-                                                navigate(`/session/${sessionId}/cluster/${cluster.id}`);
-                                            }}
+                                            onClick={() => navigate(`/session/${sessionId}/cluster/${cluster.id}`)}
                                             style={{ cursor: 'pointer' }}
                                         >
                                             <div className="cluster-header">
                                                 <span className="cluster-title">{cluster.representative_text}</span>
                                                 <span className="cluster-count">{cluster.count}</span>
                                             </div>
+                                            <Link to={`/session/${sessionId}/cluster/${cluster.id}`} className="cluster-header">
+                                                Open
+                                            </Link>
                                             <div className="cluster-ideas">
                                                 {(cluster.ideas || []).map((idea) => ( // Add safety check for ideas array
                                                     <div className="idea-card" key={idea.id}>
