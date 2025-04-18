@@ -349,15 +349,13 @@ function SessionView() {
                                         <div 
                                             className="cluster-card" 
                                             key={cluster.id} 
-                                            onClick={() => navigate(`/session/${sessionId}/cluster/${cluster.id}`)}
-                                            style={{ cursor: 'pointer' }}
                                         >
                                             <div className="cluster-header">
                                                 <span className="cluster-title">{cluster.representative_text}</span>
                                                 <span className="cluster-count">{cluster.count}</span>
                                             </div>
                                             <Link to={`/session/${sessionId}/cluster/${cluster.id}`} className="cluster-header">
-                                                Open
+                                                Swim
                                             </Link>
                                             <div className="cluster-ideas">
                                                 {(cluster.ideas || []).map((idea) => ( // Add safety check for ideas array
