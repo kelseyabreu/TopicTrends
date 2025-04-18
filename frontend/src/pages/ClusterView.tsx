@@ -1,15 +1,15 @@
-// File: src/pages/ClusterView.js
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import api from "../utils/api";
+import { ClusterResponse } from "../interfaces/clusters";
+import { useParams, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { toast } from 'react-toastify';
-import '../styles/ClusterView.css'; // Reusing SessionView styles for consistency
-import api from '../utils/api';
+import { Session } from "../interfaces/sessions";
 
 function ClusterView() {
     const { sessionId, clusterId } = useParams();
     const navigate = useNavigate();
-    const [session, setSession] = useState(null);
-    const [cluster, setCluster] = useState([]);
+    const [session, setSession] = useState<Session|null>(null);
+    const [cluster, setCluster] = useState<ClusterResponse>({ data: [] });
     const [isLoading, setIsLoading] = useState(true);
     const [userId, setUserId] = useState('');
     const [isVerified, setIsVerified] = useState(false);
