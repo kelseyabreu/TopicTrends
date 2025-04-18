@@ -10,6 +10,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
 import Header from './components/Header';
+import ClusterView from './pages/ClusterView';
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
           <Route path="/join/:sessionId" element={<JoinSession />} />
           <Route path="/sessions" element={<AllSessionsView />} />
           <Route path="/session/:sessionId" element={<SessionView />} />
+          <Route path="/session/:sessionId/cluster/:clusterId" element={<ClusterView />} />
         </Routes>
       </div>
         <ToastContainer position="bottom-right" />
