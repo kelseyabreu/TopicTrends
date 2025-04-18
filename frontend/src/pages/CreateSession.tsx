@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import '../styles/CreateSession.css';
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input"
 import api from "../utils/api";
 
 function CreateSession() {
@@ -47,9 +49,9 @@ function CreateSession() {
         <p>Set up a new discussion to collect and organize ideas from participants.</p>
         
         <form onSubmit={handleSubmit} className="create-form">
-          <div className="form-group">
+          <div>
             <label htmlFor="title">Discussion Title*</label>
-            <input
+            <Input
               type="text"
               id="title"
               value={title}
@@ -59,9 +61,9 @@ function CreateSession() {
             />
           </div>
           
-          <div className="form-group">
+          <div>
             <label htmlFor="prompt">Discussion Prompt*</label>
-            <textarea
+            <Textarea
               id="prompt"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}

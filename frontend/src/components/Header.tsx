@@ -26,7 +26,7 @@ function Header() {
 
     return (
         <div className="header">
-            <div className="logo" onClick={() => navigate('/')}>Idea<span>Group</span></div>
+            <div className="logo" onClick={() => navigate('/')}>Ide<span>Ocean</span></div>
 
             <div className="mobile-menu-icon" onClick={toggleMenu}>
                 <div className={menuOpen ? 'menu-icon open' : 'menu-icon'}>
