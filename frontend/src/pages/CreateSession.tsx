@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import '../styles/CreateSession.css';
-import api from '../utils/api';
+import api from "../utils/api";
 
 function CreateSession() {
   const navigate = useNavigate();
@@ -55,7 +55,6 @@ function CreateSession() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g., Park Improvement Ideas"
-              maxLength="100"
               required
             />
           </div>
@@ -67,7 +66,6 @@ function CreateSession() {
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="e.g., What changes would you like to see in our park?"
-              maxLength="200"
               required
             />
             <small>{prompt.length}/200 characters</small>

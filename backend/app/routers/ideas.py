@@ -12,12 +12,14 @@ import logging
 
 # Create router
 router = APIRouter(tags=["ideas"])
+
+
 # Routes
 @router.post("/sessions/{session_id}/ideas")
 async def submit_idea(
-    session_id: str,
-    idea: IdeaSubmit,
-    background_tasks: BackgroundTasks
+        session_id: str,
+        idea: IdeaSubmit,
+        background_tasks: BackgroundTasks
 ):
     """Submit a new idea to a session"""
     # Validate session exists
@@ -43,6 +45,7 @@ async def submit_idea(
         "timestamp": datetime.utcnow(),
         "cluster_id": None  # Will be assigned during processing
     }
+    # Transform with AI here.
 
     await db.ideas.insert_one(idea_data)
     logging.info("Idea submitted with ID: %s", idea_id)
@@ -53,10 +56,11 @@ async def submit_idea(
         {"$inc": {"idea_count": 1}}
     )
 
-    # Trigger cluster processing in background
+    # Trigger cluster processing in the background
     background_tasks.add_task(process_clusters, session_id)
 
     return {"id": str(idea_id), "message": "Idea submitted successfully"}
+
 
 @router.get("/sessions/{session_id}/ideas", response_model=List[Idea])
 async def get_session_ideas(session_id: str):

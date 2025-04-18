@@ -312,7 +312,6 @@ function SessionView() {
                                         value={idea}
                                         onChange={(e) => setIdea(e.target.value)}
                                         placeholder="Share your idea here..."
-                                        maxLength="500"
                                         required
                                         disabled={isSubmitting}
                                     />
