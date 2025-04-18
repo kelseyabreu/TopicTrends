@@ -1,14 +1,14 @@
 import os
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Dict, Any
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 import secrets
 import string
-from app.core.database import db
-from app.core.config import settings
+from app.core.database import get_db
+import logging
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -36,7 +36,14 @@ def generate_verification_code(length=6):
 
 async def get_user_by_email(email: str):
     """Retrieve user by email"""
+    db = await get_db()
+    logging.info(f"Looking up user by email: {email}")
     return await db.users.find_one({"email": email})
+
+async def get_user_by_id(user_id: str):
+    """Retrieve user by ID"""
+    db = await get_db()
+    return await db.users.find_one({"_id": user_id})
 
 async def create_user(user_data):
     """Create a new user"""
@@ -49,11 +56,17 @@ async def create_user(user_data):
     
     # Add additional user fields
     user_data["created_at"] = datetime.utcnow()
+    user_data["modified_at"] = user_data["created_at"]
     user_data["is_active"] = True
     user_data["is_verified"] = False
     user_data["verification_code"] = verification_code
+    user_data["first_name"] = None
+    user_data["last_name"] = None
+    user_data["location"] = None
+    user_data["timezone"] = "UTC"
     
     # Insert into database
+    db = await get_db()
     result = await db.users.insert_one(user_data)
     
     # Return user data and verification code
@@ -61,6 +74,23 @@ async def create_user(user_data):
         "user_id": str(result.inserted_id),
         "verification_code": verification_code
     }
+
+async def update_user_profile(user_id: str, update_data: Dict[str, Any]):
+    """Update user profile information"""
+    # Add modification timestamp
+    update_data["modified_at"] = datetime.utcnow()
+    
+    # Update the user in the database
+    db = await get_db()
+    result = await db.users.update_one(
+        {"_id": user_id},
+        {"$set": update_data}
+    )
+    
+    if result.modified_count == 0:
+        return False
+    
+    return True
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """Create JWT access token"""
@@ -93,7 +123,8 @@ async def verify_token(token: str = Depends(oauth2_scheme)):
         
     except JWTError:
         raise credentials_exception
-        
+    
+    db = await get_db()
     user = await db.users.find_one({"_id": user_id})
     
     if user is None:
@@ -122,7 +153,8 @@ async def verify_user(email: str, code: str):
         
     if user["verification_code"] != code:
         return False
-        
+    
+    db = await get_db()
     # Update user verification status
     await db.users.update_one(
         {"email": email},

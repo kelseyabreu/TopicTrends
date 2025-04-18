@@ -43,6 +43,7 @@ function Header() {
 
                 {user ? (
                     <>
+                        <Link to="/settings" onClick={() => setMenuOpen(false)}>Settings</Link>
                         <button className="logout-btn" onClick={handleLogout}>Logout</button>
                         <span className="user-greeting">Welcome, {user.username}</span>
                     </>
