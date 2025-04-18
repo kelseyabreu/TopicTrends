@@ -15,8 +15,17 @@ client = None
 db = None
 
 # Initialization function
-async def initialize_database():
+async def connect_to_mongodb():
+    """Establish connection to MongoDB and initialize database collections
+    
+    This function creates a connection to MongoDB using the configured URL,
+    initializes the database, and creates collections if they don't exist.
+    """
     global client, db
+    
+    if client is not None:
+        print("Database connection already established")
+        return db
     
     try:
         client = motor.motor_asyncio.AsyncIOMotorClient(
@@ -40,23 +49,38 @@ async def initialize_database():
             await db.create_collection("ideas")
         if "clusters" not in collections:
             await db.create_collection("clusters")
+        
+        return db
             
     except (ConnectionFailure, ServerSelectionTimeoutError) as e:
         print(f"Failed to connect to MongoDB: {e}")
         raise
 
-# Ensure database is initialized
-async def get_db():
+# Getter for the database object
+def get_db_instance():
+    """Get the database instance
+    
+    Returns the global database instance after it has been initialized.
+    No more async/await needed when calling this function.
+    """
     global db
     if db is None:
-        await initialize_database()
+        print("Warning: Database accessed before initialization!")
     return db
 
 # Function to add to FastAPI lifecycle
-def init_db(app):
+def register_db_lifecycle_hooks(app):
+    """Register database connection and shutdown events with FastAPI application
+    
+    This function registers startup and shutdown event handlers with the FastAPI application
+    to manage the database connection lifecycle.
+    """
     @app.on_event("startup")
     async def startup_db_client():
-        await initialize_database()
+        """Initialize database on application startup"""
+        global db
+        db = await connect_to_mongodb()
+        print("Database connection established during application startup")
         
     @app.on_event("shutdown")
     async def shutdown_db_client():

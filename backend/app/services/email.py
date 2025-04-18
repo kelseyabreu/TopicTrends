@@ -11,10 +11,10 @@ logger = logging.getLogger(__name__)
 # Environment variables
 APP_ENV = os.environ.get("APP_ENV", "development")
 DEV_MODE = APP_ENV.lower() == "development"
-FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+VITE_CLIENT_URL = os.environ.get("VITE_CLIENT_URL", "http://localhost:5173")
 
 # --- Gmail SMTP Configuration (Using App Password) ---
-# !! IMPORTANT: Set these environment variables in your system !!
+# !! IMPORTANT: Set these environment variables in your system !! (already done in .env file)
 # Example:
 # instead of export use setx GMAIL_SENDER_EMAIL "sorakh2756@gmail.com" for windows
 # export GMAIL_SENDER_EMAIL='sorakh2756@gmail.com'
@@ -33,14 +33,6 @@ SMTP_SERVER = "smtp.gmail.com"
 # Use port 465 for SSL (simpler setup) or 587 for TLS/STARTTLS
 SMTP_PORT = 465 # Recommended for simplicity with SMTP_SSL
 # SMTP_PORT = 587 # Alternative: Use this if you prefer STARTTLS below
-
-# --- (SendGrid configuration removed or commented out) ---
-# SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "")
-# SENDGRID_FROM_EMAIL = os.environ.get("SENDGRID_FROM_EMAIL", "noreply@topictrends.app")
-# SENDGRID_FROM_NAME = os.environ.get("SENDGRID_FROM_NAME", "TopicTrends")
-# SMTP_USERNAME = "apikey"
-# SMTP_PASSWORD = SENDGRID_API_KEY
-
 
 async def send_email(to_email: str, subject: str, html_content: str):
     """Send email with HTML content using Gmail SMTP and App Password"""
@@ -122,7 +114,7 @@ async def send_verification_email(to_email: str, username: str, verification_cod
     subject = "Verify Your Email - TopicTrends" # Or your app name
 
     # Create verification URL
-    verification_url = f"{FRONTEND_URL}/verify?email={to_email}&code={verification_code}"
+    verification_url = f"{VITE_CLIENT_URL}/verify?email={to_email}&code={verification_code}"
 
     # Use the same HTML content structure
     html_content = f"""

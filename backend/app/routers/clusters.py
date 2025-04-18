@@ -2,7 +2,7 @@ from fastapi import APIRouter, BackgroundTasks, Body, Depends
 from typing import List
 from app.services.genkit.ai import process_clusters
 from app.models.schemas import Cluster
-from app.core.database import get_db
+from app.core.database import db
 from app.routers.sessions import get_session_by_id
 import logging
 
@@ -13,10 +13,9 @@ router = APIRouter(tags=["clusters"])
 @router.get("/sessions/{session_id}/clusters", response_model=List[Cluster])
 async def get_session_clusters(session_id: str):
     """Get all clusters for a session"""
-    db = await get_db()
     # Validate session exists
     await get_session_by_id(session_id)
-
+    
     # Get clusters
     clusters = await db.clusters.find({"session_id": session_id}).to_list(length=None)
     # Convert _id and ensure nested ideas/timestamps are handled by Pydantic response_model

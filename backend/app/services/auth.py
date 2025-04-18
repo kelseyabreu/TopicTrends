@@ -7,7 +7,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 import secrets
 import string
-from app.core.database import get_db
+from app.core.database import db
 import logging
 
 # Password hashing
@@ -36,17 +36,14 @@ def generate_verification_code(length=6):
 
 async def get_user_by_email(email: str):
     """Retrieve user by email"""
-    db = await get_db()
     logging.info(f"Looking up user by email: {email}")
     return await db.users.find_one({"email": email.lower()})
 
 async def get_user_by_id(user_id: str):
     """Retrieve user by ID"""
-    db = await get_db()
     return await db.users.find_one({"_id": user_id})
 
 async def create_user(user_data: dict):
-    db = await get_db()
     # Generate verification code (ensure this is done before hashing password if needed)
     verification_code = secrets.SystemRandom().choices(
         string.ascii_uppercase + string.digits, k=6
@@ -82,7 +79,6 @@ async def update_user_profile(user_id: str, update_data: Dict[str, Any]):
     update_data["modified_at"] = datetime.utcnow()
     
     # Update the user in the database
-    db = await get_db()
     result = await db.users.update_one(
         {"_id": user_id},
         {"$set": update_data}
@@ -125,7 +121,6 @@ async def verify_token(token: str = Depends(oauth2_scheme)):
     except JWTError:
         raise credentials_exception
     
-    db = await get_db()
     user = await db.users.find_one({"_id": user_id})
     
     if user is None:
@@ -143,7 +138,6 @@ async def authenticate_user(email: str, password: str):
     return user
 
 async def verify_user(email: str, code: str):
-    db = await get_db()
     # Convert email to lowercase for the query
     user = await db.users.find_one({
         "email": email.lower(),

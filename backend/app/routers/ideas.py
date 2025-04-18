@@ -5,7 +5,7 @@ from datetime import datetime
 import logging
 
 from app.routers.sessions import get_session_by_id
-from app.core.database import get_db
+from app.core.database import db
 from app.models.schemas import Idea, IdeaSubmit
 from app.services.genkit.ai import process_clusters
 
@@ -21,9 +21,7 @@ async def submit_idea(
         background_tasks: BackgroundTasks
 ):
     """Submit a new idea to a session"""
-    db = await get_db()
     # Validate session exists
-
     session = await get_session_by_id(session_id)
     logging.info("Submitting idea for session %s", session_id)
 
@@ -33,7 +31,7 @@ async def submit_idea(
             status_code=400,
             detail="Verification required for this session"
         )
-
+    
     # Create idea with string ID instead of UUID object
     idea_id = uuid.uuid4()
     idea_data = {
@@ -67,7 +65,7 @@ async def get_session_ideas(session_id: str):
     """Get all ideas for a session"""
     # Validate session exists
     await get_session_by_id(session_id)
-
+    
     # Get ideas
     ideas = await db.ideas.find({"session_id": session_id}).to_list(length=None)
     # Convert _id and handle potential datetime before returning

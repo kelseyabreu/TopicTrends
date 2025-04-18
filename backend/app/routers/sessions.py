@@ -8,7 +8,7 @@ import qrcode
 
 from app.models.schemas import Session, SessionCreate
 import logging
-from app.core.database import get_db
+from app.core.database import db
 
 # Create router
 router = APIRouter(tags=["sessions"])
@@ -37,7 +37,6 @@ def generate_qr_code(url: str) -> str:
 async def get_session_by_id(session_id: str) -> Session | HTTPException:
     """Get session by ID or raise 404"""
     logging.info(f"Attempting to find session with ID: {session_id}")
-    db = await get_db()
     session = await db.sessions.find_one({"_id": session_id})
     if not session:
         logging.warning(f"Session not found for ID: {session_id}")
@@ -49,7 +48,6 @@ async def get_session_by_id(session_id: str) -> Session | HTTPException:
 async def fetch_all_sessions():
     """Get all sessions"""
     logging.info("Attempting to find all sessions")
-    db= await get_db()
     cursor = db.sessions.find()
     sessions = await cursor.to_list(length=None)
     if not sessions:
@@ -62,7 +60,6 @@ async def fetch_all_sessions():
 @router.post("/sessions", response_model=Session)
 async def create_session(session: SessionCreate):
     """Create a new discussion session"""
-    db = await get_db()
     logging.info("Creating session with data: %s", session.dict())
     session_id = str(uuid.uuid4())
     base_url = "https://TopicTrends.app"  # Replace with your domain
