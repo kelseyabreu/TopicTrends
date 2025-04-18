@@ -10,7 +10,7 @@ EMAIL_PORT = int(os.environ.get("EMAIL_PORT", 587))
 EMAIL_USERNAME = os.environ.get("EMAIL_USERNAME", "your-email@gmail.com")
 EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD", "your-app-password")
 EMAIL_FROM = os.environ.get("EMAIL_FROM", "noreply@topictrends.app")
-FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 
 # Logger
 logger = logging.getLogger(__name__)

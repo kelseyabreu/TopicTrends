@@ -13,6 +13,7 @@ function AllSessionsView() {
       const fetchSessions = async () => {
         try {
           const response = await api.get('/api/sessions');
+          console.log(response.data);
           setSessions(response.data);
         } catch (error) {
           console.error('Error fetching sessions:', error);
@@ -48,11 +49,11 @@ function AllSessionsView() {
   
         <div className="sessions-list">
           <h1>All Sessions</h1>
-          {sessions.length === 0 ? (
+          {sessions?.length === 0 ? (
             <p>No sessions available.</p>
           ) : (
             <ul>
-              {sessions.map((session) => (
+              {sessions.map((session:Session) => (
                 <li key={session.id} onClick={() => navigate(`/session/${session.id}`)}>
                   <h2>{session.title}</h2>
                   <p>{session.prompt}</p>

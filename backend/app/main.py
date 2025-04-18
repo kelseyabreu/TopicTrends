@@ -24,7 +24,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Your React app's origin
+    allow_origins=["http://localhost:5173"],  # Your React app's origin
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
