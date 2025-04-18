@@ -46,9 +46,9 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 # Add CORS middleware
 origins = [
-    "http://localhost:3000",  # React dev server
+    "http://localhost:5173",  # React dev server
     "http://localhost:8000",  # FastAPI dev server
-    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
     "http://127.0.0.1:8000",
 ]
 

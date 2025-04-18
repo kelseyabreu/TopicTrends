@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import authService from '../services/authService';
+import { Button } from '@/components/ui/button'
+
 import '../styles/Auth.css';
 
 function Login() {
@@ -87,10 +89,8 @@ function Login() {
             </Link>
           </div>
           
-          <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
         </form>
+        <Button disabled={loading}> {loading ? 'Logging in...' : 'Login'}</Button>
         
         <p className="auth-redirect">
           Don't have an account? <Link to="/register">Register</Link>

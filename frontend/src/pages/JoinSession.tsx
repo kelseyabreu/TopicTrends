@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import '../styles/JoinSession.css';
-import api from '../utils/api';
+import api from "../utils/api";
 
 function JoinSession() {
   const { sessionId } = useParams();

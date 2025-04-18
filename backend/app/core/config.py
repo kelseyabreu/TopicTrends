@@ -8,7 +8,7 @@ class Settings(BaseModel):
     API_VERSION: str = "1.0.0"
     
     # CORS settings
-    CORS_ORIGINS: list = ["http://localhost:3000"]
+    CORS_ORIGINS: list = ["http://localhost:5173"]
     
     # MongoDB settings
     MONGODB_URL: str = os.environ.get(
