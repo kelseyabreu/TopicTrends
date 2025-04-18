@@ -46,7 +46,7 @@ Before running the backend, ensure you have the following prerequisites installe
 ### Setup Instructions
 
 1. **Install Ollama**:
-You will need to download and install Ollama separately https://python.api.genkit.dev/reference/plugins/ollama/
+You will need to download and install Ollama separately: https://ollama.com/download
    ```bash
    pip3 install genkit-plugin-ollama
    ```
