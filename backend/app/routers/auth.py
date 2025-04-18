@@ -4,21 +4,21 @@ from datetime import timedelta
 import uuid
 import logging
 
-from app.models.user_schemas import UserCreate, UserLogin, UserVerification, TokenResponse, User
+from app.models.user_schemas import UserCreate, UserLogin, UserVerification, TokenResponse, User, UserUpdateProfile
 from app.services.auth import (
     authenticate_user, create_user, verify_user, create_access_token,
-    ACCESS_TOKEN_EXPIRE_MINUTES, verify_token
+    ACCESS_TOKEN_EXPIRE_MINUTES, verify_token, update_user_profile, get_user_by_email
 )
 from app.services.email import send_verification_email
+from app.core.database import get_db
 
 # Create router with tags for API docs
-router = APIRouter(tags=["authentication"])
+router = APIRouter(prefix="/auth", tags=["authentication"])
 
-@router.post("/auth/register", status_code=status.HTTP_201_CREATED)
+@router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(user: UserCreate, background_tasks: BackgroundTasks):
     """Register a new user"""
     # Check if email already exists
-    from app.services.auth import get_user_by_email
     existing_user = await get_user_by_email(user.email)
     
     if existing_user:
@@ -49,7 +49,7 @@ async def register(user: UserCreate, background_tasks: BackgroundTasks):
     logging.info(f"User registered with email: {user.email}")
     return {"message": "User registered successfully. Please check your email to verify your account."}
 
-@router.post("/auth/login", response_model=TokenResponse)
+@router.post("/login", response_model=TokenResponse)
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     """Login user and return access token"""
     user = await authenticate_user(form_data.username, form_data.password)
@@ -83,7 +83,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
         "username": user["username"]
     }
 
-@router.post("/auth/verify")
+@router.post("/verify")
 async def verify_email(verification: UserVerification, email: str):
     """Verify user email with verification code"""
     verified = await verify_user(email, verification.code)
@@ -97,11 +97,9 @@ async def verify_email(verification: UserVerification, email: str):
     logging.info(f"Email verified for: {email}")
     return {"message": "Email verified successfully"}
 
-@router.post("/auth/resend-verification")
+@router.post("/resend-verification")
 async def resend_verification(email: str, background_tasks: BackgroundTasks):
     """Resend verification email"""
-    from app.services.auth import get_user_by_email, generate_verification_code
-    
     user = await get_user_by_email(email)
     
     if not user:
@@ -117,10 +115,13 @@ async def resend_verification(email: str, background_tasks: BackgroundTasks):
         )
     
     # Generate new verification code
-    verification_code = generate_verification_code()
+    verification_code = secrets.SystemRandom().choices(
+        string.ascii_uppercase + string.digits, k=6
+    )
+    verification_code = ''.join(verification_code)
     
     # Update user's verification code
-    from app.core.database import db
+    db = await get_db()
     await db.users.update_one(
         {"email": email},
         {"$set": {"verification_code": verification_code}}
@@ -137,14 +138,60 @@ async def resend_verification(email: str, background_tasks: BackgroundTasks):
     logging.info(f"Verification email resent to: {email}")
     return {"message": "Verification email sent"}
 
-@router.get("/auth/me", response_model=User)
+@router.get("/me", response_model=User)
 async def get_current_user(current_user = Depends(verify_token)):
     """Get current authenticated user"""
     return {
         "id": current_user["_id"],
         "email": current_user["email"],
         "username": current_user["username"],
+        "first_name": current_user.get("first_name"),
+        "last_name": current_user.get("last_name"),
+        "location": current_user.get("location"),
+        "timezone": current_user.get("timezone", "UTC"),
         "created_at": current_user["created_at"],
+        "modified_at": current_user.get("modified_at", current_user["created_at"]),
         "is_active": current_user["is_active"],
         "is_verified": current_user["is_verified"]
+    }
+
+@router.put("/profile", response_model=User)
+async def update_profile(profile_data: UserUpdateProfile, current_user = Depends(verify_token)):
+    """Update user profile information"""
+    # Create update data dictionary with only provided fields
+    update_data = {k: v for k, v in profile_data.dict().items() if v is not None}
+    
+    if not update_data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No profile data provided for update"
+        )
+    
+    # Update the user profile
+    success = await update_user_profile(current_user["_id"], update_data)
+    
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update profile"
+        )
+    
+    # Get updated user data
+    updated_user = await get_user_by_id(current_user["_id"])
+    
+    logging.info(f"Profile updated for user: {updated_user['email']}")
+    
+    # Return updated user information
+    return {
+        "id": updated_user["_id"],
+        "email": updated_user["email"],
+        "username": updated_user["username"],
+        "first_name": updated_user.get("first_name"),
+        "last_name": updated_user.get("last_name"),
+        "location": updated_user.get("location"),
+        "timezone": updated_user.get("timezone", "UTC"),
+        "created_at": updated_user["created_at"],
+        "modified_at": updated_user.get("modified_at"),
+        "is_active": updated_user["is_active"],
+        "is_verified": updated_user["is_verified"]
     }
