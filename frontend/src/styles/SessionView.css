@@ -80,11 +80,6 @@
         gap: 20px;
     }
 
-    .idea-input-section textarea {
-        min-height: 200px;
-        resize: vertical;
-    }
-
 .user-info {
     display: flex;
     align-items: center;
@@ -114,6 +109,9 @@
     flex-direction: column;
     gap: 20px;
 }
+.cluster-details {
+    width:100%;
+}
 
 .cluster-card {
     border: 1px solid #eee;
@@ -131,6 +129,8 @@
 }
 
 .cluster-title {
+    width:100%;
+    display:block;
     font-weight: 600;
     color: var(--dark);
 }
@@ -141,6 +141,18 @@
     padding: 3px 10px;
     border-radius: 20px;
     font-size: 14px;
+}
+.cluster-meta {
+    padding:8px;
+    display:flex;
+    align-items:center;
+    flex-direction: row;
+    gap:8px;
+}
+.cluster-meta div:first-of-type {
+    flex:1;
+    display: flex;
+    gap:8px;
 }
 
 .cluster-ideas {
