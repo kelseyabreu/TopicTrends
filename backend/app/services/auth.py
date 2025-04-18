@@ -38,42 +38,43 @@ async def get_user_by_email(email: str):
     """Retrieve user by email"""
     db = await get_db()
     logging.info(f"Looking up user by email: {email}")
-    return await db.users.find_one({"email": email})
+    return await db.users.find_one({"email": email.lower()})
 
 async def get_user_by_id(user_id: str):
     """Retrieve user by ID"""
     db = await get_db()
     return await db.users.find_one({"_id": user_id})
 
-async def create_user(user_data):
-    """Create a new user"""
-    # Hash the password
-    hashed_password = get_password_hash(user_data["password"])
-    user_data["password"] = hashed_password
-    
-    # Generate verification code
-    verification_code = generate_verification_code()
-    
-    # Add additional user fields
-    user_data["created_at"] = datetime.utcnow()
-    user_data["modified_at"] = user_data["created_at"]
-    user_data["is_active"] = True
-    user_data["is_verified"] = False
-    user_data["verification_code"] = verification_code
-    user_data["first_name"] = None
-    user_data["last_name"] = None
-    user_data["location"] = None
-    user_data["timezone"] = "UTC"
-    
-    # Insert into database
+async def create_user(user_data: dict):
     db = await get_db()
-    result = await db.users.insert_one(user_data)
-    
-    # Return user data and verification code
-    return {
-        "user_id": str(result.inserted_id),
-        "verification_code": verification_code
+    # Generate verification code (ensure this is done before hashing password if needed)
+    verification_code = secrets.SystemRandom().choices(
+        string.ascii_uppercase + string.digits, k=6
+    )
+    verification_code = ''.join(verification_code)
+
+    hashed_password = get_password_hash(user_data["password"]) # Assuming you have this function
+
+    user_doc = {
+        "_id": user_data["_id"],
+        # Convert email to lowercase before storing
+        "email": user_data["email"].lower(),
+        "username": user_data["username"],
+        "password": hashed_password,
+        "created_at": datetime.utcnow(),
+        "modified_at": datetime.utcnow(),
+        "is_active": True,
+        "is_verified": False,
+        "verification_code": verification_code,
+        "first_name": None,
+        "last_name": None,
+        "location": None,
+        "timezone": "UTC"
     }
+    await db.users.insert_one(user_doc)
+    # Return the user data including the code for sending email
+    return {
+        "verification_code": verification_code, **user_doc}
 
 async def update_user_profile(user_id: str, update_data: Dict[str, Any]):
     """Update user profile information"""
@@ -133,32 +134,29 @@ async def verify_token(token: str = Depends(oauth2_scheme)):
     return user
 
 async def authenticate_user(email: str, password: str):
-    """Authenticate user and return token"""
-    user = await get_user_by_email(email)
-    
+    # Convert email to lowercase before lookup
+    user = await get_user_by_email(email.lower()) # get_user_by_email already handles lowercasing now
     if not user:
-        return False
-    
-    if not verify_password(password, user["password"]):
-        return False
-        
+        return None
+    if not verify_password(password, user["password"]): # Assuming you have verify_password
+        return None
     return user
 
 async def verify_user(email: str, code: str):
-    """Verify user's email with verification code"""
-    user = await get_user_by_email(email)
-    
-    if not user:
-        return False
-        
-    if user["verification_code"] != code:
-        return False
-    
     db = await get_db()
-    # Update user verification status
-    await db.users.update_one(
-        {"email": email},
-        {"$set": {"is_verified": True}}
-    )
-    
-    return True
+    # Convert email to lowercase for the query
+    user = await db.users.find_one({
+        "email": email.lower(),
+        "verification_code": code,
+        "is_verified": False # Important check
+    })
+
+    if user:
+        # User found and code matches, update verification status
+        result = await db.users.update_one(
+            {"_id": user["_id"]},
+            {"$set": {"is_verified": True, "modified_at": datetime.utcnow()},
+             "$unset": {"verification_code": ""}} # Remove code after verification
+        )
+        return result.modified_count > 0 # Return True if update was successful
+    return False # User not found or code didn't match or already verified
