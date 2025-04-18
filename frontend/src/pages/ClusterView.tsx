@@ -4,6 +4,12 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { toast } from 'react-toastify';
 import { Session } from "../interfaces/sessions";
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+  } from "@/components/ui/accordion"
 
 function ClusterView() {
     const { sessionId, clusterId } = useParams();
@@ -110,24 +116,27 @@ function ClusterView() {
                         
                     </div>
                     <div className="">
+                    
                         {cluster.data.map((cluster) => (
                             <div key={cluster.id} className="cluster-view-content">
-                                <div className="cluster-details">
-                                    <h2 className="cluster-title">{cluster.representative_text}</h2>
-                                    <div className="cluster-meta">
-                                        <span className="cluster-type">{getClusterType(cluster.count)}</span>
-                                        <span className="cluster-count">{cluster.count} ideas</span>
-                                    </div>
-                                </div>
-                                
-                                <h3>Ideas in this Cluster</h3>
-                                
-                                {(!cluster.ideas || cluster.ideas.length === 0) ? (
+                                <Accordion type="single" collapsible className="w-full max-w-xl">
+                        `        <AccordionItem value={cluster.id}>
+                                    <AccordionTrigger>
+                                        <div className="cluster-details">
+                                        <h2 className="cluster-title">{cluster.representative_text}</h2>
+                                        <div className="cluster-meta">
+                                            <span className="cluster-type">{getClusterType(cluster.count)}</span> <br />
+                                            <span className="cluster-count">{cluster.count} ideas</span>
+                                        </div>
+                                        </div>
+                                    </AccordionTrigger>
+                                    <AccordionContent>
+                                    {(!cluster.ideas || cluster.ideas.length === 0) ? (
                                     <div className="no-ideas">
                                         <p>No ideas found in this cluster.</p>
                                     </div>
                                 ) : (
-                                    <div className="ideas-list">
+                                    <>
                                         {cluster.ideas.map((idea) => (
                                             <div className="idea-card" key={idea.id}>
                                                 <p>{idea.text}</p>
@@ -147,8 +156,11 @@ function ClusterView() {
                                                 </div>
                                             </div>
                                         ))}
-                                    </div>
+                                    </>
                                 )}
+                                    </AccordionContent>
+                                </AccordionItem>
+                                </Accordion>     
                             </div>
                         ))}
                     </div>

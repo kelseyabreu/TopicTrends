@@ -6,7 +6,6 @@ import io from 'socket.io-client';
 import '../styles/SessionView.css';
 import api from '../utils/api';
 import { Link } from 'react-router-dom';
-
 function SessionView() {
     const { sessionId } = useParams();
     const navigate = useNavigate();
@@ -86,7 +85,7 @@ function SessionView() {
             socketRef.current.disconnect();
         }
 
-        const socket = io(process.env.REACT_APP_API_URL || 'http://localhost:8000', {
+        const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:8000', {
             transports: ['websocket', 'polling'],
             withCredentials: true,
             reconnectionAttempts: 5,
