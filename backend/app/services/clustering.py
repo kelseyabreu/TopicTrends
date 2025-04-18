@@ -2,11 +2,11 @@
 from datetime import datetime
 import numpy as np
 
-from app.core.database import db
+from app.core.database import get_db
 from app.core.ml import encode_texts, cluster_embeddings
 from app.core.socketio import sio
 
-async def process_clusters(session_id: str):
+async def process_clusters(session_id: str, db=Depends(get_db)):
     """Process all ideas in a session and create clusters"""
     # Get all ideas for this session
     ideas = await db.ideas.find({"session_id": session_id}).to_list(length=None)

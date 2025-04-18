@@ -1,14 +1,13 @@
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Depends
+from typing import List
 import uuid
 from datetime import datetime
-from typing import List, Dict, Any
-
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+import logging
 
 from app.routers.sessions import get_session_by_id
-from app.core.database import db
+from app.core.database import get_db
 from app.models.schemas import Idea, IdeaSubmit
 from app.services.genkit.ai import process_clusters
-import logging
 
 # Create router
 router = APIRouter(tags=["ideas"])
@@ -19,11 +18,12 @@ router = APIRouter(tags=["ideas"])
 async def submit_idea(
         session_id: str,
         idea: IdeaSubmit,
-        background_tasks: BackgroundTasks
+        background_tasks: BackgroundTasks,
+        db=Depends(get_db)
 ):
     """Submit a new idea to a session"""
     # Validate session exists
-    session = await get_session_by_id(session_id)
+    session = await get_session_by_id(session_id, db)
     logging.info("Submitting idea for session %s", session_id)
 
     # Validate verification if required
@@ -45,7 +45,6 @@ async def submit_idea(
         "timestamp": datetime.utcnow(),
         "cluster_id": None  # Will be assigned during processing
     }
-    # Transform with AI here.
 
     await db.ideas.insert_one(idea_data)
     logging.info("Idea submitted with ID: %s", idea_id)
@@ -63,10 +62,10 @@ async def submit_idea(
 
 
 @router.get("/sessions/{session_id}/ideas", response_model=List[Idea])
-async def get_session_ideas(session_id: str):
+async def get_session_ideas(session_id: str, db=Depends(get_db)):
     """Get all ideas for a session"""
     # Validate session exists
-    await get_session_by_id(session_id)
+    await get_session_by_id(session_id, db)
 
     # Get ideas
     ideas = await db.ideas.find({"session_id": session_id}).to_list(length=None)

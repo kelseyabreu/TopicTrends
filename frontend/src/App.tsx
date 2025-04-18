@@ -12,6 +12,8 @@ import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
 import Header from './components/Header.tsx';
 import ClusterView from './pages/ClusterView';
+import ProtectedRoute from './components/ProtectedRoute.tsx';
+import UserSettings from './pages/UserSettings.tsx';
 
 function App() {  
     return (
@@ -29,6 +31,14 @@ function App() {
                 <Route path="/sessions" element={<AllSessionsView />} />
                 <Route path="/session/:sessionId" element={<SessionView />} />
                 <Route path="/session/:sessionId/cluster/:clusterId" element={<ClusterView />} />
+                <Route
+                        path="/settings"
+                            element={
+                                <ProtectedRoute>
+                                    <UserSettings />
+                                </ProtectedRoute>
+                            }
+                        />
                 </Routes>
             </div>
             <ToastContainer position="bottom-right" />
