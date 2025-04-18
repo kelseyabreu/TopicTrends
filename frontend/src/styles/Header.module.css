@@ -1,0 +1,23 @@
+.logo {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--primary);
+    cursor: pointer;
+}
+
+    .logo span {
+        color: var(--secondary);
+    }
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background-color: white;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+.links {
+    display: flex;
+    gap: 20px;  
+}

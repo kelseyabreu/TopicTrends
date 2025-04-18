@@ -69,7 +69,7 @@ function UserSettings() {
 
         try {
             // Only send fields that have changed
-            const changedFields = {};
+            const changedFields:any = {};
 
             if (formData.first_name !== (user.first_name || '')) {
                 changedFields.first_name = formData.first_name || null;

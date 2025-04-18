@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 # Environment variables
 APP_ENV = os.environ.get("APP_ENV", "development")
 DEV_MODE = APP_ENV.lower() == "development"
-FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 
 # --- Gmail SMTP Configuration (Using App Password) ---
 # !! IMPORTANT: Set these environment variables in your system !!

@@ -1,0 +1,139 @@
+/* File: src/styles/ClusterView.css */
+/* Extending SessionView styles with cluster-specific additions */
+
+.cluster-page  .cluster-details {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.cluster-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 15px;
+  color: var(--dark);
+}
+
+.cluster-meta {
+  display: flex;
+  flex-direction: row;
+  gap:12px;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 15px;
+}
+
+.cluster-page  .cluster-type {
+  background-color: var(--primary);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.cluster-count {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--gray);
+}
+
+.back-button {
+  background-color: transparent;
+  border: none;
+  color: var(--primary);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 8px 0;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  transition: color 0.3s;
+}
+
+.back-button:hover {
+  color: var(--primary-dark);
+  text-decoration: underline;
+}
+
+.cluster-page .cluster-view-content {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.cluster-page .ideas-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 25px;
+  padding: 0 20px;
+}
+
+.cluster-page .idea-card {
+  background-color: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.cluster-page .idea-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.cluster-page  .idea-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 15px;
+  font-size: 0.9rem;
+  color: var(--gray);
+}
+
+.idea-timestamp {
+  color: var(--gray);
+}
+
+.verification-badge {
+  background-color: var(--secondary);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.anonymous-badge {
+  background-color: var(--gray);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.no-ideas {
+  text-align: center;
+  padding: 40px;
+  color: var(--gray);
+  background-color: var(--light);
+  border-radius: 8px;
+  margin-top: 25px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .cluster-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .idea-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+}

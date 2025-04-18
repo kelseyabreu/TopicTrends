@@ -5,7 +5,7 @@ import { toast } from 'react-toastify';
 import io from 'socket.io-client';
 import '../styles/SessionView.css';
 import api from '../utils/api';
-
+import { Link } from 'react-router-dom';
 function SessionView() {
     const { sessionId } = useParams();
     const navigate = useNavigate();
@@ -85,7 +85,7 @@ function SessionView() {
             socketRef.current.disconnect();
         }
 
-        const socket = io(process.env.REACT_APP_API_URL || 'http://localhost:8000', {
+        const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:8000', {
             transports: ['websocket', 'polling'],
             withCredentials: true,
             reconnectionAttempts: 5,
@@ -222,6 +222,27 @@ function SessionView() {
             .then(() => toast.success('Link copied to clipboard!'))
             .catch(err => toast.error('Failed to copy link.'));
     };
+    const countByClusterType = (type) => {
+        if (!clusters || clusters.length === 0) return 0;
+        
+        let count = 0;
+        
+        clusters.forEach(cluster => {
+            const ideaCount = cluster.count || 0;
+            
+            if (type === 'ripples' && ideaCount <= 10) {
+                count++;
+            } else if (type === 'waves' && ideaCount > 10 && ideaCount <= 25) {
+                count++;
+            } else if (type === 'breakers' && ideaCount > 25 && ideaCount <= 50) {
+                count++;
+            } else if (type === 'tsunamis' && ideaCount > 50) {
+                count++;
+            }
+        });
+        
+        return count;
+    }
 
     // Render Loading state
     if (isLoading) {
@@ -248,8 +269,24 @@ function SessionView() {
                                 <span className="stat-label">Ideas</span>
                             </div>
                             <div className="stat">
-                                <span className="stat-value">{session.cluster_count}</span>
-                                <span className="stat-label">Groups</span>
+                                <span className="stat-value">{clusters.length}</span>
+                                <span className="stat-label">Currents</span>
+                            </div>
+                            <div className="stat">
+                                <span className="stat-value">{countByClusterType("ripples")}</span>
+                                <span className="stat-label">Ripples</span>
+                            </div>
+                            <div className="stat">
+                                <span className="stat-value">{countByClusterType("waves")}</span>
+                                <span className="stat-label">Waves</span>
+                            </div>
+                            <div className="stat">
+                                <span className="stat-value">{countByClusterType("breakers")}</span>
+                                <span className="stat-label">Breakers</span>
+                            </div>
+                            <div className="stat">
+                                <span className="stat-value">{countByClusterType("tsunamis")}</span>
+                                <span className="stat-label">Tsunamis</span>
                             </div>
                         </div>
                         <div className="session-actions">
@@ -274,7 +311,6 @@ function SessionView() {
                                         value={idea}
                                         onChange={(e) => setIdea(e.target.value)}
                                         placeholder="Share your idea here..."
-                                        maxLength="500"
                                         required
                                         disabled={isSubmitting}
                                     />
@@ -308,11 +344,17 @@ function SessionView() {
                             ) : (
                                 <div className="clusters-list">
                                     {clusters.map((cluster) => (
-                                        <div className="cluster-card" key={cluster.id}>
+                                        <div 
+                                            className="cluster-card" 
+                                            key={cluster.id} 
+                                        >
                                             <div className="cluster-header">
                                                 <span className="cluster-title">{cluster.representative_text}</span>
                                                 <span className="cluster-count">{cluster.count}</span>
                                             </div>
+                                            <Link to={`/session/${sessionId}/cluster/${cluster.id}`} className="cluster-header">
+                                                Swim
+                                            </Link>
                                             <div className="cluster-ideas">
                                                 {(cluster.ideas || []).map((idea) => ( // Add safety check for ideas array
                                                     <div className="idea-card" key={idea.id}>

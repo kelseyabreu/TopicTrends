@@ -29,7 +29,7 @@ function VerifyEmail() {
     }
   }, [location]);
 
-  const handleVerify = async (emailToVerify, codeToVerify) => {
+  const handleVerify = async (emailToVerify?, codeToVerify?) => {
     setLoading(true);
     
     try {

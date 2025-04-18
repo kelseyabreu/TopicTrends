@@ -1,7 +1,5 @@
 
 * {
-    margin: 0;
-    padding: 0;
     box-sizing: border-box;
     font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
 }
@@ -18,7 +16,9 @@
     --warning: #f39c12;
     --background: #f5f7fa;
 }
-
+#root {
+    width:100%;
+}
 body {
     background-color: var(--background);
     color: var(--dark);

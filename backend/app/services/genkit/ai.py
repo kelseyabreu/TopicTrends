@@ -10,11 +10,11 @@ from sklearn.cluster import AgglomerativeClustering
 from datetime import datetime
 from app.models.schemas import Idea
 from app.core.socketio import sio   
-from app.core.database import db
+from app.core.database import get_db
 from app.utils.ideas import get_ideas_by_session_id
 import numpy as np
 from app.services.genkit.flows.group_names import group_name_suggestion_flow
-
+from fastapi import Depends
 import logging
 
 EMBEDDER_MODEL = 'nomic-embed-text'
@@ -40,14 +40,22 @@ ai = Genkit(
     ],
 )
 # New Clustering method
-async def fetch_ideas(session_id: str | None = None, idea_ids: list[str] | None = None) -> list:
-    """Fetch ideas either by session_id or specific idea IDs"""
-    if idea_ids:
-        return await db.ideas.find({"_id": {"$in": idea_ids}}).to_list(None)
+async def fetch_ideas(session_id: str | None = None, cluster_id: str | None = None) -> list:
+    """Fetch ideas either by session_id or by cluster_id
+    
+    Args:
+        session_id: The ID of the session containing ideas
+        cluster_id: The ID of the cluster to retrieve ideas from
+        
+    Returns:
+        A list of ideas matching the criteria
+    """
+    db = await get_db()
+    if cluster_id:
+        return await db.ideas.find({"cluster_id": cluster_id}).to_list(None)
     elif session_id:
         return await get_ideas_by_session_id(session_id)
     return []
-
 
 async def embed_ideas(ideas: list) -> list:
     """Create embeddings for the given texts"""
@@ -115,7 +123,7 @@ async def perform_clustering(embedded_ideas: list, distance_threshold: float) ->
         linkage='average'
     )
     labels = clustering.fit_predict(embeddings)
-    
+    logging.info(f"Getting labels from perform_clustering ${labels}")
     return labels
 
 async def group_ideas_by_cluster(labels: list, ideas: list, texts: list, embedded_ideas: list) -> list:
@@ -140,6 +148,7 @@ async def group_ideas_by_cluster(labels: list, ideas: list, texts: list, embedde
 
 async def update_database_and_emit(session_id: str, clusters_temp_data: dict) -> list:
     """Update database with clustering results and emit to clients"""
+    db = await get_db()
     cluster_results = []
     
     for label, cluster_ideas_data in clusters_temp_data.items():
@@ -165,10 +174,12 @@ async def update_database_and_emit(session_id: str, clusters_temp_data: dict) ->
         
         # Update database
         cluster_id = f"{session_id}_{label}"
+        # Lets prep the ideas to send through ai to get the main idea title
         simplified_ideas = [{"text": idea["text"]} for idea in cluster_ideas_data]
         cluster_main_idea = await group_name_suggestion_flow(simplified_ideas)
-        print("group name flow: ", cluster_main_idea )
         title = cluster_main_idea['representative_text']
+
+        print(f"ideas: ${ideas_for_output}")
         await db.clusters.update_one(
             {"_id": cluster_id},
             {"$set": {
@@ -214,10 +225,68 @@ async def update_database_and_emit(session_id: str, clusters_temp_data: dict) ->
     )
     
     return cluster_results
-  
+
+async def generate_results_and_emit(cluster_id: str, clusters_temp_data: dict) -> list:
+    """Prepare clustering results without updating database or emitting events
+
+    This function is similar to update_database_and_emit but only prepares the
+    cluster results data structure without persisting to database or emitting
+    socket events.
+
+    Args:
+        cluster_id (str): The ID of the session containing the ideas
+        clusters_temp_data (dict): Temporary clustering data with ideas grouped by label
+
+    Returns:
+        list: A list of cluster results, where each cluster contains:
+            - id: Generated cluster ID (cluster_id + label)
+            - representative_idea_id: ID of the idea that best represents the cluster
+            - representative_text: A generated title/summary for the cluster
+            - count: Number of ideas in the cluster
+            - ideas: List of all ideas in the cluster
+    """
+    cluster_results = []
+
+    for label, cluster_ideas_data in clusters_temp_data.items():
+        # Calculate centroid and find representative idea
+        cluster_embeddings = np.array([idea["embedding"] for idea in cluster_ideas_data])
+        if cluster_embeddings.shape[0] > 1:
+            centroid = np.mean(cluster_embeddings, axis=0)
+            distances = np.linalg.norm(cluster_embeddings - centroid, axis=1)
+            closest_idx = np.argmin(distances)
+        else:
+            closest_idx = 0
+
+        representative_idea_data = cluster_ideas_data[closest_idx]
+
+        # Prepare ideas for output
+        ideas_for_output = [{
+            "id": idea["id"],
+            "text": idea["text"],
+            "user_id": idea["user_id"],
+            "verified": idea["verified"],
+            "timestamp": idea["timestamp"].isoformat() if isinstance(idea["timestamp"], datetime) else idea["timestamp"]
+        } for idea in cluster_ideas_data]
+
+        # Get cluster name using AI
+        simplified_ideas = [{"text": idea["text"]} for idea in cluster_ideas_data]
+        cluster_main_idea = await group_name_suggestion_flow(simplified_ideas)
+        title = cluster_main_idea['representative_text']
+
+        cluster_results.append({
+            "id": f"{cluster_id}_{label}",
+            "representative_idea_id": representative_idea_data["id"],
+            "representative_text": title or representative_idea_data.get('representative_text',
+                                                                         representative_idea_data['text']),
+            "count": len(cluster_ideas_data),
+            "ideas": ideas_for_output
+        })
+    logging.debug(f"cluster results??${cluster_results}")
+    return cluster_results
+
 def calculate_distance_threshold(idea_count: int) -> float:
     """Calculate appropriate distance threshold based on number of ideas"""
-    if idea_count < 10:
+    if idea_count < 25:
         return 0.15  # More strict for small groups
     elif idea_count < 50:
         return 0.25  # Moderate for medium groups
@@ -226,25 +295,31 @@ def calculate_distance_threshold(idea_count: int) -> float:
     
     # Run
 
-async def process_clusters(session_id: str | None = None, grouped_ideas: list[str] | None = None) -> list:
+async def process_clusters(
+    session_id: str | None = None, 
+    cluster_id: str | None = None,
+    persist_results: bool = True
+) -> list:
     """Process and cluster ideas based on their semantic similarity.
 
     This function performs semantic clustering on a set of ideas, either from a specific session
-    or from a provided list of idea IDs. It embeds the ideas using AI, clusters them based on
-    similarity, and updates the database with the clustering results.
+    or from a provided list of idea IDs. It embeds the ideas using AI and clusters them based on
+    similarity.
 
     Args:
         session_id (str | None, optional): The ID of the session containing the ideas to cluster.
-            If provided without grouped_ideas, all ideas from this session will be processed.
-            Defaults to None.
-        grouped_ideas (list[str] | None, optional): A list of specific idea IDs to cluster.
+            Required if persist_results is True. If provided without grouped_ideas, all ideas 
+            from this session will be processed. Defaults to None.
+        cluster_id (str | None, optional): A list based on the id of a cluster.
             If provided, these ideas will be processed regardless of their session.
-            Takes precedence over session_id if both are provided.
-            Defaults to None.
+            Takes precedence over session_id if both are provided. Defaults to None.
+        persist_results (bool, optional): Whether to persist clustering results to database
+            and emit updates via WebSocket. If True, session_id is required. 
+            Defaults to True.
 
     Returns:
         list: A list of cluster results, where each cluster contains:
-            - id: The unique identifier for the cluster
+            - id: The unique identifier for the cluster (only if persist_results is True)
             - representative_idea_id: ID of the idea that best represents the cluster
             - representative_text: A generated title/summary for the cluster
             - count: Number of ideas in the cluster
@@ -252,33 +327,36 @@ async def process_clusters(session_id: str | None = None, grouped_ideas: list[st
 
     Raises:
         ValueError: If neither session_id nor grouped_ideas is provided.
+        ValueError: If persist_results is True but session_id is None.
 
     Example:
-        # Process all ideas in a session
+        # Process all ideas in a session and persist results
         clusters = await process_clusters(session_id="session123")
 
-        # Process specific ideas only
-        clusters = await process_clusters(grouped_ideas=["idea1", "idea2", "idea3"])
+        # Process specific ideas without persisting results
+        clusters = await process_clusters(
+            cluster_id="cluster_123",
+            persist_results=False            )
 
         # Process specific ideas within a session context
         clusters = await process_clusters(
             session_id="session123",
-            grouped_ideas=["idea1", "idea2"]
-        )
+            cluster_id="cluster_123"        )
 
     Notes:
-        - When only grouped_ideas is provided, a temporary session ID will be generated
-          for database operations.
+        - When persist_results is False, the function only returns the clustering results
+          without updating the database or emitting WebSocket events.
         - The clustering algorithm adjusts its threshold based on the number of ideas
           to ensure meaningful groupings.
-        - Results are stored in the database and broadcast via WebSocket to connected
-          clients in the session room.
     """
-    if not session_id and not grouped_ideas:
-        raise ValueError("Either session_id or grouped_ideas must be provided")
+    if not session_id and not cluster_id:
+        raise ValueError("Either session_id or cluster_id must be provided")
+    
+    if persist_results and not session_id:
+        raise ValueError("session_id is required when persist_results is True")
 
     # Fetch ideas based on either session_id or grouped_ideas
-    ideas = await fetch_ideas(session_id, grouped_ideas)
+    ideas = await fetch_ideas(session_id, cluster_id)
 
     if not ideas:
         return []
@@ -294,8 +372,9 @@ async def process_clusters(session_id: str | None = None, grouped_ideas: list[st
 
     clusters_temp_data = await group_ideas_by_cluster(labels, ideas, texts, embedded_ideas)
 
-    # If we have grouped_ideas but no session_id, we'll use a temporary session ID
-    if grouped_ideas and not session_id:
-        session_id = f"temp_session_{datetime.utcnow().timestamp()}"
-
-    return await update_database_and_emit(session_id, clusters_temp_data)
+    if persist_results:
+        # Normal path, first layer of clusters
+        return await update_database_and_emit(session_id, clusters_temp_data)
+    else:
+        # We want to drill down into existing clusters
+        return await generate_results_and_emit(cluster_id, clusters_temp_data)
