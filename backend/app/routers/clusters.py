@@ -1,6 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, BackgroundTasks, Body
 from typing import List
-
+from app.services.genkit.ai import process_clusters
 from app.models.schemas import Cluster
 from app.core.database import db
 from app.routers.sessions import get_session_by_id
@@ -45,3 +45,31 @@ async def get_session_clusters(session_id: str):
         )
     logging.info("Fetched %d clusters for session %s", len(clusters), session_id)
     return results
+
+
+@router.post("/clusters")
+async def create_clusters(
+        background_tasks: BackgroundTasks,
+        cluster_id: str = Body(..., description="Array of idea IDs to process")
+):
+    """
+    Process and cluster a set of ideas based on their IDs.
+
+    This endpoint takes an array of idea IDs, clusters them based on semantic similarity,
+    and runs the processing in the background.
+
+    Args:
+        idea_ids: List of idea ID strings to be clustered
+
+    Returns:
+        A confirmation message that the clustering process has started
+    """
+
+    # Add the clustering task to background tasks
+    # background_tasks.add_task(process_clusters, None, cluster_id, False)
+
+    return {
+        "status": "processing",
+        "message": f"Clustering process started for cluster ${cluster_id}",
+        "data": await process_clusters(None, cluster_id, False)
+    }
