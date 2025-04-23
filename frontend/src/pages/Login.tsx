@@ -90,7 +90,7 @@ function Login() {
           </div>
           
         </form>
-        <Button disabled={loading}> {loading ? 'Logging in...' : 'Login'}</Button>
+        <Button type="submit" disabled={loading}>{loading ? 'Logging in...' : 'Login'}</Button>
         
         <p className="auth-redirect">
           Don't have an account? <Link to="/register">Register</Link>
