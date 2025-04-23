@@ -14,32 +14,42 @@ function CreateSession() {
   const [requireVerification, setRequireVerification] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!title || !prompt) {
-      toast.error('Please fill in all required fields');
-      return;
+
+    if (!title) {
+        toast.error('Please enter a discussion title');
+        return;
     }
-    
+
+    if (!prompt) {
+        toast.error('Please enter a discussion prompt');
+        return;
+    }
+
+    if (prompt.length > 200) {
+        toast.error('Discussion prompt exceeds maximum length of 200 characters');
+        return;
+    }
+
     setIsSubmitting(true);
-    
+
     try {
-      const response = await api.post('/api/sessions', {
-        title,
-        prompt,
-        require_verification: requireVerification
-      });
-      
-      toast.success('Discussion created successfully!');
-      navigate(`/session/${response.data.id}`);
+        const response = await api.post('/api/sessions', {
+            title,
+            prompt,
+            require_verification: requireVerification
+        });
+
+        toast.success('Discussion created successfully!');
+        navigate(`/session/${response.data.id}`);
     } catch (error) {
-      console.error('Error creating session:', error);
-      toast.error('Failed to create discussion. Please try again.');
+        console.error('Error creating session:', error);
+        toast.error('Failed to create discussion. Please try again.');
     } finally {
-      setIsSubmitting(false);
+        setIsSubmitting(false);
     }
-  };
+};
   
   return (
     <div className="create-session-container">

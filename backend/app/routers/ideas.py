@@ -65,6 +65,8 @@ async def submit_idea(
 @router.get("/sessions/{session_id}/ideas", response_model=List[Idea])
 async def get_session_ideas(session_id: str):
     """Get all ideas for a session"""
+    db = await get_db()
+    
     # Validate session exists
     await get_session_by_id(session_id)
 
