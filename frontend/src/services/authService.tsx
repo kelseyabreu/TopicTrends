@@ -23,7 +23,7 @@ const authService = {
   // Register new user
   register: async (userData) => {
     try {
-      const response = await api.post('/api/auth/register', userData);
+      const response = await api.post('/auth/register', userData);
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Registration failed' };
@@ -37,7 +37,7 @@ const authService = {
       formData.append('username', email); // OAuth2 expects 'username'
       formData.append('password', password);
       
-      const response = await api.post('/api/auth/login', formData, {
+      const response = await api.post('/auth/login', formData, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
@@ -59,7 +59,7 @@ const authService = {
   // Verify email
   verifyEmail: async (email, code) => {
     try {
-      const response = await api.post(`/api/auth/verify?email=${email}`, { code });
+      const response = await api.post(`/auth/verify?email=${email}`, { code });
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Verification failed' };
@@ -69,7 +69,7 @@ const authService = {
   // Resend verification email
   resendVerification: async (email) => {
     try {
-      const response = await api.post(`/api/auth/resend-verification?email=${email}`);
+      const response = await api.post(`/auth/resend-verification?email=${email}`);
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to resend verification email' };
@@ -79,7 +79,7 @@ const authService = {
   // Get current user
   getCurrentUser: async () => {
     try {
-      const response = await api.get('/api/auth/me');
+      const response = await api.get('/auth/me');
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to get user information' };
@@ -89,7 +89,7 @@ const authService = {
   // Update user profile
   updateProfile: async (profileData) => {
     try {
-      const response = await api.put('/api/auth/profile', profileData);
+      const response = await api.put('/auth/profile', profileData);
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to update profile' };
