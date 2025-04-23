@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import authService from '../services/authService';
 import '../styles/Header.css';
 
@@ -7,12 +7,17 @@ function Header() {
     const [user, setUser] = useState(null);
     const [menuOpen, setMenuOpen] = useState(false);
     const navigate = useNavigate();
+    const location = useLocation();
 
+    // Check auth status whenever location changes (after login/logout/navigation)
     useEffect(() => {
         // Check if user is logged in
         const currentUser = authService.getUser();
         setUser(currentUser);
-    }, []);
+
+        // Close mobile menu when route changes
+        setMenuOpen(false);
+    }, [location]);
 
     const handleLogout = () => {
         authService.logout();
@@ -37,20 +42,20 @@ function Header() {
             </div>
 
             <div className={menuOpen ? 'links active' : 'links'}>
-                <Link to="/" onClick={() => setMenuOpen(false)}>Home</Link>
-                <Link to="/sessions" onClick={() => setMenuOpen(false)}>Sessions</Link>
-                <Link to="/create" onClick={() => setMenuOpen(false)}>Create Session</Link>
+                <Link to="/">Home</Link>
+                <Link to="/sessions">Sessions</Link>
+                <Link to="/create">Create Session</Link>
 
                 {user ? (
                     <>
-                        <Link to="/settings" onClick={() => setMenuOpen(false)}>Settings</Link>
+                        <Link to="/settings">Settings</Link>
                         <button className="logout-btn" onClick={handleLogout}>Logout</button>
                         <span className="user-greeting">Welcome, {user.username}</span>
                     </>
                 ) : (
                     <>
-                        <Link to="/login" onClick={() => setMenuOpen(false)}>Login</Link>
-                        <Link to="/register" className="register-btn" onClick={() => setMenuOpen(false)}>Register</Link>
+                        <Link to="/login">Login</Link>
+                        <Link to="/register" className="register-btn">Register</Link>
                     </>
                 )}
             </div>
