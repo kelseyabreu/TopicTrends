@@ -88,9 +88,8 @@ function Login() {
               Forgot Password?
             </Link>
           </div>
-          
+          <Button type="submit" disabled={loading}>{loading ? 'Logging in...' : 'Login'}</Button>
         </form>
-        <Button type="submit" disabled={loading}>{loading ? 'Logging in...' : 'Login'}</Button>
         
         <p className="auth-redirect">
           Don't have an account? <Link to="/register">Register</Link>
