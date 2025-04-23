@@ -10,7 +10,7 @@ from sklearn.cluster import AgglomerativeClustering
 from datetime import datetime
 from app.models.schemas import Idea
 from app.core.socketio import sio   
-from app.core.database import get_db
+from app.core.database import db
 from app.utils.ideas import get_ideas_by_session_id
 import numpy as np
 from app.services.genkit.flows.group_names import group_name_suggestion_flow
@@ -50,7 +50,6 @@ async def fetch_ideas(session_id: str | None = None, cluster_id: str | None = No
     Returns:
         A list of ideas matching the criteria
     """
-    db = await get_db()
     if cluster_id:
         return await db.ideas.find({"cluster_id": cluster_id}).to_list(None)
     elif session_id:
@@ -148,7 +147,6 @@ async def group_ideas_by_cluster(labels: list, ideas: list, texts: list, embedde
 
 async def update_database_and_emit(session_id: str, clusters_temp_data: dict) -> list:
     """Update database with clustering results and emit to clients"""
-    db = await get_db()
     cluster_results = []
     
     for label, cluster_ideas_data in clusters_temp_data.items():

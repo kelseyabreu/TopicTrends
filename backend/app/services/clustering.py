@@ -2,7 +2,7 @@
 from datetime import datetime
 import numpy as np
 
-from app.core.database import get_db
+from app.core.database import db
 from app.core.ml import encode_texts, cluster_embeddings
 from app.core.socketio import sio
 

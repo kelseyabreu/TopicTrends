@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 # Import routers
 from app.routers import sessions, ideas, clusters, auth
-from app.core.database import init_db, initialize_database
+from app.core.database import register_db_lifecycle_hooks, db
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 import os
@@ -20,12 +20,8 @@ from app.core.socketio import socket_app, sio
 # Create FastAPI app
 app = FastAPI(title="TopicTrends API")
 
-# Initialize the database explicitly
-@app.on_event("startup")
-async def startup_event():
-    logger.info("Initializing database...")
-    await initialize_database()
-    logger.info("Database initialization complete.")
+# Register database startup and shutdown event handlers
+register_db_lifecycle_hooks(app)
 
 # Add custom exception handler
 @app.exception_handler(HTTPException)
@@ -52,8 +48,8 @@ origins = [
     "http://127.0.0.1:8000",
 ]
 
-if os.environ.get("FRONTEND_URL"):
-    origins.append(os.environ.get("FRONTEND_URL"))
+if os.environ.get("VITE_CLIENT_URL"):
+    origins.append(os.environ.get("VITE_CLIENT_URL"))
 
 app.add_middleware(
     CORSMiddleware,
