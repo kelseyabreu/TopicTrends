@@ -70,7 +70,7 @@ function VerifyEmail() {
     <div className="auth-container">
       <div className="auth-card">
         <Link to="/" className="logo">
-          Idea<span>Group</span>
+          Topic<span>Trends</span>
         </Link>
         
         <h2>Verify Your Email</h2>
