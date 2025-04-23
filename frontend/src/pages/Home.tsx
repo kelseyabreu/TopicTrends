@@ -7,7 +7,7 @@ function Home() {
   return (
     <div className="home-container">
       <div className="hero-section">
-        <div className="logo">Idea<span>Group</span></div>
+        <div className="logo">Topic<span>Trends</span></div>
         <h1>Collect and organize ideas from everyone</h1>
         <p>An intelligent platform that automatically groups similar ideas to help you identify common themes and priorities.</p>
         
