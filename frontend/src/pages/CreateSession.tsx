@@ -35,7 +35,7 @@ const handleSubmit = async (e) => {
     setIsSubmitting(true);
 
     try {
-        const response = await api.post('/api/sessions', {
+        const response = await api.post('/sessions', {
             title,
             prompt,
             require_verification: requireVerification

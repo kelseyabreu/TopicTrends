@@ -68,8 +68,8 @@ function SessionView() {
     const fetchSessionData = async () => {
       try {
         const [sessionResponse, clustersResponse] = await Promise.all([
-          api.get(`/api/sessions/${sessionId}`),
-          api.get(`/api/sessions/${sessionId}/clusters`),
+          api.get(`/sessions/${sessionId}`),
+          api.get(`/sessions/${sessionId}/clusters`),
         ]);
 
         if (isMounted) {
@@ -243,7 +243,7 @@ function SessionView() {
     try {
       console.log(`[Submit Idea ${sessionId}] Posting idea...`);
       // Post the idea via API
-      const response = await api.post(`/api/sessions/${sessionId}/ideas`, {
+      const response = await api.post(`/sessions/${sessionId}/ideas`, {
         text: idea,
         user_id: userId,
         verified: isVerified,

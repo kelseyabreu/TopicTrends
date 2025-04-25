@@ -3,6 +3,10 @@ from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 import os
 import asyncio
+import logging
+
+# Setup logging
+logger = logging.getLogger(__name__)
 
 # MongoDB connection string
 MONGODB_URL = os.environ.get(
@@ -19,6 +23,7 @@ async def initialize_database():
     global client, db
     
     try:
+        logger.info("Connecting to MongoDB...")
         client = motor.motor_asyncio.AsyncIOMotorClient(
             MONGODB_URL,
             serverSelectionTimeoutMS=5000,  # 5 second timeout
@@ -27,7 +32,7 @@ async def initialize_database():
         )
         # Force a connection to verify it works
         await client.admin.command('ping')
-        print("Connected to MongoDB!")
+        logger.info("Connected to MongoDB!")
         db = client.TopicTrends
         
         # Initialize collections if they don't exist
@@ -42,17 +47,17 @@ async def initialize_database():
             await db.create_collection("clusters")
             
     except (ConnectionFailure, ServerSelectionTimeoutError) as e:
-        print(f"Failed to connect to MongoDB: {e}")
+        logger.error(f"Failed to connect to MongoDB: {e}")
         raise
 
-# Ensure database is initialized
+# Get database instance
 async def get_db():
     global db
     if db is None:
         await initialize_database()
     return db
 
-# Function to add to FastAPI lifecycle
+# Add to FastAPI lifecycle
 def init_db(app):
     @app.on_event("startup")
     async def startup_db_client():
@@ -63,4 +68,4 @@ def init_db(app):
         global client
         if client:
             client.close()
-            print("Disconnected from MongoDB")
+            logger.info("Disconnected from MongoDB")

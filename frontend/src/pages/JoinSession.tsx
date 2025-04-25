@@ -23,7 +23,7 @@ function JoinSession() {
     // Fetch session details
     const fetchSession = async () => {
       try {
-        const response = await api.get(`/api/sessions/${sessionId}`);
+        const response = await api.get(`/sessions/${sessionId}`);
         setSession(response.data);
       } catch (error) {
         console.error('Error fetching session:', error);
