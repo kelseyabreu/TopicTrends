@@ -22,16 +22,13 @@ A collaborative platform for gathering and automatically organizing ideas from g
   - [Submitting Ideas](#submitting-ideas)
   - [Viewing Results](#viewing-results)
 - [How It Works](#how-it-works)
-  - [Semantic Grouping Algorithm](#semantic-grouping-algorithm)
+  - [AI-powered Grouping Algorithm](#ai-powered-grouping-algorithm)
   - [Real-time Updates](#real-time-updates)
-- [Customization Options](#customization-options)
 - [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
-- [License](#license)
 
 ## Overview
 
-TopicTrends transforms how organizations collect and process ideas from large groups. It uses AI-powered semantic analysis to automatically group similar ideas, enabling leaders to understand collective input without the noise and manual effort of traditional methods.
+TopicTrends transforms how organizations collect and process ideas from large groups. It uses AI-powered analysis to automatically group similar ideas, enabling leaders to understand collective input without the noise and manual effort of traditional methods.
 
 Whether used in town halls, corporate meetings, classrooms, or public forums, TopicTrends helps identify patterns and priorities that might otherwise be missed.
 
@@ -46,10 +43,12 @@ Whether used in town halls, corporate meetings, classrooms, or public forums, To
 
 ## Technology Stack
 
-- **Frontend**: React (v18)
+- **Frontend**: React (v18.3.1) with TypeScript, Tailwind CSS, and shadcn/ui components
 - **Backend**: FastAPI (Python 3.13)
 - **Database**: MongoDB
-- **AI/Machine Learning**: Sentence-BERT for semantic analysis
+- **AI/Machine Learning**: 
+  - Originally used Sentence-BERT for semantic analysis
+  - Currently uses Genkit with Ollama for embedding and clustering
 - **Real-time Communication**: Socket.IO
 - **Deployment**: Vercel (backend), Netlify (frontend), MongoDB Atlas (database)
 
@@ -60,6 +59,7 @@ Whether used in town halls, corporate meetings, classrooms, or public forums, To
 - **Node.js**: v22.14.0 (recommended)
 - **Python**: v3.13 (required)
 - **MongoDB**: Local instance or MongoDB Atlas account
+- **Ollama**: Required for the embedding and clustering models
 
 ### Backend Setup
 
@@ -86,18 +86,41 @@ Whether used in town halls, corporate meetings, classrooms, or public forums, To
    pip install -r requirements.txt
    ```
 
-4. **Set up local MongoDB**:
-   - Install and start MongoDB locally, OR
-   - Create a free MongoDB Atlas cluster and get your connection string
-
-5. **Create a `.env` file in the backend directory**:
+4. **Set up Ollama**:
+   ```bash
+   # Install Ollama from https://ollama.com/download
+   pip install genkit-plugin-ollama
+   
+   # Pull required models
+   ollama pull gemma3
+   ollama pull nomic-embed-text
    ```
-   MONGODB_URL=mongodb://localhost:27017/TopicTrends
-   # Or for MongoDB Atlas:
-   # MONGODB_URL=mongodb+srv://<username>:<password>@cluster0.mongodb.net/TopicTrends
+
+5. **Set the Gemini API Key**:
+   ```bash
+   # Linux/macOS
+   export GOOGLE_API_KEY=your-api-key-here
+   
+   # Windows
+   setx GOOGLE_API_KEY your-api-key-here
    ```
 
-6. **Start the backend server**:
+6. **Set up MongoDB Atlas**:
+   - Sign up at https://www.mongodb.com/cloud/atlas
+   - Create a free M0 cluster
+   - Set up a database user with read/write permissions
+   - Configure network access (IP whitelist)
+   - Get your connection string in format: `mongodb+srv://<username>:<password>@<cluster>.mongodb.net/TopicTrends`
+
+7. **Create a `.env` file in the backend directory**:
+   ```
+   MONGODB_URL=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/TopicTrends
+   CORS_ORIGINS=http://localhost:5173
+   FRONTEND_URL=http://localhost:5173
+   SECRET_KEY=your-secret-key-here-for-development-only
+   ```
+
+8. **Start the backend server**:
    ```bash
    uvicorn main:app --reload
    ```
@@ -117,20 +140,21 @@ Whether used in town halls, corporate meetings, classrooms, or public forums, To
 
 3. **Create a `.env.development` file**:
    ```
-   REACT_APP_API_URL=http://localhost:8000
+   VITE_API_URL=http://localhost:8000
+   VITE_CLIENT_URL=http://localhost:5173
    ```
 
 4. **Start the development server**:
    ```bash
    npm start
    ```
-   The frontend will be available at http://localhost:3000
+   The frontend will be available at http://localhost:5173
 
 ### Running the Application
 
 With both the backend and frontend running:
 
-1. Open your browser to http://localhost:3000
+1. Open your browser to http://localhost:5173
 2. Create a new discussion session
 3. Use the generated link to access the session from any device on your network
 
@@ -225,7 +249,7 @@ With both the backend and frontend running:
 ### Joining a Discussion
 
 1. Use the link or QR code shared by the discussion creator
-2. If verification is required, complete the verification process (demo mode in current version)
+2. If verification is required, complete the verification process
 3. Click "Join Discussion"
 
 ### Submitting Ideas
@@ -238,22 +262,20 @@ With both the backend and frontend running:
 
 The results panel shows:
 - Ideas automatically grouped by similarity
-- Count of similar ideas in each group
+- Groups categorized by size (Ripples, Waves, Breakers, and Tsunamis)
 - Individual ideas within each group
 - Verification status of each submission
 
 ## How It Works
 
-### Semantic Grouping Algorithm
+### AI-powered Grouping Algorithm
 
 TopicTrends uses a sophisticated natural language processing approach to understand and group ideas:
 
-1. **Text Embeddings**: Each idea is converted into a high-dimensional vector using Sentence-BERT
+1. **Text Embeddings**: Each idea is converted into a high-dimensional vector using semantic models
 2. **Similarity Calculation**: Cosine similarity measures how related ideas are to each other
-3. **Hierarchical Clustering**: Ideas are grouped using agglomerative clustering with an adaptive threshold
+3. **Clustering**: Ideas are grouped based on their semantic similarity
 4. **Representative Selection**: The most central idea in each cluster becomes its representative
-
-This approach identifies semantic similarity beyond simple keyword matching, understanding when different wording expresses the same core concept.
 
 ### Real-time Updates
 
@@ -264,57 +286,13 @@ The platform uses Socket.IO to provide immediate updates:
 3. Updated clusters are emitted to all connected clients
 4. The UI refreshes to show the new organization
 
-## Customization Options
-
-### Adjusting Similarity Threshold
-
-The sensitivity of the grouping algorithm can be modified by changing the `distance_threshold` parameter in `process_clusters()` function in `api.py`:
-
-```python
-# More permissive grouping (fewer, larger groups):
-distance_threshold = 0.30
-
-# More strict grouping (more, smaller groups):
-distance_threshold = 0.15
-```
-
-### Changing the Embedding Model
-
-For different languages or specialized domains, you can replace the Sentence-BERT model:
-
-```python
-# Default lightweight model:
-model = SentenceTransformer('all-MiniLM-L6-v2')
-
-# Multilingual model:
-model = SentenceTransformer('distiluse-base-multilingual-cased-v1')
-
-# More accurate but larger model:
-model = SentenceTransformer('all-mpnet-base-v2')
-```
-
-### Customizing the UI
-
-The frontend uses standard React components and CSS. To customize the look and feel:
-
-1. Modify the CSS files in the `src/styles/` directory
-2. Update color variables in `App.css`:
-   ```css
-   :root {
-     --primary: #3498db;
-     --secondary: #2ecc71;
-     /* other colors */
-   }
-   ```
-
 ## Troubleshooting
 
 ### Backend Issues
 
-**"Error: Could not download or load Sentence-BERT model"**
-- Ensure you have an internet connection during the first run
-- Check that you have at least 200MB of free disk space
-- Try using a smaller model: `all-MiniLM-L6-v2` (80MB)
+**"Error with embedding model"**
+- Ensure Ollama is running
+- Verify that the required models have been pulled
 
 **"MongoDB Connection Error"**
 - Verify your connection string format
@@ -325,23 +303,5 @@ The frontend uses standard React components and CSS. To customize the look and f
 
 **"WebSocket connection failed"**
 - Check that the backend is running
-- Verify the REACT_APP_API_URL environment variable
+- Verify the VITE_API_URL environment variable
 - Ensure your firewall isn't blocking WebSocket connections
-
-**"Node version error during build"**
-- Install the recommended Node.js version (v22.14.0)
-- Use NVM to switch Node versions: `nvm use 22.14.0`
-
-## Contributing
-
-We welcome contributions to TopicTrends! To contribute:
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/my-feature`
-3. Commit your changes: `git commit -m 'Add some feature'`
-4. Push to the branch: `git push origin feature/my-feature`
-5. Open a pull request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
