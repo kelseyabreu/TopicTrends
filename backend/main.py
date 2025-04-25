@@ -1,5 +1,11 @@
-from mangum import Mangum
+# Load environment variables from .env file
+from dotenv import load_dotenv
 import os
+
+load_dotenv()
+
+# Load other import
+from mangum import Mangum
 import sys
 
 # Import the app from the new app structure

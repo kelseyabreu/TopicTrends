@@ -60,7 +60,7 @@ function Home() {
       </div>
       
       <footer>
-        <div className="logo">Idea<span>Group</span></div>
+        <div className="logo">Topic<span>Trends</span></div>
         <p>© 2025 TopicTrends. All rights reserved.</p>
       </footer>
     </div>

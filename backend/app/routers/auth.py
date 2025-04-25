@@ -3,11 +3,14 @@ from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
 import uuid
 import logging
+import secrets
+import string
 
 from app.models.user_schemas import UserCreate, UserLogin, UserVerification, TokenResponse, User, UserUpdateProfile
 from app.services.auth import (
     authenticate_user, create_user, verify_user, create_access_token,
-    ACCESS_TOKEN_EXPIRE_MINUTES, verify_token, update_user_profile, get_user_by_email
+    ACCESS_TOKEN_EXPIRE_MINUTES, verify_token, update_user_profile, get_user_by_email,
+    get_user_by_id
 )
 from app.services.email import send_verification_email
 from app.core.database import get_db
