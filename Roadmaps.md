@@ -32,7 +32,6 @@
    - ❌ Likes on ideas (not implemented)
    - ❌ Charts/visualizations of data (not implemented)
    - ❌ Filters for ideas (categories, keywords, etc.)
-   - ❌ Consistent branding (app name varies between "TopicTrends", "IdeaOcean", "IdeaGroup")
    - ❌ Responsive design needs improvement in some areas
 
 2. **User Management**

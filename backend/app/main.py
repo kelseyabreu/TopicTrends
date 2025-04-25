@@ -1,6 +1,13 @@
 """Main FastAPI application entry point"""
-import logging
+
+# Load environment variables from .env file
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
 # Configure logging
+import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
