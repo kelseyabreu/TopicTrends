@@ -15,7 +15,7 @@ function AllSessionsView() {
     useEffect(() => {
       const fetchSessions = async () => {
         try {
-          const response = await api.get('/api/sessions');
+          const response = await api.get('/sessions');
           console.log(response.data);
           setSessions(response.data);
         } catch (error) {

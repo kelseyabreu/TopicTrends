@@ -1,14 +1,11 @@
-import axios from 'axios';
-
-// Get API URL from environment variables
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+import { api } from '../utils/api';
 
 // Token management functions
 const TOKEN_KEY = 'token';
 const USER_KEY = 'user';
 
 const getToken = () => localStorage.getItem(TOKEN_KEY);
-const setToken = (token) => localStorage.setItem(TOKEN_KEY, token);
+const setToken = (token: string) => localStorage.setItem(TOKEN_KEY, token);
 const removeToken = () => localStorage.removeItem(TOKEN_KEY);
 
 const getUser = () => {
@@ -18,78 +15,46 @@ const getUser = () => {
 const setUser = (user) => localStorage.setItem(USER_KEY, JSON.stringify(user));
 const removeUser = () => localStorage.removeItem(USER_KEY);
 
-// Create axios instance
-const api = axios.create({
-    baseURL: API_URL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
-});
-
-// Add token to requests if available
-api.interceptors.request.use((config) => {
-    const token = getToken();
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-});
-
 const authService = {
     // Register new user
     register: async (userData) => {
-        try {
-            const response = await api.post('/auth/register', userData);
-            return response.data;
-        } catch (error) {
-            throw error.response?.data || { message: 'Registration failed' };
-        }
+        const response = await api.post('/auth/register', userData);
+        return response.data;
     },
 
     // Login user
-    login: async (email, password) => {
-        try {
-            const formData = new FormData();
-            formData.append('username', email); // OAuth2 expects 'username'
-            formData.append('password', password);
+    login: async (email: string, password: string) => {
+        const formData = new FormData();
+        formData.append('username', email); // OAuth2 expects 'username'
+        formData.append('password', password);
 
-            const response = await api.post('/auth/login', formData, {
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-            });
+        const response = await api.post('/auth/login', formData, {
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+        });
 
-            // Save token and user data
-            setToken(response.data.access_token);
-            setUser({
-                id: response.data.user_id,
-                username: response.data.username,
-            });
+        // Save token and user data
+        setToken(response.data.access_token);
+        setUser({
+            id: response.data.user_id,
+            username: response.data.username,
+        });
 
-            return response.data;
-        } catch (error) {
-            throw error.response?.data || { message: 'Login failed' };
-        }
+        return response.data;
     },
 
     // Verify email
-    verifyEmail: async (email, code) => {
-        try {
-            const response = await api.post(`/auth/verify?email=${email}`, { code });
-            return response.data;
-        } catch (error) {
-            throw error.response?.data || { message: 'Verification failed' };
-        }
+    verifyEmail: async (email: string, code: string) => {
+        const response = await api.post(`/auth/verify?email=${encodeURIComponent(email)}`, { code });
+        return response.data;
     },
 
     // Resend verification email
-    resendVerification: async (email) => {
-        try {
-            const response = await api.post(`/auth/resend-verification?email=${email}`);
-            return response.data;
-        } catch (error) {
-            throw error.response?.data || { message: 'Failed to resend verification email' };
-        }
+    resendVerification: async (email: string) => {
+        // Use encodeURIComponent for safety in query params
+        const response = await api.post(`/auth/resend-verification?email=${encodeURIComponent(email)}`);
+        return response.data;
     },
 
     // Get current user
@@ -98,24 +63,33 @@ const authService = {
             const response = await api.get('/auth/me');
             return response.data;
         } catch (error) {
-            throw error.response?.data || { message: 'Failed to get user information' };
+            // The global interceptor in api.ts already logs 401 errors.
+            // Specific handling like auto-logout could be added here if needed.
+            if (error?.response?.status === 401) {
+                console.warn("Attempted to get user with invalid/expired token.");
+                // Consider calling logout() here if auto-logout on 401 is desired
+                // authService.logout();
+            }
+            throw error;
         }
     },
 
     // Update user profile
     updateProfile: async (profileData) => {
-        try {
-            const response = await api.put('/auth/profile', profileData);
-            return response.data;
-        } catch (error) {
-            throw error.response?.data || { message: 'Failed to update profile' };
+        const response = await api.put('/auth/profile', profileData);
+        // Fetch fresh user data after update and store it locally
+        const updatedUserData = await authService.getCurrentUser();
+        if (updatedUserData) {
+            setUser(updatedUserData);
         }
+        return response.data;
     },
 
     // Logout user
     logout: () => {
         removeToken();
         removeUser();
+        // Consider navigating the user after logout if needed
     },
 
     // Check if user is logged in

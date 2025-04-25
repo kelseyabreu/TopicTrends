@@ -48,8 +48,8 @@ function ClusterView() {
         const fetchData = async () => {
             try {
                 const [sessionResponse, clusterResponse] = await Promise.all([
-                    api.get(`/api/sessions/${sessionId}`),
-                    api.post('/api/clusters', clusterId)
+                    api.get(`/sessions/${sessionId}`),
+                    api.post('/clusters', clusterId)
                 ]);
 
                 if (isMounted) {
