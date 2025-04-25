@@ -2,27 +2,31 @@
 
 ## Folder Structure
 
-The backend is organized using a modular structure to improve maintainability and testability:
+The backend is organized using a modular structure:
 
 ```
 backend/
 ├── app/                    # Main application package
-│   ├── api/                # API layer
-│   │   ├── routes/         # API endpoints organized by resource
-│   │   │   ├── sessions.py # Session-related endpoints
-│   │   │   ├── ideas.py    # Idea submission and retrieval
-│   │   │   └── clusters.py # Cluster management
-│   │   └── socket.py       # Socket.IO implementation
 │   ├── core/               # Core application components
 │   │   ├── config.py       # Application configuration
 │   │   ├── database.py     # Database connection
-│   │   └── ml.py           # Machine learning model setup
+│   │   ├── ml.py           # Legacy ML model setup
+│   │   └── socketio.py     # Socket.IO implementation
 │   ├── models/             # Data models
-│   │   └── schemas.py      # Pydantic models for validation
+│   │   ├── schemas.py      # Pydantic models for sessions/ideas
+│   │   └── user_schemas.py # User-related models
+│   ├── routers/            # API route handlers 
+│   │   ├── auth.py         # Authentication endpoints
+│   │   ├── clusters.py     # Cluster management
+│   │   ├── ideas.py        # Idea submission and retrieval
+│   │   └── sessions.py     # Session-related endpoints
 │   ├── services/           # Business logic
-│   │   └── clustering.py   # Clustering implementation
+│   │   ├── auth.py         # Authentication services
+│   │   ├── email.py        # Email service
+│   │   └── genkit/         # AI services
+│   │       ├── ai.py       # Main clustering implementation
+│   │       └── flows/      # AI workflows
 │   └── utils/              # Utility functions
-├── model_cache/            # Cache for ML models
 ├── main.py                 # Application entry point
 ├── requirements.txt        # Project dependencies
 └── vercel.json             # Vercel deployment configuration
@@ -41,34 +45,40 @@ pip install -r requirements.txt
 
 Before running the backend, ensure you have the following prerequisites installed:
 
-- **Ollama**: Install Ollama to manage embeddings.
+- **Ollama**: Install Ollama to manage language models and embeddings.
 
 ### Setup Instructions
 
 1. **Install Ollama**:
-You will need to download and install Ollama separately: https://ollama.com/download
+   Download and install Ollama from: https://ollama.com/download
    ```bash
-   pip3 install genkit-plugin-ollama
+   pip install genkit-plugin-ollama
    ```
 
-2. **Pull the LLM**:
+2. **Pull the LLM models**:
    ```bash
    ollama pull gemma3
    ollama pull nomic-embed-text
    ```
-   This will allow you to embed ideas locally.
 
 3. **Set the Gemini API Key**:
-   Run the following command in your terminal to set your Gemini API key:
    ```bash
-   export GOOGLE_API_KEY=AIzaSyBfRFz3pcIveQLWea_Sd_JmipPEBieNft4
-	setx GOOGLE_API_KEY AIzaSyBfRFz3pcIveQLWea_Sd_JmipPEBieNft4  -- for windows
+   # Linux/macOS
+   export GOOGLE_API_KEY=your-api-key-here
+   
+   # Windows
+   setx GOOGLE_API_KEY your-api-key-here
    ```
-4. **Install Genkit locally**:
-[https://python.api.genkit.dev/get-started/]
-   ```bash
-   npm i -g genkit-cli
+
+4. **Create a .env file**:
    ```
+   MONGODB_URL=your-mongodb-connection-string
+   CORS_ORIGINS=http://localhost:5173
+   MODEL_NAME=all-mpnet-base-v2
+   SECRET_KEY=your-secret-key-here
+   FRONTEND_URL=http://localhost:5173
+   ```
+
 ### Running the Application
 
 ```bash
@@ -84,7 +94,3 @@ Once the server is running, you can access the interactive API documentation at:
 
 - Swagger UI: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
-
-## Deployment
-
-The application is configured for deployment on Vercel using the provided `vercel.json` configuration file.
