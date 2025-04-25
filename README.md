@@ -47,8 +47,8 @@ Whether used in town halls, corporate meetings, classrooms, or public forums, To
 - **Backend**: FastAPI (Python 3.13)
 - **Database**: MongoDB
 - **AI/Machine Learning**: 
-  - Originally used Sentence-BERT for semantic analysis
   - Currently uses Genkit with Ollama for embedding and clustering
+  - Uses nomic-embed-text for text embeddings and gemma3 for cluster naming
 - **Real-time Communication**: Socket.IO
 - **Deployment**: Vercel (backend), Netlify (frontend), MongoDB Atlas (database)
 
