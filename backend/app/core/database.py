@@ -1,31 +1,35 @@
+"""
+Centralized database connection manager for TopicTrends application.
+"""
+
 import motor.motor_asyncio
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
-import os
-import asyncio
 import logging
+import os
+from typing import Optional
 
 # Setup logging
 logger = logging.getLogger(__name__)
 
-# MongoDB connection string
-MONGODB_URL = os.environ.get(
-    "MONGODB_URL", 
-    "mongodb+srv://topictrends-dev:topictrendsdev@topictrends-dev.hy4hbpt.mongodb.net/?retryWrites=true&w=majority&appName=topictrends-dev"
-)
+# Global variables
+client: Optional[motor.motor_asyncio.AsyncIOMotorClient] = None
+db: Optional[motor.motor_asyncio.AsyncIOMotorDatabase] = None
 
-# Create global variables
-client = None
-db = None
-
-# Initialization function
 async def initialize_database():
+    """Initialize MongoDB connection and set up global client and db objects."""
     global client, db
     
+    # Get MongoDB URI from environment variable
+    mongodb_url = os.environ.get("MONGODB_URL")
+    if not mongodb_url:
+        logger.error("MONGODB_URL environment variable not set")
+        raise ValueError("MONGODB_URL environment variable is required")
+
     try:
         logger.info("Connecting to MongoDB...")
         client = motor.motor_asyncio.AsyncIOMotorClient(
-            MONGODB_URL,
+            mongodb_url,
             serverSelectionTimeoutMS=5000,  # 5 second timeout
             connectTimeoutMS=10000,         # 10 second timeout
             uuidRepresentation='standard'   # Fix UUID encoding issues
@@ -46,19 +50,21 @@ async def initialize_database():
         if "clusters" not in collections:
             await db.create_collection("clusters")
             
+        return db
+            
     except (ConnectionFailure, ServerSelectionTimeoutError) as e:
         logger.error(f"Failed to connect to MongoDB: {e}")
         raise
 
-# Get database instance
 async def get_db():
+    """Get database instance, initializing if needed."""
     global db
     if db is None:
         await initialize_database()
     return db
 
-# Add to FastAPI lifecycle
 def init_db(app):
+    """Add database lifecycle event handlers to FastAPI app."""
     @app.on_event("startup")
     async def startup_db_client():
         await initialize_database()
