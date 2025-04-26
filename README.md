@@ -88,8 +88,8 @@ Whether used in town halls, corporate meetings, classrooms, or public forums, To
 
 4. **Set up Ollama**:
    ```bash
-   # Install Ollama from https://ollama.com/download
-   pip install genkit-plugin-ollama
+   # Install Ollama 
+   https://ollama.com/download
    
    # Pull required models
    ollama pull gemma3
@@ -122,7 +122,7 @@ Whether used in town halls, corporate meetings, classrooms, or public forums, To
 
 8. **Start the backend server**:
    ```bash
-   uvicorn main:app --reload
+   python main.py
    ```
    The API will be available at http://localhost:8000
 
