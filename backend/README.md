@@ -13,13 +13,13 @@ backend/
 │   │   ├── ml.py           # Legacy ML model setup
 │   │   └── socketio.py     # Socket.IO implementation
 │   ├── models/             # Data models
-│   │   ├── schemas.py      # Pydantic models for sessions/ideas
+│   │   ├── schemas.py      # Pydantic models for discussions/ideas
 │   │   └── user_schemas.py # User-related models
 │   ├── routers/            # API route handlers 
 │   │   ├── auth.py         # Authentication endpoints
-│   │   ├── clusters.py     # Cluster management
+│   │   ├── topics.py     # Topic management
 │   │   ├── ideas.py        # Idea submission and retrieval
-│   │   └── sessions.py     # Session-related endpoints
+│   │   └── discussions.py     # Discussion-related endpoints
 │   ├── services/           # Business logic
 │   │   ├── auth.py         # Authentication services
 │   │   ├── email.py        # Email service
@@ -90,7 +90,7 @@ The backend uses Genkit with Ollama to perform text embedding and clustering:
 
 1. **Text Embedding**: Uses the nomic-embed-text model to convert idea text into high-dimensional vector representations
 2. **Clustering**: Performs hierarchical agglomerative clustering on the embeddings with cosine distance
-3. **Naming**: Uses the gemma3 model to generate descriptive titles for each cluster based on the ideas it contains
+3. **Naming**: Uses the gemma3 model to generate descriptive titles for each topic based on the ideas it contains
 
 The implementation can be found in `app/services/genkit/ai.py` and relies on a threshold-based approach that adjusts clustering parameters based on the number of ideas.
 
@@ -101,8 +101,8 @@ The clustering algorithm works as follows:
 1. **Embedding Generation**: Each idea is converted to a high-dimensional vector (512 dimensions) using the nomic-embed-text model
 2. **Similarity Calculation**: Cosine similarity between vectors determines how related ideas are
 3. **Hierarchical Clustering**: Uses scikit-learn's AgglomerativeClustering with a dynamic distance threshold
-4. **Representative Selection**: For each cluster, the idea closest to the centroid becomes the representative
-5. **Cluster Naming**: A Gemini LLM generates a descriptive name for each cluster based on its ideas
+4. **Representative Selection**: For each topic, the idea closest to the centroid becomes the representative
+5. **Topic Naming**: A Gemini LLM generates a descriptive name for each topic based on its ideas
 
 The distance threshold for clustering automatically adjusts based on the number of ideas:
 - Small groups (< 25 ideas): Threshold = 0.15 (stricter clustering)

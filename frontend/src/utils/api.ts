@@ -72,8 +72,8 @@ export const api = createApiClient({});
 export const API_URL = import.meta.env.VITE_API_URL || '';
 
 // Specialized clients can still be created if needed, inheriting the /api prefix by default
-export const clustersApiClient = createApiClient({
-    // basePath: '/api/clusters', // Example: more specific path
+export const topicsApiClient = createApiClient({
+    // basePath: '/api/topics', // Example: more specific path
     timeout: 60000
 });
 

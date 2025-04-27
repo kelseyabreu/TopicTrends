@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import authService from '../services/authService';
 
-// This is going to be used later when we add users to the clustering ideas and topics
+// This is going to be used later when we add users to the topicing ideas and topics
 function ProtectedRoute({ children }) {
   const location = useLocation();
   const isAuthenticated = authService.isLoggedIn();

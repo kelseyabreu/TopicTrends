@@ -4,5 +4,5 @@ export interface Idea {
     user_id: string;
     verified: boolean;
     timestamp: string;
-    cluster_id: string;
+    topic_id: string;
 }

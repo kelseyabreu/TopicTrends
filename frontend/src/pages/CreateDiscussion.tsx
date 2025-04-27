@@ -1,13 +1,13 @@
-// File: src/pages/CreateSession.js
+// File: src/pages/CreateDiscussion.js
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import '../styles/CreateSession.css';
+import '../styles/CreateDiscussion.css';
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input"
 import api from "../utils/api";
 
-function CreateSession() {
+function CreateDiscussion() {
   const navigate = useNavigate();
   const [title, setTitle] = useState('');
   const [prompt, setPrompt] = useState('');
@@ -35,16 +35,16 @@ const handleSubmit = async (e) => {
     setIsSubmitting(true);
 
     try {
-        const response = await api.post('/sessions', {
+        const response = await api.post('/discussions', {
             title,
             prompt,
             require_verification: requireVerification
         });
 
         toast.success('Discussion created successfully!');
-        navigate(`/session/${response.data.id}`);
+        navigate(`/discussion/${response.data.id}`);
     } catch (error) {
-        console.error('Error creating session:', error);
+        console.error('Error creating discussion:', error);
         toast.error('Failed to create discussion. Please try again.');
     } finally {
         setIsSubmitting(false);
@@ -52,7 +52,7 @@ const handleSubmit = async (e) => {
 };
   
   return (
-    <div className="create-session-container">
+    <div className="create-discussion-container">
       
       <div className="create-form-container">
         <h1>Create a Discussion</h1>
@@ -108,4 +108,4 @@ const handleSubmit = async (e) => {
   );
 }
 
-export default CreateSession;
+export default CreateDiscussion;

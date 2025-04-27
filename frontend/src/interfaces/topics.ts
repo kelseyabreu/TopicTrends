@@ -1,4 +1,4 @@
-export interface Cluster {
+export interface Topic {
     id: string;
     representative_idea_id: string;
     representative_text: string;
@@ -6,6 +6,6 @@ export interface Cluster {
     ideas: Idea[];
 }
 
-export interface ClusterResponse {
-    data: Cluster[];
+export interface TopicResponse {
+    data: Topic[];
 }
