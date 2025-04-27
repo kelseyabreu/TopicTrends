@@ -1,14 +1,14 @@
-// File: src/pages/JoinSession.js
+// File: src/pages/JoinDiscussion.js
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import '../styles/JoinSession.css';
+import '../styles/JoinDiscussion.css';
 import api from "../utils/api";
 
-function JoinSession() {
-  const { sessionId } = useParams();
+function JoinDiscussion() {
+  const { discussionId } = useParams();
   const navigate = useNavigate();
-  const [session, setSession] = useState(null);
+  const [discussion, setDiscussion] = useState(null);
   const [userId, setUserId] = useState('');
   const [isVerified, setIsVerified] = useState(false);
   const [verificationMethod, setVerificationMethod] = useState('id');
@@ -20,32 +20,32 @@ function JoinSession() {
     const generatedUserId = 'anon_' + Math.random().toString(36).substring(2, 15);
     setUserId(generatedUserId);
     
-    // Fetch session details
-    const fetchSession = async () => {
+    // Fetch discussion details
+    const fetchDiscussion = async () => {
       try {
-        const response = await api.get(`/sessions/${sessionId}`);
-        setSession(response.data);
+        const response = await api.get(`/discussions/${discussionId}`);
+        setDiscussion(response.data);
       } catch (error) {
-        console.error('Error fetching session:', error);
-        setError('Session not found. The link may be invalid or expired.');
+        console.error('Error fetching discussion:', error);
+        setError('Discussion not found. The link may be invalid or expired.');
       } finally {
         setIsLoading(false);
       }
     };
     
-    fetchSession();
-  }, [sessionId]);
+    fetchDiscussion();
+  }, [discussionId]);
   
   const handleJoin = () => {
-    // Store user info in localStorage for this session
-    localStorage.setItem(`TopicTrends_${sessionId}_userId`, userId);
-    localStorage.setItem(`TopicTrends_${sessionId}_isVerified`, isVerified.toString());
+    // Store user info in localStorage for this discussion
+    localStorage.setItem(`TopicTrends_${discussionId}_userId`, userId);
+    localStorage.setItem(`TopicTrends_${discussionId}_isVerified`, isVerified.toString());
     if (isVerified) {
-      localStorage.setItem(`TopicTrends_${sessionId}_verificationMethod`, verificationMethod);
+      localStorage.setItem(`TopicTrends_${discussionId}_verificationMethod`, verificationMethod);
     }
     
-    // Navigate to session
-    navigate(`/session/${sessionId}`);
+    // Navigate to discussion
+    navigate(`/discussion/${discussionId}`);
   };
   
   const handleVerification = () => {
@@ -56,16 +56,16 @@ function JoinSession() {
   
   if (isLoading) {
     return (
-      <div className="join-session-container loading">
+      <div className="join-discussion-container loading">
         <div className="loader"></div>
-        <p>Loading session details...</p>
+        <p>Loading discussion details...</p>
       </div>
     );
   }
   
   if (error) {
     return (
-      <div className="join-session-container error">
+      <div className="join-discussion-container error">
         <h2>Error</h2>
         <p>{error}</p>
         <button
@@ -79,17 +79,17 @@ function JoinSession() {
   }
   
   return (
-    <div className="join-session-container">
+    <div className="join-discussion-container">
       
       <div className="join-card">
         <h1>Join Discussion</h1>
-        <div className="session-info">
-          <h2>{session.title}</h2>
-          <p>{session.prompt}</p>
+        <div className="discussion-info">
+          <h2>{discussion.title}</h2>
+          <p>{discussion.prompt}</p>
         </div>
         
         <div className="join-options">
-          {session.require_verification ? (
+          {discussion.require_verification ? (
             <div className="verification-section">
               <h3>Verification Required</h3>
               <p>This discussion requires identity verification to participate.</p>
@@ -158,7 +158,7 @@ function JoinSession() {
           <button
             className="btn btn-primary"
             onClick={handleJoin}
-            disabled={session.require_verification && !isVerified}
+            disabled={discussion.require_verification && !isVerified}
           >
             Join Discussion
           </button>
@@ -168,4 +168,4 @@ function JoinSession() {
   );
 }
 
-export default JoinSession;
+export default JoinDiscussion;

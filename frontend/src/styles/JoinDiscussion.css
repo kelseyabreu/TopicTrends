@@ -1,4 +1,4 @@
-.join-session-container {
+.join-discussion-container {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -21,12 +21,12 @@
         margin: 0;
     }
 
-.session-info {
+.discussion-info {
     padding: 30px;
     border-bottom: 1px solid #eee;
 }
 
-    .session-info h2 {
+    .discussion-info h2 {
         margin-bottom: 10px;
         color: var(--dark);
     }

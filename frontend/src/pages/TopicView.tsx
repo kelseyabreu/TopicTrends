@@ -1,9 +1,9 @@
 import api from "../utils/api";
-import { ClusterResponse } from "../interfaces/clusters";
+import { TopicResponse } from "../interfaces/topics";
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { toast } from 'react-toastify';
-import { Session } from "../interfaces/sessions";
+import { Discussion } from "../interfaces/discussions";
 import {
     Accordion,
     AccordionContent,
@@ -11,59 +11,59 @@ import {
     AccordionTrigger,
   } from "@/components/ui/accordion"
 
-function ClusterView() {
-    const { sessionId, clusterId } = useParams();
+function TopicView() {
+    const { discussionId, topicId } = useParams();
     const navigate = useNavigate();
-    const [session, setSession] = useState<Session|null>(null);
-    const [cluster, setCluster] = useState<ClusterResponse>({ data: [] });
+    const [discussion, setDiscussion] = useState<Discussion|null>(null);
+    const [topic, setTopic] = useState<TopicResponse>({ data: [] });
     const [isLoading, setIsLoading] = useState(true);
     const [userId, setUserId] = useState('');
     const [isVerified, setIsVerified] = useState(false);
     const [verificationMethod, setVerificationMethod] = useState(null);
 
     useEffect(() => {
-        console.log(`[ClusterView Effect ${sessionId}/${clusterId}] Starting effect...`);
+        console.log(`[TopicView Effect ${discussionId}/${topicId}] Starting effect...`);
         let isMounted = true; // Flag to check if component is still mounted
 
-        // 1. Check if user has joined this session
-        const storedUserId = localStorage.getItem(`TopicTrends_${sessionId}_userId`);
-        const storedIsVerified = localStorage.getItem(`TopicTrends_${sessionId}_isVerified`) === 'true';
-        const storedVerificationMethod = localStorage.getItem(`TopicTrends_${sessionId}_verificationMethod`);
+        // 1. Check if user has joined this discussion
+        const storedUserId = localStorage.getItem(`TopicTrends_${discussionId}_userId`);
+        const storedIsVerified = localStorage.getItem(`TopicTrends_${discussionId}_isVerified`) === 'true';
+        const storedVerificationMethod = localStorage.getItem(`TopicTrends_${discussionId}_verificationMethod`);
 
         if (!storedUserId) {
-            console.log(`[ClusterView Effect ${sessionId}/${clusterId}] No stored user ID. Navigating back to join.`);
-            // User hasn't joined this session, navigate back immediately
-            navigate(`/join/${sessionId}`);
+            console.log(`[TopicView Effect ${discussionId}/${topicId}] No stored user ID. Navigating back to join.`);
+            // User hasn't joined this discussion, navigate back immediately
+            navigate(`/join/${discussionId}`);
             return; // Exit the effect early
         }
 
-        console.log(`[ClusterView Effect ${sessionId}/${clusterId}] User ID found: ${storedUserId}. Proceeding.`);
+        console.log(`[TopicView Effect ${discussionId}/${topicId}] User ID found: ${storedUserId}. Proceeding.`);
         // Set user state based on localStorage
         setUserId(storedUserId);
         setIsVerified(storedIsVerified);
         setVerificationMethod(storedVerificationMethod);
         setIsLoading(true); // Set loading true while fetching data
 
-        // 2. Fetch session and cluster details
+        // 2. Fetch discussion and topic details
         const fetchData = async () => {
             try {
-                const [sessionResponse, clusterResponse] = await Promise.all([
-                    api.get(`/sessions/${sessionId}`),
-                    api.post('/clusters', clusterId)
+                const [discussionResponse, topicResponse] = await Promise.all([
+                    api.get(`/discussions/${discussionId}`),
+                    api.post('/topics', topicId)
                 ]);
 
                 if (isMounted) {
-                    console.log('mounted', cluster)
-                    setSession(sessionResponse.data);
-                    setCluster(clusterResponse.data);
+                    console.log('mounted', topic)
+                    setDiscussion(discussionResponse.data);
+                    setTopic(topicResponse.data);
                 }
-                console.log('not mounted', cluster)
+                console.log('not mounted', topic)
             } catch (error) {
                 
-                console.error(`[ClusterView Effect ${sessionId}/${clusterId}] Error fetching data:`, error);
+                console.error(`[TopicView Effect ${discussionId}/${topicId}] Error fetching data:`, error);
                 if (isMounted) {
-                    toast.error(error.response?.data?.detail || 'Failed to load cluster data. Returning to session.');
-                    // navigate(`/session/${sessionId}`); // Navigate back to session view on error
+                    toast.error(error.response?.data?.detail || 'Failed to load topic data. Returning to discussion.');
+                    // navigate(`/discussion/${discussionId}`); // Navigate back to discussion view on error
                 }
             } finally {
                 if (isMounted) {
@@ -78,10 +78,10 @@ function ClusterView() {
         return () => {
             isMounted = false; // Prevent state updates after unmount
         };
-    }, [sessionId, clusterId, navigate]);
+    }, [discussionId, topicId, navigate]);
 
-    // Helper function to determine cluster type based on idea count
-    const getClusterType = (count) => {
+    // Helper function to determine topic type based on idea count
+    const getTopicType = (count) => {
         if (count <= 10) return 'Ripple';
         if (count <= 25) return 'Wave';
         if (count <= 50) return 'Breaker';
@@ -91,53 +91,53 @@ function ClusterView() {
     // Render Loading state
     if (isLoading) {
         return (
-            <div className="session-view-container loading">
+            <div className="discussion-view-container loading">
                 <div className="loader"></div>
-                <p>Loading cluster data...</p>
+                <p>Loading topic data...</p>
             </div>
         );
     }
 
     // Render main component content if not loading
     return (
-        <div className="cluster-page">
-            {/* Only render content if session and cluster are loaded */}
-            {session && cluster.data.length ? (
+        <div className="topic-page">
+            {/* Only render content if discussion and topic are loaded */}
+            {discussion && topic.data.length ? (
                 <div>
-                    <div className="session-info">
+                    <div className="discussion-info">
                         <button 
                             className="back-button"
-                            onClick={() => navigate(`/session/${sessionId}`)}
+                            onClick={() => navigate(`/discussion/${discussionId}`)}
                         >
-                            &larr; Back to Session
+                            &larr; Back to Discussion
                         </button>
-                        <h1>{session.title}</h1>
-                        <p className="prompt">{session.prompt}</p>
+                        <h1>{discussion.title}</h1>
+                        <p className="prompt">{discussion.prompt}</p>
                         
                     </div>
                     <div className="">
                     
-                        {cluster.data.map((cluster) => (
-                            <div key={cluster.id} className="cluster-view-content">
+                        {topic.data.map((topic) => (
+                            <div key={topic.id} className="topic-view-content">
                                 <Accordion type="single" collapsible className="w-full max-w-xl">
-                        `        <AccordionItem value={cluster.id}>
+                        `        <AccordionItem value={topic.id}>
                                     <AccordionTrigger>
-                                        <div className="cluster-details">
-                                        <h2 className="cluster-title">{cluster.representative_text}</h2>
-                                        <div className="cluster-meta">
-                                            <span className="cluster-type">{getClusterType(cluster.count)}</span> <br />
-                                            <span className="cluster-count">{cluster.count} ideas</span>
+                                        <div className="topic-details">
+                                        <h2 className="topic-title">{topic.representative_text}</h2>
+                                        <div className="topic-meta">
+                                            <span className="topic-type">{getTopicType(topic.count)}</span> <br />
+                                            <span className="topic-count">{topic.count} ideas</span>
                                         </div>
                                         </div>
                                     </AccordionTrigger>
                                     <AccordionContent>
-                                    {(!cluster.ideas || cluster.ideas.length === 0) ? (
+                                    {(!topic.ideas || topic.ideas.length === 0) ? (
                                     <div className="no-ideas">
-                                        <p>No ideas found in this cluster.</p>
+                                        <p>No ideas found in this topic.</p>
                                     </div>
                                 ) : (
                                     <>
-                                        {cluster.ideas.map((idea) => (
+                                        {topic.ideas.map((idea) => (
                                             <div className="idea-card" key={idea.id}>
                                                 <p>{idea.text}</p>
                                                 <div className="idea-meta">
@@ -166,14 +166,14 @@ function ClusterView() {
                     </div>
                 </div>
             ) : (
-                <div className="session-view-container error">
+                <div className="discussion-view-container error">
                     <h2>Error</h2>
-                    <p>Could not load cluster details.</p>
+                    <p>Could not load topic details.</p>
                     <button 
                         className="btn btn-primary"
-                        onClick={() => navigate(`/session/${sessionId}`)}
+                        onClick={() => navigate(`/discussion/${discussionId}`)}
                     >
-                        Return to Session
+                        Return to Discussion
                     </button>
                 </div>
             )}
@@ -181,4 +181,4 @@ function ClusterView() {
     );
 }
 
-export default ClusterView;
+export default TopicView;

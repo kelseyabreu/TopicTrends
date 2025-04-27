@@ -1,9 +1,9 @@
-.session-view-container {
+.discussion-view-container {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
 }
-.session-actions {
+.discussion-actions {
     display:flex;
     margin-bottom:30px;
 }
@@ -17,14 +17,14 @@
     cursor: pointer;
 }
 
-.session-info {
+.discussion-info {
     width: 100%;
     max-width: 1200px;
     margin: 30px auto 0;
     padding: 0 20px;
 }
 
-.session-info h1 {
+.discussion-info h1 {
     color: var(--dark);
     margin-bottom: 10px;
 }
@@ -86,40 +86,40 @@
     justify-content: flex-end;
 }
 
-.clusters-section {
+.topics-section {
     background-color: white;
     border-radius: 10px;
     padding: 25px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
 }
 
-    .clusters-section h2 {
+    .topics-section h2 {
         margin-bottom: 20px;
         color: var(--dark);
     }
 
-.no-clusters {
+.no-topics {
     text-align: center;
     padding: 50px 0;
     color: var(--gray);
 }
 
-.clusters-list {
+.topics-list {
     display: flex;
     flex-direction: column;
     gap: 20px;
 }
-.cluster-details {
+.topic-details {
     width:100%;
 }
 
-.cluster-card {
+.topic-card {
     border: 1px solid #eee;
     border-radius: 8px;
     overflow: hidden;
 }
 
-.cluster-header {
+.topic-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -128,34 +128,34 @@
     border-bottom: 1px solid #eee;
 }
 
-.cluster-title {
+.topic-title {
     width:100%;
     display:block;
     font-weight: 600;
     color: var(--dark);
 }
 
-.cluster-count {
+.topic-count {
     background-color: var(--primary);
     color: white!important;
     padding: 3px 10px;
     border-radius: 20px;
     font-size: 14px;
 }
-.cluster-meta {
+.topic-meta {
     padding:8px;
     display:flex;
     align-items:center;
     flex-direction: row;
     gap:8px;
 }
-.cluster-meta div:first-of-type {
+.topic-meta div:first-of-type {
     flex:1;
     display: flex;
     gap:8px;
 }
 
-.cluster-ideas {
+.topic-ideas {
     padding: 0 15px;
 }
 

@@ -1,9 +1,9 @@
-// File: src/pages/SessionView.js
+// File: src/pages/DiscussionView.js
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import io from "socket.io-client";
-import "../styles/SessionView.css";
+import "../styles/DiscussionView.css";
 import api from "../utils/api";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button"
@@ -17,12 +17,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 
-function SessionView() {
-  const { sessionId } = useParams();
+function DiscussionView() {
+  const { discussionId } = useParams();
   const navigate = useNavigate();
-  const [session, setSession] = useState(null);
+  const [discussion, setDiscussion] = useState(null);
   const [idea, setIdea] = useState("");
-  const [clusters, setClusters] = useState([]);
+  const [topics, setTopics] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true); // Keep loading state
   const [userId, setUserId] = useState("");
@@ -33,30 +33,30 @@ function SessionView() {
 
   // *** COMBINED useEffect Hook ***
   useEffect(() => {
-    console.log(`[SessionView Effect ${sessionId}] Starting effect...`);
+    console.log(`[DiscussionView Effect ${discussionId}] Starting effect...`);
     let isMounted = true; // Flag to check if component is still mounted
 
-    // 1. Check if user has joined this session
+    // 1. Check if user has joined this discussion
     const storedUserId = localStorage.getItem(
-      `TopicTrends_${sessionId}_userId`
+      `TopicTrends_${discussionId}_userId`
     );
     const storedIsVerified =
-      localStorage.getItem(`TopicTrends_${sessionId}_isVerified`) === "true";
+      localStorage.getItem(`TopicTrends_${discussionId}_isVerified`) === "true";
     const storedVerificationMethod = localStorage.getItem(
-      `TopicTrends_${sessionId}_verificationMethod`
+      `TopicTrends_${discussionId}_verificationMethod`
     );
 
     if (!storedUserId) {
       console.log(
-        `[SessionView Effect ${sessionId}] No stored user ID. Navigating back to join.`
+        `[DiscussionView Effect ${discussionId}] No stored user ID. Navigating back to join.`
       );
-      // User hasn't joined this session, navigate back immediately
-      navigate(`/join/${sessionId}`);
+      // User hasn't joined this discussion, navigate back immediately
+      navigate(`/join/${discussionId}`);
       return; // Exit the effect early
     }
 
     console.log(
-      `[SessionView Effect ${sessionId}] User ID found: ${storedUserId}. Proceeding.`
+      `[DiscussionView Effect ${discussionId}] User ID found: ${storedUserId}. Proceeding.`
     );
     // Set user state based on localStorage
     setUserId(storedUserId);
@@ -64,33 +64,33 @@ function SessionView() {
     setVerificationMethod(storedVerificationMethod);
     setIsLoading(true); // Set loading true while fetching data
 
-    // 2. Fetch session details and initial clusters
-    const fetchSessionData = async () => {
+    // 2. Fetch discussion details and initial topics
+    const fetchDiscussionData = async () => {
       try {
-        const [sessionResponse, clustersResponse] = await Promise.all([
-          api.get(`/sessions/${sessionId}`),
-          api.get(`/sessions/${sessionId}/clusters`),
+        const [discussionResponse, topicsResponse] = await Promise.all([
+          api.get(`/discussions/${discussionId}`),
+          api.get(`/discussions/${discussionId}/topics`),
         ]);
 
         if (isMounted) {
-          setSession(sessionResponse.data);
+          setDiscussion(discussionResponse.data);
 
-          // Handle both formats - either direct array or nested in .clusters property
-          const fetchedClusters = Array.isArray(clustersResponse.data)
-            ? clustersResponse.data // New API format (direct array)
-            : clustersResponse.data.clusters || []; // Old format (nested in .clusters)
+          // Handle both formats - either direct array or nested in .topics property
+          const fetchedTopics = Array.isArray(topicsResponse.data)
+            ? topicsResponse.data // New API format (direct array)
+            : topicsResponse.data.topics || []; // Old format (nested in .topics)
 
-          setClusters(fetchedClusters.sort((a, b) => b.count - a.count));
+          setTopics(fetchedTopics.sort((a, b) => b.count - a.count));
         }
       } catch (error) {
         console.error(
-          `[SessionView Effect ${sessionId}] Error fetching session data:`,
+          `[DiscussionView Effect ${discussionId}] Error fetching discussion data:`,
           error
         );
         if (isMounted) {
           toast.error(
             error.response?.data?.detail ||
-              "Failed to load session data. Returning home."
+              "Failed to load discussion data. Returning home."
           );
           navigate("/"); // Navigate home on critical fetch error
         }
@@ -101,14 +101,14 @@ function SessionView() {
       }
     };
 
-    fetchSessionData(); // Fetch data only if user check passed
+    fetchDiscussionData(); // Fetch data only if user check passed
 
     // 3. Set up Socket.IO connection (only if user check passed)
-    console.log(`[SessionView Effect ${sessionId}] Setting up Socket.IO...`);
+    console.log(`[DiscussionView Effect ${discussionId}] Setting up Socket.IO...`);
     // Ensure existing socket is disconnected before creating a new one if effect re-runs
     if (socketRef.current) {
       console.log(
-        `[SessionView Effect ${sessionId}] Disconnecting existing socket before reconnecting.`
+        `[DiscussionView Effect ${discussionId}] Disconnecting existing socket before reconnecting.`
       );
       socketRef.current.disconnect();
     }
@@ -125,14 +125,14 @@ function SessionView() {
 
     socket.on("connect", () => {
       console.log(
-        `[Socket ${sessionId}] Connected with ID: ${socket.id}. Emitting join.`
+        `[Socket ${discussionId}] Connected with ID: ${socket.id}. Emitting join.`
       );
-      // Join room with session ID *after* connection established
-      socket.emit("join", sessionId);
+      // Join room with discussion ID *after* connection established
+      socket.emit("join", discussionId);
     });
 
     socket.on("connect_error", (error) => {
-      console.error(`[Socket ${sessionId}] Connection error:`, error);
+      console.error(`[Socket ${discussionId}] Connection error:`, error);
       // Maybe show a toast notification about connection issues
       if (isMounted) {
         toast.warning("Connection issue. Trying to reconnect...");
@@ -140,7 +140,7 @@ function SessionView() {
     });
 
     socket.on("disconnect", (reason) => {
-      console.warn(`[Socket ${sessionId}] Disconnected:`, reason);
+      console.warn(`[Socket ${discussionId}] Disconnected:`, reason);
       if (isMounted) {
         // Only show toast if disconnect wasn't initiated by cleanup
         if (reason !== "io client disconnect") {
@@ -149,32 +149,32 @@ function SessionView() {
       }
     });
 
-    socket.on("clusters_updated", (data) => {
-      console.log(`[Socket ${sessionId}] Received clusters_updated event.`);
-      // Check if the update is for the correct session and component is mounted
-      if (data.session_id === sessionId && isMounted) {
+    socket.on("topics_updated", (data) => {
+      console.log(`[Socket ${discussionId}] Received topics_updated event.`);
+      // Check if the update is for the correct discussion and component is mounted
+      if (data.discussion_id === discussionId && isMounted) {
         console.log(
-          `[Socket ${sessionId}] Updating clusters state with ${data.clusters.length} clusters.`
+          `[Socket ${discussionId}] Updating topics state with ${data.topics.length} topics.`
         );
-        // Ensure data.clusters is an array
-        const updatedClusters = Array.isArray(data.clusters)
-          ? data.clusters
+        // Ensure data.topics is an array
+        const updatedTopics = Array.isArray(data.topics)
+          ? data.topics
           : [];
-        const sortedClusters = [...updatedClusters].sort(
+        const sortedTopics = [...updatedTopics].sort(
           (a, b) => b.count - a.count
         );
-        setClusters(sortedClusters);
+        setTopics(sortedTopics);
 
-        // Update idea count in session state if session exists
-        if (session) {
-          const newIdeaCount = updatedClusters.reduce(
-            (total, cluster) => total + (cluster.ideas?.length || 0),
+        // Update idea count in discussion state if discussion exists
+        if (discussion) {
+          const newIdeaCount = updatedTopics.reduce(
+            (total, topic) => total + (topic.ideas?.length || 0),
             0
           );
-          setSession((prevSession) => ({
-            ...prevSession,
+          setDiscussion((prevDiscussion) => ({
+            ...prevDiscussion,
             idea_count: newIdeaCount,
-            cluster_count: updatedClusters.length,
+            topic_count: updatedTopics.length,
           }));
         }
 
@@ -182,14 +182,14 @@ function SessionView() {
         // toast.success('Ideas updated!');
       } else {
         console.log(
-          `[Socket ${sessionId}] Received clusters_updated for different session (${data.session_id}) or component unmounted.`
+          `[Socket ${discussionId}] Received topics_updated for different discussion (${data.discussion_id}) or component unmounted.`
         );
       }
     });
 
     socket.on("processing_error", (data) => {
-      console.error(`[Socket ${sessionId}] Received processing_error:`, data);
-      if (data.session_id === sessionId && isMounted) {
+      console.error(`[Socket ${discussionId}] Received processing_error:`, data);
+      if (data.discussion_id === discussionId && isMounted) {
         toast.error(
           `Backend error: ${data.error || "Failed to process update."}`
         );
@@ -201,26 +201,26 @@ function SessionView() {
     // 4. Cleanup function for the combined effect
     return () => {
       console.log(
-        `[SessionView Effect ${sessionId}] Running cleanup function...`
+        `[DiscussionView Effect ${discussionId}] Running cleanup function...`
       );
       isMounted = false; // Prevent state updates after unmount
       if (socketRef.current) {
         console.log(
-          `[SessionView Cleanup ${sessionId}] Emitting leave and disconnecting socket ID: ${socketRef.current.id}`
+          `[DiscussionView Cleanup ${discussionId}] Emitting leave and disconnecting socket ID: ${socketRef.current.id}`
         );
-        socketRef.current.emit("leave", sessionId);
+        socketRef.current.emit("leave", discussionId);
         socketRef.current.disconnect();
         socketRef.current = null; // Clear the ref
       } else {
         console.log(
-          `[SessionView Cleanup ${sessionId}] No socket found in ref to disconnect.`
+          `[DiscussionView Cleanup ${discussionId}] No socket found in ref to disconnect.`
         );
       }
     };
 
-    // Dependencies: Only sessionId and navigate.
+    // Dependencies: Only discussionId and navigate.
     // navigate function from react-router is generally stable.
-  }, [sessionId, navigate]); // Removed 'session' from deps to prevent loop on count update
+  }, [discussionId, navigate]); // Removed 'discussion' from deps to prevent loop on count update
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -241,22 +241,22 @@ function SessionView() {
     setIsSubmitting(true);
 
     try {
-      console.log(`[Submit Idea ${sessionId}] Posting idea...`);
+      console.log(`[Submit Idea ${discussionId}] Posting idea...`);
       // Post the idea via API
-      const response = await api.post(`/sessions/${sessionId}/ideas`, {
+      const response = await api.post(`/discussions/${discussionId}/ideas`, {
         text: idea,
         user_id: userId,
         verified: isVerified,
         verification_method: verificationMethod,
       });
-      console.log(`[Submit Idea ${sessionId}] API response:`, response.data);
+      console.log(`[Submit Idea ${discussionId}] API response:`, response.data);
 
       setIdea(""); // Clear input field immediately
       toast.info("Idea submitted! Processing..."); // Give user feedback
 
       // Removed setTimeout fallback fetch
     } catch (error) {
-      console.error(`[Submit Idea ${sessionId}] Error submitting idea:`, error);
+      console.error(`[Submit Idea ${discussionId}] Error submitting idea:`, error);
       toast.error(
         error.response?.data?.detail ||
           "Failed to submit idea. Please try again."
@@ -267,19 +267,19 @@ function SessionView() {
   };
 
   const copyShareLink = () => {
-    if (!session) return;
+    if (!discussion) return;
     navigator.clipboard
-      .writeText(session.join_link)
+      .writeText(discussion.join_link)
       .then(() => toast.success("Link copied to clipboard!"))
       .catch((err) => toast.error("Failed to copy link."));
   };
-  const countByClusterType = (type) => {
-    if (!clusters || clusters.length === 0) return 0;
+  const countByTopicType = (type) => {
+    if (!topics || topics.length === 0) return 0;
 
     let count = 0;
 
-    clusters.forEach((cluster) => {
-      const ideaCount = cluster.count || 0;
+    topics.forEach((topic) => {
+      const ideaCount = topic.count || 0;
 
       if (type === "ripples" && ideaCount <= 10) {
         count++;
@@ -294,71 +294,71 @@ function SessionView() {
 
     return count;
   };
-  const getClusterType = (count) => {
+  const getTopicType = (count) => {
     if (count <= 10) return 'Ripple';
     if (count <= 25) return 'Wave';
     if (count <= 50) return 'Breaker';
     return 'Tsunami';
 };
 const goSwim = (id) => {
-    navigate(`/session/${sessionId}/cluster/${id}`)
+    navigate(`/discussion/${discussionId}/topic/${id}`)
 }
 
   // Render Loading state
   if (isLoading) {
     return (
-      <div className="session-view-container loading">
+      <div className="discussion-view-container loading">
         <div className="loader"></div>
-        <p>Loading session data...</p>
+        <p>Loading discussion data...</p>
       </div>
     );
   }
 
   // Render main component content if not loading
   return (
-    <div className="session-view-container">
-      {/* Only render content if session is loaded */}
-      {session ? (
+    <div className="discussion-view-container">
+      {/* Only render content if discussion is loaded */}
+      {discussion ? (
         <>
-          <div className="session-info">
-            <h1>{session.title}</h1>
-            <p className="prompt">{session.prompt}</p>
+          <div className="discussion-info">
+            <h1>{discussion.title}</h1>
+            <p className="prompt">{discussion.prompt}</p>
             <div className="stats">
               <div className="stat">
-                <span className="stat-value">{session.idea_count}</span>
+                <span className="stat-value">{discussion.idea_count}</span>
                 <span className="stat-label">Ideas</span>
               </div>
               <div className="stat">
-                <span className="stat-value">{clusters.length}</span>
+                <span className="stat-value">{topics.length}</span>
                 <span className="stat-label">Currents</span>
               </div>
               <div className="stat">
                 <span className="stat-value">
-                  {countByClusterType("ripples")}
+                  {countByTopicType("ripples")}
                 </span>
                 <span className="stat-label">Ripples</span>
               </div>
               <div className="stat">
                 <span className="stat-value">
-                  {countByClusterType("waves")}
+                  {countByTopicType("waves")}
                 </span>
                 <span className="stat-label">Waves</span>
               </div>
               <div className="stat">
                 <span className="stat-value">
-                  {countByClusterType("breakers")}
+                  {countByTopicType("breakers")}
                 </span>
                 <span className="stat-label">Breakers</span>
               </div>
               <div className="stat">
                 <span className="stat-value">
-                  {countByClusterType("tsunamis")}
+                  {countByTopicType("tsunamis")}
                 </span>
                 <span className="stat-label">Tsunamis</span>
               </div>
             </div>
-            <div className="session-actions">
-              {session && ( // Only show share if session data loaded
+            <div className="discussion-actions">
+              {discussion && ( // Only show share if discussion data loaded
                 <button
                   className="share-button"
                   onClick={() => setShowShareModal(true)}
@@ -406,47 +406,47 @@ const goSwim = (id) => {
               </form>
             </div>
 
-            <div className="clusters-section">
+            <div className="topics-section">
               <h2>Motions in the Ocean</h2>
-              {clusters.length === 0 ? (
-                <div className="no-clusters">
+              {topics.length === 0 ? (
+                <div className="no-topics">
                   <p>No ideas submitted yet. Be the first to contribute!</p>
                 </div>
               ) : (
-                <div className="clusters-list">
-                  {clusters.map((cluster) => (
-                    <div  className="cluster-view-content">
+                <div className="topics-list">
+                  {topics.map((topic) => (
+                    <div  className="topic-view-content">
                       <Accordion
-                        key={cluster.id}
+                        key={topic.id}
                         type="single"
                         collapsible
                         className="w-full max-w-xl"
                       >
-                        <AccordionItem value={cluster.id}>
+                        <AccordionItem value={topic.id}>
                           <AccordionTrigger>
-                            <div className="cluster-details">
-                              <h2 className="cluster-title">
-                                {cluster.representative_text}
+                            <div className="topic-details">
+                              <h2 className="topic-title">
+                                {topic.representative_text}
                               </h2>
-                              <div className="cluster-meta">
+                              <div className="topic-meta">
                                 <div>
-                                <Badge variant="neutral">{getClusterType(cluster.count)}</Badge>
-                                <Badge>{cluster.count} Ideas</Badge>
+                                <Badge variant="neutral">{getTopicType(topic.count)}</Badge>
+                                <Badge>{topic.count} Ideas</Badge>
                                 </div>
-                                <Button onClick={() => goSwim(cluster.id)} className="cluster-header">
+                                <Button onClick={() => goSwim(topic.id)} className="topic-header">
                                                 Go Swimming
                                 </Button>
                               </div>
                             </div>
                           </AccordionTrigger>
                           <AccordionContent>
-                            {!cluster.ideas || cluster.ideas.length === 0 ? (
+                            {!topic.ideas || topic.ideas.length === 0 ? (
                               <div className="no-ideas">
-                                <p>No ideas found in this cluster.</p>
+                                <p>No ideas found in this topic.</p>
                               </div>
                             ) : (
                               <>
-                                {cluster.ideas.map((idea) => (
+                                {topic.ideas.map((idea) => (
                                   <div className="idea-card" key={idea.id}>
                                     <p>{idea.text}</p>
                                     <div className="idea-meta">
@@ -484,16 +484,16 @@ const goSwim = (id) => {
           </div>
         </>
       ) : (
-        // Render something if session is null after loading (shouldn't happen if fetch error navigates away)
-        <div className="session-view-container error">
+        // Render something if discussion is null after loading (shouldn't happen if fetch error navigates away)
+        <div className="discussion-view-container error">
           <h2>Error</h2>
-          <p>Could not load session details.</p>
+          <p>Could not load discussion details.</p>
         </div>
       )}
 
       {/* Share Modal */}
       {showShareModal &&
-        session && ( // Ensure session exists before rendering modal
+        discussion && ( // Ensure discussion exists before rendering modal
           <div
             className="modal-overlay"
             onClick={() => setShowShareModal(false)}
@@ -518,9 +518,9 @@ const goSwim = (id) => {
                 <div className="share-link">
                   <input
                     type="text"
-                    value={session.join_link}
+                    value={discussion.join_link}
                     readOnly
-                    aria-label="Session join link" // Accessibility
+                    aria-label="Discussion join link" // Accessibility
                   />
                   <button className="copy-button" onClick={copyShareLink}>
                     Copy
@@ -529,8 +529,8 @@ const goSwim = (id) => {
                 <div className="qr-code">
                   <h3>Or scan this QR code:</h3>
                   <img
-                    src={session.qr_code}
-                    alt="QR Code for session link"
+                    src={discussion.qr_code}
+                    alt="QR Code for discussion link"
                   />{" "}
                   {/* Improved alt text */}
                 </div>
@@ -542,4 +542,4 @@ const goSwim = (id) => {
   );
 }
 
-export default SessionView;
+export default DiscussionView;

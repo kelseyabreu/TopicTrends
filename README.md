@@ -37,7 +37,7 @@ Whether used in town halls, corporate meetings, classrooms, or public forums, To
 - **Intelligent Idea/Topic Grouping**: Automatically categorizes similar ideas using semantic understanding
 - **Real-time Collaboration**: Updates appear instantly as new ideas are submitted
 - **Identity Options**: Support for both anonymous and verified submissions
-- **Shareable Sessions**: Easy distribution via link or QR code
+- **Shareable Discussions**: Easy distribution via link or QR code
 - **Responsive Design**: Works on all devices from phones to desktops
 - **No Category Restrictions**: Ideas are grouped naturally without predefined categories
 
@@ -48,7 +48,7 @@ Whether used in town halls, corporate meetings, classrooms, or public forums, To
 - **Database**: MongoDB
 - **AI/Machine Learning**: 
   - Currently uses Genkit with Ollama for embedding and clustering
-  - Uses nomic-embed-text for text embeddings and gemma3 for cluster naming
+  - Uses nomic-embed-text for text embeddings and gemma3 for topic naming
 - **Real-time Communication**: Socket.IO
 - **Deployment**: Vercel (backend), Netlify (frontend), MongoDB Atlas (database)
 
@@ -155,8 +155,8 @@ Whether used in town halls, corporate meetings, classrooms, or public forums, To
 With both the backend and frontend running:
 
 1. Open your browser to http://localhost:5173
-2. Create a new discussion session
-3. Use the generated link to access the session from any device on your network
+2. Create a new discussion
+3. Use the generated link to access the discussion from any device on your network
 
 ## Production Deployment
 
@@ -275,7 +275,7 @@ TopicTrends uses a sophisticated natural language processing approach to underst
 1. **Text Embeddings**: Each idea is converted into a high-dimensional vector using semantic models
 2. **Similarity Calculation**: Cosine similarity measures how related ideas are to each other
 3. **Clustering**: Ideas are grouped based on their semantic similarity
-4. **Representative Selection**: The most central idea in each cluster becomes its representative
+4. **Representative Selection**: The most central idea in each topic becomes its representative
 
 ### Real-time Updates
 
@@ -283,7 +283,7 @@ The platform uses Socket.IO to provide immediate updates:
 
 1. When a new idea is submitted, it's stored in the database
 2. A background task processes the clustering algorithm
-3. Updated clusters are emitted to all connected clients
+3. Updated topics are emitted to all connected clients
 4. The UI refreshes to show the new organization
 
 ## Troubleshooting

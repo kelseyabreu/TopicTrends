@@ -13,19 +13,22 @@
    - ✅ Profile update functionality (name, location, timezone)
    - ✅ Settings persistence to database
 
-3. **Sessions & Ideas**
-   - ✅ Creating discussion sessions
-   - ✅ Joining sessions via direct links
+3. **Discussions & Ideas**
+   - ✅ Creating discussions
+   - ✅ Joining discussions via direct links
    - ✅ Submitting ideas
    - ✅ Real-time updates via Socket.IO
    - ✅ AI-powered grouping of similar ideas
-   - ✅ Viewing clusters and individual ideas
+   - ✅ Viewing topics and individual ideas
 
 4. **Sharing**
-   - ✅ QR code generation for session links
+   - ✅ QR code generation for discussion links
    - ✅ Share modal with copyable link
-   - ✅ Session link generation
-
+   - ✅ Discussion link generation
+   
+   5.  **Core Refactoring & Consistency** 
+    *   ✅ **Completed Core Terminology Refactor (Session->Discussion, Cluster->Topic)** 
+      
 ## What's Missing or Incomplete
 
 1. **User Experience**
@@ -37,15 +40,15 @@
 2. **User Management**
    - ❌ Password reset functionality
    - ❌ User roles and permissions
-   - ❌ Session ownership and access control
+   - ❌ Discussion ownership and access control
    - ❌ Admin dashboard
 
-3. **Session Management**
-   - ❌ View for "My Sessions" (created by the user)
-   - ❌ View for "Joined Sessions" (participated in)
-   - ❌ Trending/popular sessions view
-   - ❌ Public vs. private session settings
-   - ❌ Session categories or tags
+3. **Discussion Management**
+   - ❌ View for "My Discussions" (created by the user)
+   - ❌ View for "Joined Discussions" (participated in)
+   - ❌ Trending/popular discussions view
+   - ❌ Public vs. private discussion settings
+   - ❌ Discussion categories or tags
 
 4. **Verification System**
    - ⚠️ Partial implementation - UI is there but backend needs work
@@ -93,8 +96,8 @@
 
 2. **Medium-term (Feature Completion)**
    - 🔼 Implement idea likes functionality
-   - 🔼 Add session filtering and categorization
-   - 🔼 Create "My Sessions" and "Joined Sessions" views
+   - 🔼 Add discussion filtering and categorization
+   - 🔼 Create "My Discussions" and "Joined Discussions" views
    - 🔼 Develop basic charts and visualizations
    - 🔼 Complete verification system implementation
 

@@ -1,7 +1,7 @@
-/* File: src/styles/ClusterView.css */
-/* Extending SessionView styles with cluster-specific additions */
+/* File: src/styles/TopicView.css */
+/* Extending DiscussionView styles with topic-specific additions */
 
-.cluster-page  .cluster-details {
+.topic-page  .topic-details {
   background-color: #fff;
   border-radius: 8px;
   padding: 20px;
@@ -9,14 +9,14 @@
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.cluster-title {
+.topic-title {
   font-size: 1.8rem;
   font-weight: 700;
   margin-bottom: 15px;
   color: var(--dark);
 }
 
-.cluster-meta {
+.topic-meta {
   display: flex;
   flex-direction: row;
   gap:12px;
@@ -25,7 +25,7 @@
   margin-top: 15px;
 }
 
-.cluster-page  .cluster-type {
+.topic-page  .topic-type {
   background-color: var(--primary);
   color: white;
   padding: 6px 12px;
@@ -34,7 +34,7 @@
   font-weight: 600;
 }
 
-.cluster-count {
+.topic-count {
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--gray);
@@ -58,13 +58,13 @@
   text-decoration: underline;
 }
 
-.cluster-page .cluster-view-content {
+.topic-page .topic-view-content {
   width: 100%;
   max-width: 900px;
   margin: 0 auto;
 }
 
-.cluster-page .ideas-list {
+.topic-page .ideas-list {
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -72,7 +72,7 @@
   padding: 0 20px;
 }
 
-.cluster-page .idea-card {
+.topic-page .idea-card {
   background-color: white;
   border-radius: 8px;
   padding: 20px;
@@ -80,12 +80,12 @@
   transition: transform 0.3s, box-shadow 0.3s;
 }
 
-.cluster-page .idea-card:hover {
+.topic-page .idea-card:hover {
   transform: translateY(-3px);
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
 
-.cluster-page  .idea-meta {
+.topic-page  .idea-meta {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -125,7 +125,7 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .cluster-meta {
+  .topic-meta {
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;

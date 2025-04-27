@@ -35,33 +35,33 @@ frontend/
 │   │   ├── Header.tsx
 │   │   └── ProtectedRoute.tsx
 │   ├── interfaces/          # TypeScript interfaces
-│   │   ├── clusters.ts
+│   │   ├── topics.ts
 │   │   ├── ideas.ts
-│   │   └── sessions.ts
+│   │   └── discussions.ts
 │   ├── lib/                 # Utility functions
 │   │   └── utils.ts
 │   ├── pages/               # Page components
-│   │   ├── AllSessionsView.tsx
-│   │   ├── ClusterView.tsx
-│   │   ├── CreateSession.tsx
+│   │   ├── AllDiscussionsView.tsx
+│   │   ├── TopicView.tsx
+│   │   ├── CreateDiscussion.tsx
 │   │   ├── Home.tsx
-│   │   ├── JoinSession.tsx
+│   │   ├── JoinDiscussion.tsx
 │   │   ├── Login.tsx
 │   │   ├── Register.tsx
-│   │   ├── SessionView.tsx
+│   │   ├── DiscussionView.tsx
 │   │   ├── UserSettings.tsx
 │   │   └── VerifyEmail.tsx
 │   ├── services/            # API and authentication services
 │   │   └── authService.tsx
 │   ├── styles/              # CSS styles
-│   │   ├── AllSessionsView.css
+│   │   ├── AllDiscussionsView.css
 │   │   ├── Auth.css
-│   │   ├── ClusterView.css
-│   │   ├── CreateSession.css
+│   │   ├── TopicView.css
+│   │   ├── CreateDiscussion.css
 │   │   ├── Header.css
 │   │   ├── Home.css
-│   │   ├── JoinSession.css
-│   │   └── SessionView.css
+│   │   ├── JoinDiscussion.css
+│   │   └── DiscussionView.css
 │   ├── utils/               # Utility functions
 │   │   └── api.ts
 │   ├── App.css
@@ -78,10 +78,10 @@ frontend/
 ## Key Features
 
 - **User Authentication**: Register, login, and email verification
-- **Session Management**: Create and join discussion sessions
+- **Discussion Management**: Create and join discussion discussions
 - **Real-time Updates**: See new ideas and groupings instantly
 - **Idea Clustering**: Automatically grouped ideas by similarity
-- **Maritime Theme**: Clusters are categorized by size as:
+- **Maritime Theme**: Topics are categorized by size as:
   - **Ripples**: Small groups (≤10 ideas)
   - **Waves**: Medium groups (11-25 ideas)
   - **Breakers**: Large groups (26-50 ideas)
@@ -93,8 +93,8 @@ frontend/
 The frontend implements real-time updates with Socket.IO as follows:
 
 - **Connection Setup**: Establishes a WebSocket connection to the backend
-- **Room-Based Updates**: Each session has its own Socket.IO room
-- **Event Handling**: Listens for "clusters_updated" events from the server
+- **Room-Based Updates**: Each discussion has its own Socket.IO room
+- **Event Handling**: Listens for "topics_updated" events from the server
 - **Automatic UI Refresh**: Updates the UI in real time when new ideas are submitted
 
 ## Getting Started

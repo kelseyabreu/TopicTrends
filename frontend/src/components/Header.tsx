@@ -43,8 +43,8 @@ function Header() {
 
             <div className={menuOpen ? 'links active' : 'links'}>
                 <Link to="/">Home</Link>
-                <Link to="/sessions">Sessions</Link>
-                <Link to="/create">Create Session</Link>
+                <Link to="/discussions">Discussions</Link>
+                <Link to="/create">Create Discussion</Link>
 
                 {user ? (
                     <>

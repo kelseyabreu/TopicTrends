@@ -97,7 +97,7 @@ Whether collecting ideas from 10 participants or 10,000, TopicTrends maintains p
 - **Classroom Engagement**: Increase participation by giving every student a voice
 - **Curriculum Development**: Gather feedback from students, parents, and educators
 - **Campus Improvement**: Identify student priorities for facilities and services
-- **Conference Sessions**: Enhance Q&A segments with organized audience input
+- **Conference Discussions**: Enhance Q&A segments with organized audience input
 
 ### Event Management
 
