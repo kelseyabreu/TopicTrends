@@ -55,7 +55,6 @@ async def submit_idea(
         {"_id": discussion_id},
         {"$inc": {"idea_count": 1}}
     )
-    idea_submit = IdeaSubmit(**idea_data)
 
     # Trigger topic processing in the background
     background_tasks.add_task(background_ai_processes, discussion_id, idea_data)
