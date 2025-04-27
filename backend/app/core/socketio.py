@@ -24,18 +24,18 @@ async def disconnect(sid):
 
 @sio.event
 async def join(sid, data):
-    """Join a session room for real-time updates"""
-    session_id = data
-    print(f"Client {sid} joining room {session_id}")
-    await sio.enter_room(sid, session_id)
+    """Join a discussion room for real-time updates"""
+    discussion_id = data
+    print(f"Client {sid} joining room {discussion_id}")
+    await sio.enter_room(sid, discussion_id)
     return {"status": "joined"}
 
 @sio.event
 async def leave(sid, data):
-    """Leave a session room"""
-    session_id = data
-    print(f"Client {sid} leaving room {session_id}")
-    await sio.leave_room(sid, session_id)
+    """Leave a discussion room"""
+    discussion_id = data
+    print(f"Client {sid} leaving room {discussion_id}")
+    await sio.leave_room(sid, discussion_id)
     return {"status": "left"}
 
 # Optional: Define a helper for emitting if needed elsewhere, though direct sio.emit is often fine

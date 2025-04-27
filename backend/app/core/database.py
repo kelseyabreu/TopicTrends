@@ -43,12 +43,12 @@ async def initialize_database():
         collections = await db.list_collection_names()
         if "users" not in collections:
             await db.create_collection("users")
-        if "sessions" not in collections:
-            await db.create_collection("sessions")
+        if "discussions" not in collections:
+            await db.create_collection("discussions")
         if "ideas" not in collections:
             await db.create_collection("ideas")
-        if "clusters" not in collections:
-            await db.create_collection("clusters")
+        if "topics" not in collections:
+            await db.create_collection("topics")
             
         return db
             

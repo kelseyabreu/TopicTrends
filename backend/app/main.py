@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Import routers
-from app.routers import sessions, ideas, clusters, auth
+from app.routers import discussions, ideas, topics, auth
 from app.core.database import init_db, initialize_database
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -72,9 +72,9 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(sessions.router, prefix="/api")
+app.include_router(discussions.router, prefix="/api")
 app.include_router(ideas.router, prefix="/api")
-app.include_router(clusters.router, prefix="/api")
+app.include_router(topics.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 
 # Mount Socket.IO app
