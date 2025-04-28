@@ -21,6 +21,12 @@ class Idea(BaseModel):
     timestamp: datetime
     embedding: list[float] | None = None
     topic_id: Optional[str] = None
+    intent: Optional[str] = None
+    keywords: Optional[list[str]] = []
+    sentiment: Optional[str] = None
+    specificity: Optional[str] = None
+    related_topics: Optional[list[str]] = []
+    on_topic: Optional[float] = None
 # Topics have many ideas
 class Topic(BaseModel):
     id: str

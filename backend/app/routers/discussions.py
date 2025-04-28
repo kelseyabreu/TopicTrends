@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, status, Depends, Response
 from typing import List
 import uuid
 from datetime import datetime
@@ -100,3 +100,40 @@ async def get_discussions():
     """Get all discussions"""
     discussions = await fetch_all_discussions()
     return [{"id": discussion["_id"], **discussion} for discussion in discussions]
+
+@router.delete("/discussions/{discussion_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_discussion(
+    discussion_id: str,
+    db=Depends(get_db)
+    # current_user=Depends(verify_token) # TODO: Add authentication later
+):
+    """
+    Delete a discussion and all its associated ideas and topics.
+    """
+    logger.info(f"Attempting to delete discussion with ID: {discussion_id}")
+
+    # 1. Verify discussion exists (optional but good practice)
+    # get_discussion_by_id raises 404 if not found
+    discussion = await get_discussion_by_id(discussion_id)
+    # TODO: Add permission check here in the future (e.g., if current_user['_id'] == discussion['creator_id'])
+
+    # 2. Delete associated ideas
+    idea_delete_result = await db.ideas.delete_many({"discussion_id": discussion_id})
+    logger.info(f"Deleted {idea_delete_result.deleted_count} ideas for discussion {discussion_id}")
+
+    # 3. Delete associated topics
+    topic_delete_result = await db.topics.delete_many({"discussion_id": discussion_id})
+    logger.info(f"Deleted {topic_delete_result.deleted_count} topics for discussion {discussion_id}")
+
+    # 4. Delete the discussion itself
+    discussion_delete_result = await db.discussions.delete_one({"_id": discussion_id})
+
+    if discussion_delete_result.deleted_count == 0:
+        # This shouldn't happen if get_discussion_by_id succeeded, but good to check
+        logger.warning(f"Discussion {discussion_id} was not found for deletion after dependents were removed.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Discussion not found during final delete step.")
+
+    logger.info(f"Successfully deleted discussion {discussion_id}")
+
+    # Return No Content response
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
