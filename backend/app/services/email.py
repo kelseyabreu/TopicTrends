@@ -156,3 +156,38 @@ async def send_verification_email(to_email: str, username: str, verification_cod
 
     # Send the email using the updated send_email function
     return await send_email(to_email, subject, html_content)
+
+async def send_password_reset_email(to_email: str, username: str, reset_token: str):
+    """Send password reset email with token"""
+    subject = "Reset Your Password - TopicTrends"
+
+    # Create reset URL with token
+    reset_url = f"{FRONTEND_URL}/reset-password?email={to_email}&token={reset_token}"
+
+    html_content = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h1 style="color: #3498db;">TopicTrends</h1> 
+        </div>
+        <div style="background-color: #f9f9f9; border-radius: 5px; padding: 20px; margin-bottom: 20px;">
+            <h2>Hello {username},</h2>
+            <p>We received a request to reset your password for your TopicTrends account. Click the button below to reset your password:</p>
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{reset_url}" style="background-color: #3498db; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">Reset Password</a>
+            </div>
+            <p>If you didn't request a password reset, you can safely ignore this email. Your password will not be changed.</p>
+            <p>This link will expire in 1 hour for security reasons.</p>
+        </div>
+        <div style="text-align: center; font-size: 12px; color: #777;">
+            <p>© 2025 TopicTrends. All rights reserved.</p> 
+        </div>
+    </body>
+    </html>
+    """
+
+    logger.info(f"Password reset email sent to: {to_email}")
+    logger.info(f"Password reset URL: {reset_url}")
+
+    # Send the email
+    return await send_email(to_email, subject, html_content)
