@@ -50,18 +50,27 @@
    - ❌ Public vs. private discussion settings
    - ❌ Discussion categories or tags
 
-4. **Verification System**
+4. **Fix sockerIO events for multiple users**
+   - ❌ if idea/topic is added by one user, it should be reflected in other users' UI
+   - ❌ if idea/topic is deleted by one user, it should be reflected in other users' UI
+
+5. **Queues/Background tasks**
+   - ❌ Background task for clustering
+   - ❌ Queue management for real-time updates
+   - ❌ Error handling and retry logic for background tasks
+
+6. **Verification System**
    - ⚠️ Partial implementation - UI is there but backend needs work
    - ❌ Multiple verification methods (ID, passport, etc.)
    - ❌ Verification API integration
 
-5. **Performance & Testing**
+7. **Performance & Testing**
    - ❌ Load testing for max connections
    - ❌ Performance testing for grouping with large datasets
    - ❌ Concurrent submissions stress testing
    - ❌ End-to-end and integration tests
 
-6. **Deployment & Operations**
+8. **Deployment & Operations**
    - ❌ Production-ready configuration
    - ❌ Monitoring and analytics
    - ❌ Rate limiting and security measures

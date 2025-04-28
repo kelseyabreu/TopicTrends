@@ -1,18 +1,23 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import authService from '../services/authService';
+import { useAuth } from '../context/AuthContext';
+import { AuthStatus } from '../enums/AuthStatus';
 
-// This is going to be used later when we add users to the topicing ideas and topics
 function ProtectedRoute({ children }) {
-  const location = useLocation();
-  const isAuthenticated = authService.isLoggedIn();
-  
-  if (!isAuthenticated) {
-    // Redirect to login page, but save the location they were trying to access
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-  
-  return children;
+    const { authStatus } = useAuth();
+    const location = useLocation();
+
+    if (authStatus === AuthStatus.Loading) {
+        return <div>Loading...</div>;
+    }
+
+    if (authStatus !== AuthStatus.Authenticated) {
+        // Redirect to login page, but save the location they were trying to access
+        console.log('ProtectedRoute: Not authenticated, redirecting to login.');
+        return <Navigate to="/login" state={{ from: location }} replace />;
+    }
+
+    return children;
 }
 
 export default ProtectedRoute;

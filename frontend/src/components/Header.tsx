@@ -1,33 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import authService from '../services/authService';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { Button } from '@/components/ui/button';
 import '../styles/Header.css';
 
 function Header() {
-    const [user, setUser] = useState(null);
+    const { user, logout } = useAuth();
     const [menuOpen, setMenuOpen] = useState(false);
     const navigate = useNavigate();
-    const location = useLocation();
 
-    // Check auth status whenever location changes (after login/logout/navigation)
-    useEffect(() => {
-        // Check if user is logged in
-        const currentUser = authService.getUser();
-        setUser(currentUser);
-
-        // Close mobile menu when route changes
-        setMenuOpen(false);
-    }, [location]);
-
-    const handleLogout = () => {
-        authService.logout();
-        setUser(null);
+    const handleLogout = async () => {
+        await logout();
         navigate('/');
     };
 
-    const toggleMenu = () => {
-        setMenuOpen(!menuOpen);
-    };
+    const toggleMenu = () => setMenuOpen(prev => !prev);
+    const handleLinkClick = () => setMenuOpen(false);
 
     return (
         <div className="header">
@@ -42,20 +30,22 @@ function Header() {
             </div>
 
             <div className={menuOpen ? 'links active' : 'links'}>
-                <Link to="/">Home</Link>
-                <Link to="/discussions">Discussions</Link>
-                <Link to="/create">Create Discussion</Link>
+                <Link to="/" onClick={handleLinkClick}>Home</Link>
+                <Link to="/discussions" onClick={handleLinkClick}>Discussions</Link>
+                <Link to="/create" onClick={handleLinkClick}>Create Discussion</Link>
 
                 {user ? (
                     <>
-                        <Link to="/settings">Settings</Link>
-                        <button className="logout-btn" onClick={handleLogout}>Logout</button>
+                        <Link to="/settings" onClick={handleLinkClick}>Settings</Link>
+                        <Button variant="noShadow" className="logout-btn" onClick={handleLogout}>Logout</Button>
                         <span className="user-greeting">Welcome, {user.username}</span>
                     </>
                 ) : (
                     <>
-                        <Link to="/login">Login</Link>
-                        <Link to="/register" className="register-btn">Register</Link>
+                        <Link to="/login" onClick={handleLinkClick}>Login</Link>
+                        <Button className="register-btn" onClick={() => { handleLinkClick(); navigate('/register'); }}>
+                            Register
+                        </Button>
                     </>
                 )}
             </div>

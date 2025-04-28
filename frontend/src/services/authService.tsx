@@ -1,20 +1,5 @@
 import { api } from '../utils/api';
 
-// Token management functions
-const TOKEN_KEY = 'token';
-const USER_KEY = 'user';
-
-const getToken = () => localStorage.getItem(TOKEN_KEY);
-const setToken = (token: string) => localStorage.setItem(TOKEN_KEY, token);
-const removeToken = () => localStorage.removeItem(TOKEN_KEY);
-
-const getUser = () => {
-    const user = localStorage.getItem(USER_KEY);
-    return user ? JSON.parse(user) : null;
-};
-const setUser = (user) => localStorage.setItem(USER_KEY, JSON.stringify(user));
-const removeUser = () => localStorage.removeItem(USER_KEY);
-
 const authService = {
     // Register new user
     register: async (userData) => {
@@ -22,83 +7,63 @@ const authService = {
         return response.data;
     },
 
-    // Login user
-    login: async (email: string, password: string) => {
-        const formData = new FormData();
-        formData.append('username', email); // OAuth2 expects 'username'
-        formData.append('password', password);
+    // Login user 
+    login: async (email, password) => {
+        const params = new URLSearchParams();
+        params.append('username', email); // Backend's OAuth2PasswordRequestForm expects 'username'
+        params.append('password', password);
 
-        const response = await api.post('/auth/login', formData, {
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-        });
-
-        // Save token and user data
-        setToken(response.data.access_token);
-        setUser({
-            id: response.data.user_id,
-            username: response.data.username,
-        });
-
+        // API call triggers the server to set the cookie
+        const response = await api.post('/auth/login', params);
         return response.data;
     },
 
     // Verify email
-    verifyEmail: async (email: string, code: string) => {
+    verifyEmail: async (email, code) => {
         const response = await api.post(`/auth/verify?email=${encodeURIComponent(email)}`, { code });
         return response.data;
     },
 
     // Resend verification email
-    resendVerification: async (email: string) => {
+    resendVerification: async (email) => {
         // Use encodeURIComponent for safety in query params
         const response = await api.post(`/auth/resend-verification?email=${encodeURIComponent(email)}`);
         return response.data;
     },
 
-    // Get current user
+    // Get current user 
     getCurrentUser: async () => {
         try {
             const response = await api.get('/auth/me');
-            return response.data;
+            return response.data; 
         } catch (error) {
-            // The global interceptor in api.ts already logs 401 errors.
-            // Specific handling like auto-logout could be added here if needed.
+            // Handle 401 Unauthorized (not logged in or expired cookie)
             if (error?.response?.status === 401) {
-                console.warn("Attempted to get user with invalid/expired token.");
-                // Consider calling logout() here if auto-logout on 401 is desired
-                // authService.logout();
+                console.info("getCurrentUser failed (401): User not authenticated.");
+            } else {
+                // Log other potential errors
+                console.error("Error fetching current user:", error);
             }
-            throw error;
+            return null;
         }
     },
 
     // Update user profile
     updateProfile: async (profileData) => {
         const response = await api.put('/auth/profile', profileData);
-        // Fetch fresh user data after update and store it locally
-        const updatedUserData = await authService.getCurrentUser();
-        if (updatedUserData) {
-            setUser(updatedUserData);
-        }
         return response.data;
     },
 
-    // Logout user
-    logout: () => {
-        removeToken();
-        removeUser();
-        // Consider navigating the user after logout if needed
+    // Logout user - calls backend to clear the HTTP-only cookie
+    logout: async () => {
+        try {
+            await api.post('/auth/logout');
+        } catch (error) {
+            console.error("Logout API call failed:", error);
+            // Re-throw the error so the calling function knows the API call failed
+            throw error;
+        }
     },
-
-    // Check if user is logged in
-    isLoggedIn: () => {
-        return !!getToken();
-    },
-
-    // Get user from local storage
-    getUser,
 };
 
 export default authService;
