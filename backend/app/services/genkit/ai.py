@@ -1,8 +1,4 @@
-from app.core.database import get_db
-from app.models.schemas import Idea, Discussion, IdeaSubmit
-
 from app.services.genkit.cluster import cluster_ideas_into_topics
-from app.services.genkit.flows.format_idea import format_idea_flow
 from app.services.genkit.idea import process_idea
 
 
