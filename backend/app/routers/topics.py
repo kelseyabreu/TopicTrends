@@ -52,19 +52,21 @@ async def get_discussion_topics(discussion_id: str):
 @router.post("/topics")
 async def create_topics(
         background_tasks: BackgroundTasks,
-        topic_id: str = Body(..., description="Array of idea IDs to process")
+        topic_id: str = Body(..., description="Topic ID to create subtopics from")
 ):
     """
-    Process and group up a set of ideas based on their IDs.
-
-    This endpoint takes an array of idea IDs, groups them based on semantic similarity,
-    and runs the processing in the background.
-
+    Creates new subtopics one level deeper from an existing topic.
+    
+    This endpoint takes a topic ID and clusters its ideas into new subtopics
+    at a deeper hierarchical level, processing the clustering in the background.
+    
+    TODO: Modify to accept a list of idea IDs in the payload for custom clustering.
+    
     Args:
-        idea_ids: List of idea ID strings to be grouped up
-
+        topic_id: ID of the parent topic to create subtopics from
+        
     Returns:
-        A confirmation message that the clustering process has started
+        A confirmation message that the clustering process has started along with the clustering results
     """
 
     # Add the clustering task to background tasks
