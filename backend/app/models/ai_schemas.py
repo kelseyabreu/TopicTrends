@@ -1,11 +1,13 @@
 from pydantic import BaseModel, Field
 
+from app.models.enums.intent_type import IntentType
+
 
 class FormattedIdea(BaseModel):
     """
     Represents a formatted idea with intent, keywords, sentiment, specificity, and related topics.
     """
-    intent: str = Field(description="What kind of idea is this? Select only from these given examples (e.g., question, suggestion, problem)")
+    intent: IntentType = Field(description="What is the intent of this idea?")
     keywords: list[str] = Field(description="A list of keywords associated with the idea.")
     sentiment: str = Field(description="The overall sentiment (e.g., positive, negative, neutral) expressed by the idea.")
     specificity: str = Field(description="The level of detail or focus of the idea (e.g., broad, specific).")
