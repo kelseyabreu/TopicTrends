@@ -1,20 +1,16 @@
-import axios, { AxiosInstance, AxiosHeaders, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 
 interface ApiClientOptions {
     basePath?: string;
     headers?: Record<string, string>;
     timeout?: number;
-    getToken?: () => string | null | undefined;
 }
-
-const defaultGetToken = (): string | null => localStorage.getItem('token');
 
 export const createApiClient = (options: ApiClientOptions = {}): AxiosInstance => {
     const {
         basePath = '/api',
         headers = {},
-        timeout = 30000,
-        getToken = defaultGetToken,
+        timeout = 30000
     } = options;
 
     const viteApiUrl = import.meta.env.VITE_API_URL;
@@ -28,23 +24,14 @@ export const createApiClient = (options: ApiClientOptions = {}): AxiosInstance =
         baseURL,
         timeout,
         headers: {
-            'Content-Type': 'application/json',
+            //'Content-Type': 'application/json',
             'Accept': 'application/json',
             ...headers,
         },
+        withCredentials: true,
     });
 
-    // Request interceptor (Add Authorization header) 
-    client.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-        const token = getToken();
-        if (token) {
-            config.headers = new AxiosHeaders();;
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-    });
-
-    // Response interceptor (Error Handling)
+    // Global error handler
     client.interceptors.response.use(
         (response) => response,
         (error) => {
