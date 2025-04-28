@@ -15,6 +15,15 @@ router = APIRouter(tags=["ideas"])
 
 
 # Routes
+@router.get("/ideas/{idea_id}", response_model=Idea)
+async def get_idea_by_id(idea_id:str):
+    """Get an idea by its ID"""
+    db = await get_db()
+    idea = await db.ideas.find_one({"_id": idea_id})
+    if idea is None:
+        raise HTTPException(status_code=404, detail="Idea not found")
+    return Idea(id=idea["_id"], **{k: v for k, v in idea.items() if k!= '_id'})
+
 @router.post("/discussions/{discussion_id}/ideas")
 async def submit_idea(
         discussion_id: str,

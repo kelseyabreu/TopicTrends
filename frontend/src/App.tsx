@@ -14,6 +14,7 @@ import Header from './components/Header.tsx';
 import TopicView from './pages/TopicView';
 import ProtectedRoute from './components/ProtectedRoute.tsx';
 import UserSettings from './pages/UserSettings.tsx';
+import IdeaView from './pages/IdeaView.tsx';
 
 function App() {  
     return (
@@ -27,6 +28,7 @@ function App() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/verify" element={<VerifyEmail />} />
                 <Route path="/create" element={<CreateDiscussion />} />
+                <Route path="/ideas/:ideaId" element={<IdeaView />} />
                 <Route path="/join/:discussionId" element={<JoinDiscussion />} />
                 <Route path="/discussions" element={<AllDiscussionsView />} />
                 <Route path="/discussion/:discussionId" element={<DiscussionView />} />

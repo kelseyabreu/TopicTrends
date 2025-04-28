@@ -299,9 +299,9 @@ function DiscussionView() {
     if (count <= 50) return 'Breaker';
     return 'Tsunami';
 };
-const goSwim = (id) => {
-    navigate(`/discussion/${discussionId}/topic/${id}`)
-}
+  const goSwim = (id) => {
+      navigate(`/discussion/${discussionId}/topic/${id}`)
+  }
 
   // Render Loading state
   if (isLoading) {
@@ -414,9 +414,8 @@ const goSwim = (id) => {
               ) : (
                 <div className="topics-list">
                   {topics.map((topic) => (
-                    <div  className="topic-view-content">
+                    <div key={topic.id} className="topic-view-content">
                       <Accordion
-                        key={topic.id}
                         type="single"
                         collapsible
                         className="w-full max-w-xl"
@@ -432,9 +431,9 @@ const goSwim = (id) => {
                                 <Badge variant="neutral">{getTopicType(topic.count)}</Badge>
                                 <Badge>{topic.count} Ideas</Badge>
                                 </div>
-                                <Button onClick={() => goSwim(topic.id)} className="topic-header">
+                                {/* <Button onClick={() => goSwim(topic.id)} className="topic-header">
                                                 Go Swimming
-                                </Button>
+                                </Button> */}
                               </div>
                             </div>
                           </AccordionTrigger>
@@ -446,17 +445,13 @@ const goSwim = (id) => {
                             ) : (
                               <>
                                 {topic.ideas.map((idea) => (
-                                  <div className="idea-card" key={idea.id}>
-                                    <p>{idea.text}</p>
-                                    {idea?.related_topics?.length > 0 && (
-                                      <div className="related-topics">
-                                        {idea.related_topics.map((topic, index) => (
-                                          <Badge key={index} className="mr-2">
-                                            {topic}
-                                          </Badge>
-                                        ))}
-                                      </div>
-                                    )}
+                                  <div 
+                                    className="idea-card" 
+                                    key={idea.id}
+                                    onClick={() => navigate(`/ideas/${idea.id}`)}
+                                    style={{ cursor: 'pointer' }}
+                                  >
+                                    <p>{idea.text}</p>                                   
                                     <div className="idea-meta">
                                       <span className="idea-user">
                                         {idea.verified ? (
