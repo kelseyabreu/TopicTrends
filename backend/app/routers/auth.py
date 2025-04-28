@@ -3,6 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
 import uuid
 import logging
+logger = logging.getLogger(__name__)
 import secrets
 import string
 
