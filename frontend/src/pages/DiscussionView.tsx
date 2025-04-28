@@ -449,6 +449,15 @@ const goSwim = (id) => {
                                 {topic.ideas.map((idea) => (
                                   <div className="idea-card" key={idea.id}>
                                     <p>{idea.text}</p>
+                                    {idea?.related_topics?.length > 0 && (
+                                      <div className="related-topics">
+                                        {idea.related_topics.map((topic, index) => (
+                                          <Badge key={index} className="mr-2">
+                                            {topic}
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                    )}
                                     <div className="idea-meta">
                                       <span className="idea-user">
                                         {idea.verified ? (
