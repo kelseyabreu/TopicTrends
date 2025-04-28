@@ -5,4 +5,10 @@ export interface Idea {
     verified: boolean;
     timestamp: string;
     topic_id: string;
+    related_topics: string[];
+    keywords: string[];
+    on_topic: number;
+    sentiment:string;
+    specificity:string;
+    intent: string;
 }

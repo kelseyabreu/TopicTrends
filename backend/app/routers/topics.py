@@ -32,7 +32,14 @@ async def get_discussion_topics(discussion_id: str):
                 "verified": idea_data["verified"],
                 # Assuming timestamp in DB is datetime or ISO string parseable by Pydantic
                 "timestamp": idea_data["timestamp"],
-                "topic_id": topic["_id"] # Add topic_id
+                "topic_id": topic["_id"], # Add topic_id
+                #These are properties added by the LLM
+                "on_topic": idea_data.get("on_topic", None),
+                "keywords": idea_data.get("keywords", []),
+                "intent": idea_data.get("intent", None),
+                "sentiment": idea_data.get("sentiment", None),
+                "specificity": idea_data.get("specificity", None),
+                "related_topics": idea_data.get("related_topics", [])
             }
             for idea_data in topic.get("ideas", [])
         ]

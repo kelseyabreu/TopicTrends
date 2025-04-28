@@ -148,7 +148,12 @@ async def group_ideas_by_topic(labels: list, ideas: list, texts: list, embedded_
             "embedding": embedded_ideas[idx]["embedding"],
             "user_id": ideas[idx]["user_id"],
             "verified": ideas[idx]["verified"],
-            "timestamp": ideas[idx]["timestamp"]
+            "timestamp": ideas[idx]["timestamp"],
+            "on_topic": ideas[idx].get("on_topic", 0),
+            "keywords": ideas[idx].get("keywords", []),
+            "intent": ideas[idx].get("intent", None),
+            "sentiment": ideas[idx].get("sentiment", None),
+            "related_topics": ideas[idx].get("related_topics", [])
         })
 
     return topics_temp_data
@@ -170,6 +175,12 @@ async def update_database_and_emit(discussion_id: str, topics_temp_data: dict) -
             closest_idx = 0
 
         representative_idea_data = topic_ideas_data[closest_idx]
+        # Log topic_ideas_data before mapping (excluding embeddings)
+        logging.info(f"Processing topic ideas data for label {label} with {len(topic_ideas_data)} items")
+        for idx, idea in enumerate(topic_ideas_data):
+            # Create a copy of the idea without the embedding for logging
+            idea_log = {k: v for k, v in idea.items() if k != "embedding"}
+            logging.info(f"Item {idx}: {idea_log}")
 
         # Prepare ideas for output
         ideas_for_output = [{
@@ -177,7 +188,12 @@ async def update_database_and_emit(discussion_id: str, topics_temp_data: dict) -
             "text": idea["text"],
             "user_id": idea["user_id"],
             "verified": idea["verified"],
-            "timestamp": idea["timestamp"].isoformat() if isinstance(idea["timestamp"], datetime) else idea["timestamp"]
+            "timestamp": idea["timestamp"].isoformat() if isinstance(idea["timestamp"], datetime) else idea["timestamp"],
+            "on_topic": idea.get("on_topic", 0),
+            "keywords": idea.get("keywords", []),
+            "intent": idea.get("intent", None),
+            "sentiment": idea.get("sentiment", None),
+            "related_topics": idea.get("related_topics", [])
         } for idea in topic_ideas_data]
 
         # Update database
@@ -187,7 +203,6 @@ async def update_database_and_emit(discussion_id: str, topics_temp_data: dict) -
         topic_main_idea = await topic_name_suggestion_flow(simplified_ideas)
         title = topic_main_idea['representative_text']
 
-        print(f"ideas: ${ideas_for_output}")
         await db.topics.update_one(
             {"_id": topic_id},
             {"$set": {
@@ -274,7 +289,13 @@ async def generate_topic_results(topic_id: str, topics_temp_data: dict) -> list:
             "text": idea["text"],
             "user_id": idea["user_id"],
             "verified": idea["verified"],
-            "timestamp": idea["timestamp"].isoformat() if isinstance(idea["timestamp"], datetime) else idea["timestamp"]
+            "timestamp": idea["timestamp"].isoformat() if isinstance(idea["timestamp"], datetime) else idea["timestamp"],
+            "on_topic": idea.get("on_topic", None),
+            "keywords": idea.get("keywords", []),
+            "intent": idea.get("intent", None),
+            "sentiment": idea.get("sentiment", None),
+            "specificity": idea.get("specificity", None),
+            "related_topics": idea.get("related_topics", [])
         } for idea in topic_ideas_data]
 
         # Get topic name using AI
@@ -290,7 +311,6 @@ async def generate_topic_results(topic_id: str, topics_temp_data: dict) -> list:
             "count": len(topic_ideas_data),
             "ideas": ideas_for_output
         })
-    logging.debug(f"topic results??${topic_results}")
     return topic_results
 
 
