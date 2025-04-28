@@ -1,11 +1,10 @@
 // File: src/pages/DiscussionView.js
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import io from "socket.io-client";
 import "../styles/DiscussionView.css";
 import api from "../utils/api";
-import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button"
 
 import {
@@ -119,7 +118,7 @@ function DiscussionView() {
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      timeout: 20000,
+      timeout: 60000,
       autoConnect: true, // Let it auto-connect
     });
 

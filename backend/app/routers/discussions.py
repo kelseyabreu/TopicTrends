@@ -6,6 +6,7 @@ import base64
 import io
 import qrcode
 
+
 from app.models.schemas import Discussion, DiscussionCreate
 import logging
 from app.core.database import get_db
