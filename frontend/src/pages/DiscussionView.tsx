@@ -299,9 +299,9 @@ function DiscussionView() {
     if (count <= 50) return 'Breaker';
     return 'Tsunami';
 };
-const goSwim = (id) => {
-    navigate(`/discussion/${discussionId}/topic/${id}`)
-}
+  const goSwim = (id) => {
+      navigate(`/discussion/${discussionId}/topic/${id}`)
+  }
 
   // Render Loading state
   if (isLoading) {
@@ -445,18 +445,13 @@ const goSwim = (id) => {
                             ) : (
                               <>
                                 {topic.ideas.map((idea) => (
-                                  <div className="idea-card" key={idea.id}>
-                                    <p>{idea.text}</p>
-                                    <pre>{idea?.on_topic}</pre>
-                                   {idea?.related_topics?.length > 0 && (
-                                      <div className="related-topics">
-                                        {idea.related_topics.map((topic) => (
-                                          <Badge key={topic} variant="neutral" className="mr-2">
-                                            {topic}
-                                          </Badge>
-                                        ))}
-                                      </div>
-                                    )}
+                                  <div 
+                                    className="idea-card" 
+                                    key={idea.id}
+                                    onClick={() => navigate(`/ideas/${idea.id}`)}
+                                    style={{ cursor: 'pointer' }}
+                                  >
+                                    <p>{idea.text}</p>                                   
                                     <div className="idea-meta">
                                       <span className="idea-user">
                                         {idea.verified ? (
