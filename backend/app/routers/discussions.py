@@ -5,11 +5,11 @@ from datetime import datetime
 import base64
 import io
 import qrcode
-
-
-from app.models.schemas import Discussion, DiscussionCreate
 import logging
+from app.models.schemas import Discussion, DiscussionCreate
 from app.core.database import get_db
+
+logger = logging.getLogger(__name__)
 
 # Create router
 router = APIRouter(tags=["discussions"])

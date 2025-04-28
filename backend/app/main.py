@@ -2,13 +2,11 @@
 
 # Load environment variables from .env file
 from dotenv import load_dotenv
-import os
-
 load_dotenv()
-
 # Configure logging
+from app.core.logging import setup_logger
+setup_logger()
 import logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Import routers
@@ -19,8 +17,6 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 from fastapi.exceptions import HTTPException
 from fastapi.responses import JSONResponse
-import asyncio
-
 # Import Socket.IO setup
 from app.core.socketio import socket_app, sio
 
@@ -32,6 +28,7 @@ app = FastAPI(title="TopicTrends API")
 async def startup_event():
     logger.info("Initializing database...")
     await initialize_database()
+
     logger.info("Database initialization complete.")
 
 # Add custom exception handler
