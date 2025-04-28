@@ -7,7 +7,7 @@ import logging
 from app.routers.discussions import get_discussion_by_id
 from app.core.database import get_db
 from app.models.schemas import Idea, IdeaSubmit
-from app.services.genkit.ai import cluster_ideas_into_topics
+from app.services.genkit.ai import cluster_ideas_into_topics, background_ai_processes
 
 # Create router
 router = APIRouter(tags=["ideas"])
@@ -43,7 +43,7 @@ async def submit_idea(
         "user_id": idea.user_id,
         "verified": idea.verified,
         "verification_method": idea.verification_method,
-        "timestamp": datetime.utcnow(),
+        "timestamp": datetime.now(),
         "topic_id": None  # Will be assigned during processing
     }
 
@@ -57,7 +57,7 @@ async def submit_idea(
     )
 
     # Trigger topic processing in the background
-    background_tasks.add_task(cluster_ideas_into_topics, discussion_id)
+    background_tasks.add_task(background_ai_processes, discussion_id, idea_data)
 
     return {"id": str(idea_id), "message": "Idea submitted successfully"}
 
