@@ -366,6 +366,8 @@ async def cluster_ideas_into_topics(
         raise ValueError("discussion_id is required when persist_results is True")
 
     # Fetch ideas based on either discussion_id or grouped_ideas
+    # Keep in mind, sometimes topic_id is null
+    # For use of the Topics POST route, topic_id will be valid.
     ideas = await fetch_ideas(discussion_id, topic_id)
 
     if not ideas:
