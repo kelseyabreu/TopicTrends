@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status, Cookie
+from fastapi import Depends, HTTPException, status, Cookie, Request, Response
 from fastapi.security import OAuth2PasswordBearer
 import secrets
 import string
@@ -24,6 +24,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
+RESET_TOKEN_EXPIRE_MINUTES = 60  # 1 hour for password reset
 
 # Token dependency
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -189,3 +190,108 @@ async def verify_user(email: str, code: str):
         )
         return result.modified_count > 0
     return False
+
+async def logout(request: Request, response: Response):
+    """Logout user by clearing the cookie"""
+    response.delete_cookie("access_token", path="/")
+    return {"message": "Logout successful"}
+
+async def create_password_reset_token(user_id: str) -> str:
+    """Create a password reset token"""
+    # Create token with user_id and expiration
+    to_encode = {
+        "sub": user_id,
+        "type": "password_reset",  # Token type for identification
+        "exp": datetime.utcnow() + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES)
+    }
+    encoded_token = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    
+    # Store token hash in database for verification
+    db = await get_db()
+    token_data = {
+        "user_id": user_id,
+        "token": encoded_token,
+        "created_at": datetime.utcnow(),
+        "expires_at": datetime.utcnow() + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES),
+        "used": False
+    }
+    await db.password_reset_tokens.insert_one(token_data)
+    
+    return encoded_token
+
+async def verify_password_reset_token(email: str, token: str) -> Optional[str]:
+    """Verify a password reset token and return the user ID if valid"""
+    db = await get_db()
+    
+    try:
+        # First verify the token structure
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        token_type: str = payload.get("type")
+        
+        if user_id is None or token_type != "password_reset":
+            logger.warning(f"Invalid token format for password reset: {payload}")
+            return None
+            
+        # Check token in database
+        token_record = await db.password_reset_tokens.find_one({
+            "token": token,
+            "user_id": user_id,
+            "used": False,
+            "expires_at": {"$gt": datetime.utcnow()}
+        })
+        
+        if not token_record:
+            logger.warning(f"Token not found in database or already used: {token}")
+            return None
+            
+        # Verify the email matches the user
+        user = await db.users.find_one({"_id": user_id})
+        if not user or user["email"].lower() != email.lower():
+            logger.warning(f"Token associated with different email: {email} vs {user.get('email')}")
+            return None
+            
+        return user_id
+        
+    except JWTError as e:
+        logger.error(f"JWT error while verifying reset token: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Error verifying password reset token: {e}")
+        return None
+
+async def reset_user_password(user_id: str, new_password: str) -> bool:
+    """Reset user password"""
+    db = await get_db()
+    
+    try:
+        # Hash the new password
+        hashed_password = get_password_hash(new_password)
+        
+        # Update user password
+        result = await db.users.update_one(
+            {"_id": user_id},
+            {
+                "$set": {
+                    "password": hashed_password,
+                    "modified_at": datetime.utcnow()
+                }
+            }
+        )
+        
+        if result.modified_count == 0:
+            logger.warning(f"Failed to update password for user {user_id}")
+            return False
+            
+        # Mark all tokens for this user as used
+        await db.password_reset_tokens.update_many(
+            {"user_id": user_id, "used": False},
+            {"$set": {"used": True}}
+        )
+        
+        logger.info(f"Password reset successful for user {user_id}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error resetting password: {e}")
+        return False

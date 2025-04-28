@@ -49,7 +49,9 @@ async def initialize_database():
             await db.create_collection("ideas")
         if "topics" not in collections:
             await db.create_collection("topics")
-            
+        if "password_reset_tokens" not in collections:
+            await db.create_collection("password_reset_tokens")
+
         return db
             
     except (ConnectionFailure, ServerSelectionTimeoutError) as e:

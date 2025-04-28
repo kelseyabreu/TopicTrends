@@ -31,11 +31,27 @@ const authService = {
         return response.data;
     },
 
+    // Request password reset
+    requestPasswordReset: async (email) => {
+        const response = await api.post(`/auth/forgot-password?email=${encodeURIComponent(email)}`);
+        return response.data;
+    },
+
+    // Reset password
+    resetPassword: async (email, token, newPassword) => {
+        const response = await api.post('/auth/reset-password', {
+            email,
+            token,
+            password: newPassword
+        });
+        return response.data;
+    },
+
     // Get current user 
     getCurrentUser: async () => {
         try {
             const response = await api.get('/auth/me');
-            return response.data; 
+            return response.data;
         } catch (error) {
             // Handle 401 Unauthorized (not logged in or expired cookie)
             if (error?.response?.status === 401) {

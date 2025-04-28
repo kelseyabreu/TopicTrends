@@ -16,6 +16,11 @@ class UserLogin(BaseModel):
 class UserVerification(BaseModel):
     code: str
 
+class PasswordReset(BaseModel):
+    email: EmailStr
+    token: str
+    password: str = Field(..., min_length=8)
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

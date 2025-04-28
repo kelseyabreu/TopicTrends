@@ -6,14 +6,16 @@ import logging
 logger = logging.getLogger(__name__)
 import secrets
 import string
+from pydantic import BaseModel, EmailStr
 
-from app.models.user_schemas import UserCreate, UserVerification, User, UserUpdateProfile
+from app.models.user_schemas import UserCreate, UserVerification, User, UserUpdateProfile, PasswordReset
 from app.services.auth import (
     authenticate_user, create_user, verify_user, create_access_token,
     ACCESS_TOKEN_EXPIRE_MINUTES, verify_token_cookie, update_user_profile,
-    get_user_by_email, get_user_by_id
+    get_user_by_email, get_user_by_id, create_password_reset_token,
+    verify_password_reset_token, reset_user_password
 )
-from app.services.email import send_verification_email
+from app.services.email import send_verification_email, send_password_reset_email
 from app.core.database import get_db
 
 # Create router with tags for API docs
@@ -204,3 +206,56 @@ async def update_profile(profile_data: UserUpdateProfile, current_user=Depends(v
         "is_active": updated_user["is_active"],
         "is_verified": updated_user["is_verified"]
     }
+
+    @router.post("/forgot-password")
+    async def forgot_password(email: str, background_tasks: BackgroundTasks):
+        """Request password reset"""
+        user = await get_user_by_email(email)
+    
+        if not user:
+            # Don't reveal if email exists for security reasons
+            # But still return success to prevent email enumeration
+            return {"message": "If your email is registered, you will receive a password reset link."}
+    
+        # Only allow password reset for verified users
+        if not user.get("is_verified", False):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email not verified. Please verify your email first."
+            )
+    
+        # Generate a password reset token
+        reset_token = await create_password_reset_token(user["_id"])
+    
+        # Send password reset email
+        background_tasks.add_task(
+            send_password_reset_email,
+            email,
+            user["username"],
+            reset_token
+        )
+    
+        logging.info(f"Password reset requested for: {email}")
+        return {"message": "If your email is registered, you will receive a password reset link."}
+
+    @router.post("/reset-password")
+    async def reset_password(reset_data: PasswordReset):
+        """Reset password using token"""
+        # Verify token
+        user_id = await verify_password_reset_token(reset_data.email, reset_data.token)
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired reset token"
+            )
+    
+        # Reset password
+        success = await reset_user_password(user_id, reset_data.password)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to reset password"
+            )
+    
+        logging.info(f"Password reset successful for user ID: {user_id}")
+        return {"message": "Password reset successful. You can now login with your new password."}
