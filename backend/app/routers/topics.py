@@ -5,6 +5,7 @@ from app.models.schemas import Topic
 from app.core.database import get_db
 from app.routers.discussions import get_discussion_by_id
 import logging
+logger = logging.getLogger(__name__)
 
 # Create router
 router = APIRouter(tags=["topics"])

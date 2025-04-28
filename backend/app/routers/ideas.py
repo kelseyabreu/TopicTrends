@@ -3,6 +3,7 @@ from typing import List
 import uuid
 from datetime import datetime
 import logging
+logger = logging.getLogger(__name__)
 
 from app.routers.discussions import get_discussion_by_id
 from app.core.database import get_db
