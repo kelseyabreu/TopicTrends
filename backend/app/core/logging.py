@@ -12,4 +12,7 @@ def setup_logger():
         ]
     )
 
+    # Suppress specific noisy loggers
+    logging.getLogger('passlib.handlers.bcrypt').setLevel(logging.ERROR)
+
 # Call this function at application startup
