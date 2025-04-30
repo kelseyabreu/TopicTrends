@@ -5,6 +5,9 @@ services:
     build: .
     ports:
       - "8000:8000"
+    volumes: # Volume mount to sync your local code with the container:
+      - .:/app
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     environment:
       - MONGODB_URL=${MONGODB_URL}
       - CORS_ORIGINS=${CORS_ORIGINS}
@@ -18,7 +21,7 @@ services:
       - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
       - EMAIL_FROM_NAME=${EMAIL_FROM_NAME}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_HOST=${OLLAMA_HOST}
     depends_on:
       - ollama
     networks:
@@ -38,7 +41,7 @@ services:
       timeout: 5s
       retries: 5
     command: ollama serve
-    entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 10 && ollama pull phi3.5:latest && ollama pull nomic-embed-text && wait"]
+    entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 10 && ollama pull llama3.2:latest && ollama pull nomic-embed-text && wait"]
 
 volumes:
   ollama_data:

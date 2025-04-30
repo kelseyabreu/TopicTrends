@@ -2,6 +2,7 @@
 
 # Load environment variables from .env file
 from dotenv import load_dotenv
+
 load_dotenv()
 # Configure logging
 from app.core.logging import setup_logger
@@ -28,7 +29,6 @@ app = FastAPI(title="TopicTrends API")
 async def startup_event():
     logger.info("Initializing database...")
     await initialize_database()
-
     logger.info("Database initialization complete.")
 
 # Add custom exception handler
@@ -81,3 +81,4 @@ app.mount('/socket.io', socket_app)
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+

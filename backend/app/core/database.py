@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 # Global variables
 client: Optional[motor.motor_asyncio.AsyncIOMotorClient] = None
 db: Optional[motor.motor_asyncio.AsyncIOMotorDatabase] = None
+ai = None
 
 async def initialize_database():
     """Initialize MongoDB connection and set up global client and db objects."""

@@ -83,7 +83,7 @@ Before running the backend, ensure you have one of the following setups:
 
 3. **Build and start the containers**:
    ```bash
-   docker-compose up --build
+   docker-compose up --build --watch
    ```
    **To Stop the containers**
    ```bash
@@ -107,7 +107,7 @@ The API will be available at http://localhost:8000
 
 3. **Pull the LLM models**:
    ```bash
-   ollama pull gemma3
+   ollama pull lamma3.2
    ollama pull nomic-embed-text
    ```
 
