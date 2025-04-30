@@ -1,5 +1,5 @@
 import os
-from pydantic import BaseModel, Field
+import pydantic
 from genkit.ai import Genkit
 from genkit.plugins.google_genai import (
     GoogleAI
@@ -7,9 +7,9 @@ from genkit.plugins.google_genai import (
 
 import logging
 
-class MainIdea(BaseModel):
+class MainIdea(pydantic.BaseModel):
     """An overall main idea for a topic of ideas."""
-    representative_text: str = Field(description='Main idea for the group, a simple concise sentence')
+    representative_text: str = pydantic.Field(description='Main idea for the group, a simple concise sentence')
 
 ai = Genkit(
     plugins=[GoogleAI(api_key=os.environ.get("GOOGLE_API_KEY"))],
