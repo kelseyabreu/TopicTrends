@@ -1,24 +1,21 @@
 import os
 from pydantic import BaseModel, Field
-from genkit.ai import Document, Genkit, ToolRunContext, tool_response
+from genkit.ai import Genkit
 from genkit.plugins.google_genai import (
     GoogleAI
 )
-from genkit.types import (
-    ActionRunContext,
-    GenerationCommonConfig,
-    Message,
-    Role,
-    TextPart,
-)
+
 import logging
+
 class MainIdea(BaseModel):
     """An overall main idea for a topic of ideas."""
     representative_text: str = Field(description='Main idea for the group, a simple concise sentence')
+
 ai = Genkit(
     plugins=[GoogleAI(api_key=os.environ.get("GOOGLE_API_KEY"))],
     model='googleai/gemini-2.0-flash'
 )
+
 @ai.flow()
 async def topic_name_suggestion_flow(ideas: list) -> MainIdea:
     # Create a formatted list of idea texts

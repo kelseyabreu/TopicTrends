@@ -1,6 +1,6 @@
 from app.core.database import get_db
 from app.models.ai_schemas import FormattedIdea
-from app.models.schemas import Discussion, Idea, IdeaSubmit
+from app.models.schemas import Discussion
 from app.services.genkit.flows.format_idea import format_idea_flow
 from app.core.socketio import sio
 
@@ -47,9 +47,7 @@ async def process_idea(idea_data, discussion_id: str):
     if not discussion:
         raise ValueError(f"Discussion with ID {discussion_id} not found")
 
-    title = discussion.title
-    prompt = discussion.prompt
-    formatted_idea:FormattedIdea = await format_idea_flow(idea_data["text"], "Title:"+title+" - Description: "+prompt)
+    formatted_idea: FormattedIdea = await format_idea_flow(idea_data["text"], f"Title:{discussion.title} - Description: {discussion.prompt}")
     # await sio.emit(
     #     "idea_processed",
     #     {"idea_id": idea["id"], "formatted_idea": formatted_idea.model_dump()},
