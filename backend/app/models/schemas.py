@@ -34,6 +34,8 @@ class Topic(BaseModel):
     representative_text: str
     count: int
     ideas: List[Idea]
+    centroid_embedding: Optional[list[float]] = None
+    last_updated: Optional[datetime]
 
 class Discussion(BaseModel):
     id: str

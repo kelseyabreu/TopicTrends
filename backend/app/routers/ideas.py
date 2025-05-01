@@ -8,7 +8,9 @@ logger = logging.getLogger(__name__)
 from app.routers.discussions import get_discussion_by_id
 from app.core.database import get_db
 from app.models.schemas import Idea, IdeaSubmit
-from app.services.genkit.ai import cluster_ideas_into_topics, background_ai_processes
+from app.services.genkit.ai import cluster_ideas_into_topics
+from app.core.redis import add_to_queue
+from app.services.genkit.idea import process_idea
 
 # Create router
 router = APIRouter(tags=["ideas"])
@@ -66,10 +68,11 @@ async def submit_idea(
         {"$inc": {"idea_count": 1}}
     )
 
-    # Trigger topic processing in the background
-    background_tasks.add_task(background_ai_processes, discussion_id, idea_data)
+    # Add idea to processing queue
+    await add_to_queue(str(idea_id))
+    # await process_idea(idea_data, discussion_id)
 
-    return {"id": str(idea_id), "message": "Idea submitted successfully"}
+    return {"id": str(idea_id), "message": "Idea submitted and queued for processing"}
 
 
 @router.get("/discussions/{discussion_id}/ideas", response_model=List[Idea])

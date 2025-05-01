@@ -1,10 +1,3 @@
-from genkit.ai import Document, Genkit
-from genkit.plugins.ollama import Ollama, ollama_name
-from genkit.plugins.ollama.constants import OllamaAPITypes
-from genkit.plugins.ollama.models import (
-    EmbeddingModelDefinition,
-    ModelDefinition,
-)
 from math import sqrt
 from sklearn.cluster import AgglomerativeClustering
 from datetime import datetime
@@ -12,34 +5,10 @@ from app.models.schemas import Idea
 from app.core.socketio import sio
 from app.core.database import get_db
 from app.utils.ideas import get_ideas_by_discussion_id
+from app.services.genkit.embedders.idea_embedder import embed_ideas
 import numpy as np
 from app.services.genkit.flows.topic_names import topic_name_suggestion_flow
-from fastapi import Depends
 import logging
-
-EMBEDDER_MODEL = 'nomic-embed-text'
-EMBEDDER_DIMENSIONS = 512
-GENERATIVE_MODEL = 'phi3.5:latest'
-
-ai = Genkit(
-    plugins=[
-        Ollama(
-            models=[
-                ModelDefinition(
-                    name=GENERATIVE_MODEL,
-                    api_type=OllamaAPITypes.GENERATE,
-                )
-            ],
-            embedders=[
-                EmbeddingModelDefinition(
-                    name=EMBEDDER_MODEL,
-                    dimensions=EMBEDDER_DIMENSIONS,
-                )
-            ],
-        )
-    ],
-)
-
 
 # New Clustering method
 async def fetch_ideas(discussion_id: str | None = None, topic_id: str | None = None) -> list:
@@ -58,21 +27,6 @@ async def fetch_ideas(discussion_id: str | None = None, topic_id: str | None = N
     elif discussion_id:
         return await get_ideas_by_discussion_id(discussion_id)
     return []
-
-
-async def embed_ideas(ideas: list) -> list:
-    """Create embeddings for the given texts"""
-    embedded_ideas = []
-    for idea in ideas:
-        embedding_response = await ai.embed(
-            embedder=ollama_name(EMBEDDER_MODEL),
-            documents=[Document.from_text(idea["text"])],
-        )
-        if embedding_response.embeddings:
-            idea_copy = dict(idea)
-            idea_copy["embedding"] = embedding_response.embeddings[0].embedding
-            embedded_ideas.append(idea_copy)
-    return embedded_ideas
 
 
 def cosine_distance(a: list[float], b: list[float]) -> float:
