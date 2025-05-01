@@ -1,11 +1,22 @@
 version: '3.8'
 
 services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+
   app:
     build: .
     ports:
       - "8000:8000"
+    volumes:
+      - .:/app
     environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
       - MONGODB_URL=${MONGODB_URL}
       - CORS_ORIGINS=${CORS_ORIGINS}
       - MODEL_NAME=${MODEL_NAME}
@@ -19,8 +30,10 @@ services:
       - EMAIL_FROM_NAME=${EMAIL_FROM_NAME}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - OLLAMA_HOST=http://ollama:11434
+      - REDIS_URL=redis://redis:6379
     depends_on:
       - ollama
+      - redis
     networks:
       - app-network
 

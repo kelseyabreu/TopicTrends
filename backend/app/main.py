@@ -11,10 +11,10 @@ logger = logging.getLogger(__name__)
 
 # Import routers
 from app.routers import discussions, ideas, topics, auth
-from app.core.database import init_db, initialize_database
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 import os
+import asyncio
 from fastapi.exceptions import HTTPException
 from fastapi.responses import JSONResponse
 # Import Socket.IO setup
@@ -23,13 +23,25 @@ from app.core.socketio import socket_app, sio
 # Create FastAPI app
 app = FastAPI(title="TopicTrends API")
 
-# Initialize the database explicitly
+# Initialize the database and worker
 @app.on_event("startup")
 async def startup_event():
+    from app.core.database import initialize_database
     logger.info("Initializing database...")
     await initialize_database()
-
     logger.info("Database initialization complete.")
+    
+    # Start the background worker
+    from app.services.worker import run_worker
+    # Runs concurrently :o
+    asyncio.create_task(run_worker())
+    logger.info("Background worker started.")
+
+# Cleanup on shutdown
+@app.on_event("shutdown")
+async def shutdown_event():
+    logger.info("Shutting down application...")
+    # Add any cleanup code here if needed
 
 # Add custom exception handler
 @app.exception_handler(HTTPException)
