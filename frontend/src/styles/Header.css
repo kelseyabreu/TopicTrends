@@ -52,6 +52,8 @@
   cursor: pointer;
   font-size: 16px;
   padding: 0;
+  position: relative;
+  top: -7px;
 }
 
 .logout-btn:hover {
