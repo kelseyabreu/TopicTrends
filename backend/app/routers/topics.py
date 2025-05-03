@@ -1,9 +1,10 @@
 from fastapi import APIRouter, BackgroundTasks, Body, Depends
 from typing import List
 from app.services.genkit.ai import cluster_ideas_into_topics
-from app.models.schemas import Topic
+from app.services.genkit.cluster import _map_ideas_for_output
+from app.models.schemas import Topic, TopicIdPayload
 from app.core.database import get_db
-from app.routers.discussions import get_discussion_by_id
+from app.routers.discussions import get_discussion_by_id_internal
 import logging
 logger = logging.getLogger(__name__)
 
@@ -12,75 +13,97 @@ router = APIRouter(tags=["topics"])
 
 # Routes
 @router.get("/discussions/{discussion_id}/topics", response_model=List[Topic])
-async def get_discussion_topics(discussion_id: str):
-    """Get all topics for a discussion"""
-    db = await get_db()
-    # Validate discussion exists
-    await get_discussion_by_id(discussion_id)
+async def get_discussion_topics(discussion_id: str, db=Depends(get_db)):
+    """
+    Get all topics for a discussion, dynamically fetching associated ideas
+    for each topic instead of relying on embedded data.
+    """
+    logger.info(f"Fetching topics for discussion {discussion_id}")
+    # 1. Validate discussion exists
+    await get_discussion_by_id_internal(discussion_id)
 
-    # Get topics
-    topics = await db.topics.find({"discussion_id": discussion_id}).to_list(length=None)
-    # Convert _id and ensure nested ideas/timestamps are handled by Pydantic response_model
+    # 2. Fetch all topic documents for the discussion
+    topic_docs = await db.topics.find({"discussion_id": discussion_id}).sort("_id", 1).to_list(length=None)
+
     results = []
-    for topic in topics:
-        # Reconstruct nested Ideas to ensure Pydantic validation/serialization
-        nested_ideas = [
-            {
-                "id": idea_data["id"],
-                "text": idea_data["text"],
-                "user_id": idea_data["user_id"],
-                "verified": idea_data["verified"],
-                # Assuming timestamp in DB is datetime or ISO string parseable by Pydantic
-                "timestamp": idea_data["timestamp"],
-                "topic_id": topic["_id"], # Add topic_id
-                #These are properties added by the LLM
-                "on_topic": idea_data.get("on_topic", None),
-                "keywords": idea_data.get("keywords", []),
-                "intent": idea_data.get("intent", None),
-                "sentiment": idea_data.get("sentiment", None),
-                "specificity": idea_data.get("specificity", None),
-                "related_topics": idea_data.get("related_topics", [])
-            }
-            for idea_data in topic.get("ideas", [])
-        ]
-        results.append(
-             Topic(
-                id=topic["_id"],
-                representative_idea_id=topic["representative_idea_id"], # Use corrected field name
-                representative_text=topic["representative_text"],
-                count=topic["count"],
-                ideas=nested_ideas
-            )
-        )
-    logging.info("Fetched %d topics for discussion %s", len(topics), discussion_id)
+    default_topic_id = f"{discussion_id}_new" # Define default ID
+
+    # 3. Iterate through topic documents and fetch their associated ideas
+    for topic_doc in topic_docs:
+        topic_id = str(topic_doc["_id"])
+        logger.debug(f"Processing topic: {topic_id} ('{topic_doc.get('representative_text')}')")
+
+        # Fetch ideas belonging to this specific topic_id from the 'ideas' collection
+        ideas_cursor = db.ideas.find({"topic_id": topic_id}).sort("timestamp", 1) # Sort ideas chronologically
+        ideas_list = await ideas_cursor.to_list(length=None) # Fetch all ideas for this topic
+
+        # 4. Map fetched ideas to the required output format
+        # Use the existing helper function if suitable, ensure it maps _id correctly
+        nested_ideas_data = _map_ideas_for_output(ideas_list)
+
+        # 5. Construct the final Topic object using fetched data
+        # Use the helper function for mapping topic doc to schema dict
+        topic_data_for_pydantic = {
+            "id": topic_id,
+            "representative_idea_id": str(topic_doc.get("representative_idea_id")) if topic_doc.get("representative_idea_id") else None,
+            "representative_text": topic_doc.get("representative_text", "Untitled Topic"),
+            "count": len(ideas_list), # Use the *actual* count of fetched ideas
+            "ideas": nested_ideas_data # Use the dynamically fetched & mapped ideas
+        }
+
+        try:
+            # Validate and create the Pydantic model instance
+            topic_model = Topic(**topic_data_for_pydantic)
+            results.append(topic_model) # Add the validated model to results
+        except Exception as e:
+             logger.error(f"Pydantic validation failed for topic {topic_id} in get_discussion_topics: {e}. Skipping topic.", exc_info=True)
+             # Skip adding this topic if validation fails
+
+    # 6. Sort the final list (e.g., 'New Ideas' first, then by idea count)
+    results.sort(key=lambda t: (
+        0 if t.id == default_topic_id else 1, 
+        -t.count 
+    ))
+
+    logger.info(f"Finished fetching and processing {len(results)} topics for discussion {discussion_id}")
+    # FastAPI will handle serializing the list of Pydantic models
     return results
 
 
-@router.post("/topics")
+@router.post("/topics", response_model=List[dict]) 
 async def create_topics(
-        background_tasks: BackgroundTasks,
-        topic_id: str = Body(..., description="Topic ID to create subtopics from")
+        payload: TopicIdPayload, # Expect JSON object
+        background_tasks: BackgroundTasks, # Keep BackgroundTasks import
+        # Note: Drill-down clustering usually shouldn't run in background
+        # Consider making this synchronous for drill-down.
 ):
     """
-    Creates new subtopics one level deeper from an existing topic.
-    
-    This endpoint takes a topic ID and clusters its ideas into new subtopics
-    at a deeper hierarchical level, processing the clustering in the background.
-    
-    TODO: Modify to accept a list of idea IDs in the payload for custom clustering.
-    
-    Args:
-        topic_id: ID of the parent topic to create subtopics from
-        
-    Returns:
-        A confirmation message that the clustering process has started along with the clustering results
+    Drill-down into an existing topic to generate sub-topics.
+    Accepts {"topic_id": "..."} in the request body.
+    Returns the generated sub-topic data without persisting it fully.
     """
+    topic_id = payload.topic_id
+    logger.info(f"Received request to drill-down cluster topic_id: {topic_id}")
 
-    # Add the clustering task to background tasks
-    # background_tasks.add_task(cluster_ideas_into_topics, None, topic_id, False)
+    # Call clustering logic for drill-down (persist_results=False)
+    # This call is synchronous in this implementation.
+    sub_topic_results = await cluster_ideas_into_topics(topic_id=topic_id, persist_results=False)
 
-    return {
-        "status": "processing",
-        "message": f"Grouping process started for topic ${topic_id}",
-        "data": await cluster_ideas_into_topics(None, topic_id, False)
-    }
+    if sub_topic_results is None: # Handle potential errors from clustering
+         logger.error(f"Sub-topic generation failed for topic_id: {topic_id}")
+         # Return an empty list or raise an appropriate HTTP error
+         # Returning empty list might be preferred by frontend expecting a list
+         return []
+         # Or raise HTTPException(status_code=500, detail="Sub-topic generation failed.")
+
+    # Check if the result indicates an error (based on the example in generate_topic_results error handling)
+    if sub_topic_results and isinstance(sub_topic_results, list) and len(sub_topic_results) > 0 and sub_topic_results[0].get("error"):
+        logger.error(f"Sub-topic generation returned an error for {topic_id}: {sub_topic_results[0]['error']}")
+        # Return empty list or raise
+        return []
+        # Or raise HTTPException(status_code=500, detail=sub_topic_results[0]['error'])
+
+
+    # --- Return the list directly, matching response_model=List[dict] ---
+    logger.info(f"Returning {len(sub_topic_results)} generated sub-topics for topic {topic_id}")
+    return sub_topic_results

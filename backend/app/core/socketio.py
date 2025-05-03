@@ -1,10 +1,11 @@
 
 import socketio
+from app.core.config import settings
 
 # Create a Socket.IO server with CORS settings that match your frontend
 sio = socketio.AsyncServer(
     async_mode='asgi',
-    cors_allowed_origins=['http://localhost:5173'], # TODO: Use settings from config.py
+    cors_allowed_origins=settings.CORS_ORIGINS,
     logger=True,
     engineio_logger=True
 )

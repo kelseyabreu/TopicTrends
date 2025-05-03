@@ -25,9 +25,10 @@
    - ✅ QR code generation for discussion links
    - ✅ Share modal with copyable link
    - ✅ Discussion link generation
+   - ❌ Fix backend joinLink, make it frontend
    
-   5.  **Core Refactoring & Consistency** 
-    *   ✅ **Completed Core Terminology Refactor (Session->Discussion, Cluster->Topic)** 
+5.  **Core Refactoring & Consistency** 
+   - ✅ **Completed Core Terminology Refactor (Session->Discussion, Cluster->Topic)** 
       
 ## What's Missing or Incomplete
 
@@ -54,23 +55,29 @@
    - ❌ if idea/topic is added by one user, it should be reflected in other users' UI
    - ❌ if idea/topic is deleted by one user, it should be reflected in other users' UI
 
-5. **Queues/Background tasks**
+5. **User Onboarding**
+
+   - ❌ Simple tooltips or guided tour for first-time users
+   - ❌ Clear documentation on how the idea clustering works
+   - ❌ Sample discussions to demonstrate the platform
+
+6. **Queues/Background tasks**
    - ❌ Background task for clustering
    - ❌ Queue management for real-time updates
    - ❌ Error handling and retry logic for background tasks
 
-6. **Verification System**
+7. **Verification System**
    - ⚠️ Partial implementation - UI is there but backend needs work
    - ❌ Multiple verification methods (ID, passport, etc.)
    - ❌ Verification API integration
 
-7. **Performance & Testing**
+8. **Performance & Testing**
    - ❌ Load testing for max connections
    - ❌ Performance testing for grouping with large datasets
    - ❌ Concurrent submissions stress testing
    - ❌ End-to-end and integration tests
 
-8. **Deployment & Operations**
+9. **Deployment & Operations**
    - ❌ Production-ready configuration
    - ❌ Monitoring and analytics
    - ❌ Rate limiting and security measures
