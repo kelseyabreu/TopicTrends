@@ -1,85 +1,139 @@
-import { api } from '../utils/api';
+import api from '../utils/api'; 
+import { User } from '../interfaces/user'; 
+import { TokenResponse } from '../interfaces/auth'; 
+
+// Interface matching the backend TokenResponse (excluding token itself)
+interface LoginResponse {
+    user_id: string;
+    username: string;
+}
 
 const authService = {
-    // Register new user
-    register: async (userData) => {
-        const response = await api.post('/auth/register', userData);
-        return response.data;
-    },
-
-    // Login user 
-    login: async (email, password) => {
+    /**
+     * Logs in a user using email (as username) and password.
+     * Backend handles setting HttpOnly cookies.
+     */
+    login: async (email: string, password: string): Promise<LoginResponse> => {
         const params = new URLSearchParams();
         params.append('username', email); // Backend's OAuth2PasswordRequestForm expects 'username'
         params.append('password', password);
 
-        // API call triggers the server to set the cookie
-        const response = await api.post('/auth/login', params);
-        return response.data;
-    },
-
-    // Verify email
-    verifyEmail: async (email, code) => {
-        const response = await api.post(`/auth/verify?email=${encodeURIComponent(email)}`, { code });
-        return response.data;
-    },
-
-    // Resend verification email
-    resendVerification: async (email) => {
-        // Use encodeURIComponent for safety in query params
-        const response = await api.post(`/auth/resend-verification?email=${encodeURIComponent(email)}`);
-        return response.data;
-    },
-
-    // Request password reset
-    requestPasswordReset: async (email) => {
-        const response = await api.post(`/auth/forgot-password?email=${encodeURIComponent(email)}`);
-        return response.data;
-    },
-
-    // Reset password
-    resetPassword: async (email, token, newPassword) => {
-        const response = await api.post('/auth/reset-password', {
-            email,
-            token,
-            password: newPassword
-        });
-        return response.data;
-    },
-
-    // Get current user 
-    getCurrentUser: async () => {
         try {
-            const response = await api.get('/auth/me');
+            // API call triggers the server to set the cookie
+            const response = await api.post<LoginResponse>('/auth/login', params);
             return response.data;
         } catch (error) {
-            // Handle 401 Unauthorized (not logged in or expired cookie)
-            if (error?.response?.status === 401) {
-                console.info("getCurrentUser failed (401): User not authenticated.");
-            } else {
-                // Log other potential errors
-                console.error("Error fetching current user:", error);
-            }
-            return null;
+            console.error('AuthService Login Error:', error);
+            throw error; 
         }
     },
 
-    // Update user profile
-    updateProfile: async (profileData) => {
-        const response = await api.put('/auth/profile', profileData);
-        return response.data;
-    },
-
-    // Logout user - calls backend to clear the HTTP-only cookie
-    logout: async () => {
+    /**
+     * Logs out the current user.
+     * Backend handles clearing HttpOnly cookies.
+     */
+    logout: async (): Promise<{ message: string }> => {
         try {
-            await api.post('/auth/logout');
+            const response = await api.post<{ message: string }>('/auth/logout');
+            console.log("Logout API call successful, cookies should be cleared.");
+            // Optionally clear client-side non-HttpOnly cookies if needed (e.g., CSRF token as fallback)
+            // Cookies.remove('csrftoken', { path: '/' });
+            return response.data;
         } catch (error) {
-            console.error("Logout API call failed:", error);
-            // Re-throw the error so the calling function knows the API call failed
+            console.error('AuthService Logout Error:', error);
             throw error;
         }
     },
+
+    /**
+     * Registers a new user.
+     */
+    register: async (userData): Promise<{ message: string }> => {
+        try {
+            const response = await api.post<{ message: string }>('/auth/register', userData);
+            return response.data;
+        } catch (error) {
+            console.error('AuthService Register Error:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Fetches the current authenticated user's data using the HttpOnly cookie.
+     */
+    getCurrentUser: async (): Promise<User> => {
+        try {
+            const response = await api.get<User>('/auth/me');
+            return response.data; 
+        } catch (error) {
+            console.error('AuthService getCurrentUser Error:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Verifies a user's email using the provided code.
+     */
+    verifyEmail: async (email: string, code: string): Promise<{ message: string }> => {
+        try {
+            const response = await api.post<{ message: string }>(`/auth/verify?email=${encodeURIComponent(email)}`, { code });
+            return response.data;
+        } catch (error) {
+            console.error('AuthService verifyEmail Error:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Requests a password reset email to be sent.
+     */
+    forgotPassword: async (email: string): Promise<{ message: string }> => {
+        try {
+            const response = await api.post<{ message: string }>('/auth/forgot-password', { email });
+            return response.data; 
+        } catch (error) {
+            console.error('AuthService forgotPassword Error:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Resets the password using a token.
+     */
+    resetPassword: async (resetData): Promise<{ message: string }> => {
+        try {
+            const response = await api.post<{ message: string }>('/auth/reset-password', resetData);
+            return response.data;
+        } catch (error) {
+            console.error('AuthService resetPassword Error:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Updates the current user's profile.
+     */
+    updateProfile: async (profileData): Promise<User> => {
+        try {
+            const response = await api.put<User>('/auth/profile', profileData);
+            return response.data;
+        } catch (error) {
+            console.error('AuthService updateProfile Error:', error);
+            throw error;
+        }
+    },
+
+    // Add other auth-related API calls here (e.g., resend verification)
+    resendVerification: async (email: string): Promise<{ message: string }> => {
+        try {
+            const response = await api.post<{ message: string }>('/auth/resend-verification', { email });
+            return response.data; 
+        } catch (error) {
+            console.error('AuthService resendVerification Error:', error);
+            throw error;
+        }
+    }
+
 };
 
 export default authService;

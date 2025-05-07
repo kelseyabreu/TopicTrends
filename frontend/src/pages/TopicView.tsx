@@ -1,69 +1,103 @@
-import api from "../utils/api";
-import { TopicResponse } from "../interfaces/topics";
+// src/pages/TopicView.tsx
+
+import React, { useEffect, useState } from "react"; // Import React
 import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
 import { toast } from 'react-toastify';
-import { Discussion } from "../interfaces/discussions";
+import { Loader2 } from "lucide-react"; // Keep Loader
+
+// Application Imports
+import api from "../utils/api"; // Use the configured API client
+import { useAuth } from "../context/AuthContext"; // Import useAuth
+import { Discussion } from "../interfaces/discussions"; // Import Discussion type
+import { Topic } from "../interfaces/topics";         // Import Topic type
+import { Idea } from "../interfaces/ideas";           // Import Idea type
 import {
     Accordion,
     AccordionContent,
     AccordionItem,
     AccordionTrigger,
-  } from "@/components/ui/accordion"
+} from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge"; // Keep Badge import
+
+// Styles
+import "../styles/TopicView.css"; // Assuming styles exist
+
+// Define the structure of the response from POST /topics (for drill-down)
+// This assumes the backend returns data nested under a 'data' key
+interface TopicDrilldownResponse {
+    data: Topic[]; // Expecting an array of Topic objects
+    // Include other potential fields like 'status', 'message' if the backend sends them
+}
+
 
 function TopicView() {
-    const { discussionId, topicId } = useParams();
+    const { discussionId, topicId } = useParams<{ discussionId: string; topicId: string }>();
     const navigate = useNavigate();
-    const [discussion, setDiscussion] = useState<Discussion|null>(null);
-    const [topic, setTopic] = useState<TopicResponse>({ data: [] });
+    const { authStatus } = useAuth(); // Get auth status, user object isn't directly needed now
+
+    // State for fetched data and loading/error status
+    const [discussion, setDiscussion] = useState<Discussion | null>(null);
+    const [subTopics, setSubTopics] = useState<Topic[]>([]); // State to hold the drill-down results
     const [isLoading, setIsLoading] = useState(true);
-    const [userId, setUserId] = useState('');
-    const [isVerified, setIsVerified] = useState(false);
-    const [verificationMethod, setVerificationMethod] = useState(null);
+    const [error, setError] = useState<string | null>(null); // State for errors
+
+    // Removed useState hooks for userId, isVerified, verificationMethod
 
     useEffect(() => {
-        console.log(`[TopicView Effect ${discussionId}/${topicId}] Starting effect...`);
-        let isMounted = true; // Flag to check if component is still mounted
+        console.log(`[TopicView Effect ${discussionId}/${topicId}] Starting effect. AuthStatus: ${authStatus}`);
+        let isMounted = true;
 
-        // 1. Check if user has joined this discussion
-        const storedUserId = localStorage.getItem(`TopicTrends_${discussionId}_userId`);
-        const storedIsVerified = localStorage.getItem(`TopicTrends_${discussionId}_isVerified`) === 'true';
-        const storedVerificationMethod = localStorage.getItem(`TopicTrends_${discussionId}_verificationMethod`);
+        // Removed localStorage checks and associated state setting
 
-        if (!storedUserId) {
-            console.log(`[TopicView Effect ${discussionId}/${topicId}] No stored user ID. Navigating back to join.`);
-            // User hasn't joined this discussion, navigate back immediately
-            navigate(`/join/${discussionId}`);
-            return; // Exit the effect early
-        }
+        setIsLoading(true);
+        setError(null); // Clear previous errors
 
-        console.log(`[TopicView Effect ${discussionId}/${topicId}] User ID found: ${storedUserId}. Proceeding.`);
-        // Set user state based on localStorage
-        setUserId(storedUserId);
-        setIsVerified(storedIsVerified);
-        setVerificationMethod(storedVerificationMethod);
-        setIsLoading(true); // Set loading true while fetching data
-
-        // 2. Fetch discussion and topic details
+        // Fetch discussion details and perform topic drill-down clustering
         const fetchData = async () => {
+            if (!discussionId || !topicId) {
+                if (isMounted) setError("Missing discussion or topic ID.");
+                setIsLoading(false);
+                return;
+            }
+
             try {
-                const [discussionResponse, topicResponse] = await Promise.all([
-                    api.get(`/discussions/${discussionId}`),
-                    api.post('/topics', topicId)
-                ]);
+                // Fetch discussion details first (needed for display)
+                const discussionResponse = await api.get<Discussion>(`/discussions/${discussionId}`);
+                if (isMounted) {
+                    setDiscussion(discussionResponse.data);
+                } else {
+                    return; // Stop if unmounted
+                }
+
+                // Then, trigger the drill-down clustering via POST /topics
+                // IMPORTANT: Sending payload as {"topic_id": topicId}
+                console.log(`[TopicView Effect ${discussionId}/${topicId}] Posting to /topics with topic_id: ${topicId}`);
+                const topicResponse = await api.post<TopicDrilldownResponse>(
+                    '/topics',
+                    { topic_id: topicId } // Send as JSON object matching backend expectation
+                );
 
                 if (isMounted) {
-                    console.log('mounted', topic)
-                    setDiscussion(discussionResponse.data);
-                    setTopic(topicResponse.data);
+                    if (topicResponse.data && Array.isArray(topicResponse.data)) {
+                        setSubTopics(topicResponse.data);
+                        console.log(`[TopicView Effect ${discussionId}/${topicId}] Received ${topicResponse.data.length} sub-topics.`);
+                        if (topicResponse.data.length === 0) {
+                            toast.info("No further sub-topics could be generated from this topic's ideas.");
+                        }
+                    } else {
+                        console.error("[TopicView Effect] Invalid response structure from POST /topics:", topicResponse.data);
+                        setSubTopics([]); // Set empty on invalid structure
+                        setError("Received unexpected data structure for sub-topics.");
+                    }
                 }
-                console.log('not mounted', topic)
-            } catch (error) {
-                
-                console.error(`[TopicView Effect ${discussionId}/${topicId}] Error fetching data:`, error);
+            } catch (err) { // Catch any error type
+                console.error(`[TopicView Effect ${discussionId}/${topicId}] Error fetching data:`, err);
                 if (isMounted) {
-                    toast.error(error.response?.data?.detail || 'Failed to load topic data. Returning to discussion.');
-                    // navigate(`/discussion/${discussionId}`); // Navigate back to discussion view on error
+                    const errorDetail = err.response?.data?.detail || err.message || 'Failed to load topic data.';
+                    setError(errorDetail);
+                    toast.error(`${errorDetail} Returning to discussion.`);
+                    // Optional: Navigate back after a short delay or let user click back
+                    // setTimeout(() => navigate(`/discussion/${discussionId}`), 3000);
                 }
             } finally {
                 if (isMounted) {
@@ -76,107 +110,120 @@ function TopicView() {
 
         // Cleanup function
         return () => {
-            isMounted = false; // Prevent state updates after unmount
+            console.log(`[TopicView Effect ${discussionId}/${topicId}] Cleanup.`);
+            isMounted = false;
         };
-    }, [discussionId, topicId, navigate]);
+        // Dependency array includes IDs and navigate (for error navigation)
+    }, [discussionId, topicId, navigate, authStatus]); // Include authStatus if needed later
 
-    // Helper function to determine topic type based on idea count
-    const getTopicType = (count) => {
+    // Helper function to determine topic type (can be reused or adapted)
+    const getTopicType = (count: number): string => {
         if (count <= 10) return 'Ripple';
         if (count <= 25) return 'Wave';
         if (count <= 50) return 'Breaker';
         return 'Tsunami';
     };
 
-    // Render Loading state
+    // --- Render Logic ---
+
     if (isLoading) {
         return (
-            <div className="discussion-view-container loading">
-                <div className="loader"></div>
-                <p>Loading topic data...</p>
+            <div className="topic-view-loading"> {/* Use a specific class */}
+                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                <p>Loading sub-topic details...</p>
             </div>
         );
     }
 
-    // Render main component content if not loading
+    if (error) {
+        return (
+            <div className="topic-view-error"> {/* Use a specific class */}
+                <h2>Error Loading Topic</h2>
+                <p>{error}</p>
+                <button
+                    className="btn btn-primary" // Use consistent button styling
+                    onClick={() => navigate(`/discussion/${discussionId}`)}
+                >
+                    Return to Discussion
+                </button>
+            </div>
+        );
+    }
+
+    // Main content rendering
     return (
         <div className="topic-page">
-            {/* Only render content if discussion and topic are loaded */}
-            {discussion && topic.data.length ? (
-                <div>
-                    <div className="discussion-info">
-                        <button 
-                            className="back-button"
-                            onClick={() => navigate(`/discussion/${discussionId}`)}
-                        >
-                            &larr; Back to Discussion
-                        </button>
-                        <h1>{discussion.title}</h1>
-                        <p className="prompt">{discussion.prompt}</p>
-                        
-                    </div>
-                    <div className="">
-                    
-                        {topic.data.map((topic) => (
-                            <div key={topic.id} className="topic-view-content">
-                                <Accordion type="single" collapsible className="w-full max-w-xl">
-                        `        <AccordionItem value={topic.id}>
-                                    <AccordionTrigger>
-                                        <div className="topic-details">
-                                        <h2 className="topic-title">{topic.representative_text}</h2>
-                                        <div className="topic-meta">
-                                            <span className="topic-type">{getTopicType(topic.count)}</span> <br />
-                                            <span className="topic-count">{topic.count} ideas</span>
-                                        </div>
-                                        </div>
-                                    </AccordionTrigger>
-                                    <AccordionContent>
-                                    {(!topic.ideas || topic.ideas.length === 0) ? (
-                                    <div className="no-ideas">
-                                        <p>No ideas found in this topic.</p>
-                                    </div>
-                                ) : (
-                                    <>
-                                        {topic.ideas.map((idea) => (
-                                            <div className="idea-card" key={idea.id}>
-                                                <p>{idea.text}</p>
-                                                <div className="idea-meta">
-                                                    <span className="idea-user">
-                                                        {idea.verified ? (
-                                                            <span className="verification-badge">✓ Verified</span>
-                                                        ) : (
-                                                            <span className="anonymous-badge">Anonymous</span>
-                                                        )}
-                                                    </span>
-                                                    {idea.timestamp && (
-                                                        <span className="idea-timestamp">
-                                                            {new Date(idea.timestamp).toLocaleString()}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </>
-                                )}
-                                    </AccordionContent>
-                                </AccordionItem>
-                                </Accordion>     
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            ) : (
-                <div className="discussion-view-container error">
-                    <h2>Error</h2>
-                    <p>Could not load topic details.</p>
-                    <button 
-                        className="btn btn-primary"
+            {/* Render discussion header if discussion data is available */}
+            {discussion && (
+                <div className="discussion-info">
+                    <button
+                        className="back-button" // Use consistent button styling
                         onClick={() => navigate(`/discussion/${discussionId}`)}
                     >
-                        Return to Discussion
+                        ← Back to Discussion
                     </button>
+                    <h1>{discussion.title}</h1>
+                    <p className="prompt">{discussion.prompt}</p>
+                    {/* You might want to display the PARENT topic title here if available */}
+                    {/* This requires fetching the parent topic details or passing them */}
+                    <h2 className="topic-view-subtitle">Sub-Topics Generated from Drill-Down</h2>
                 </div>
             )}
+
+            {/* Render Sub-Topics generated by the drill-down */}
+            <div className="sub-topics-list"> {/* Use a specific class */}
+                {subTopics.length > 0 ? (
+                    subTopics.map((subTopic) => (
+                        <div key={subTopic.id} className="topic-view-content"> {/* Reuse styling */}
+                            <Accordion type="single" collapsible className="w-full max-w-xl">
+                                <AccordionItem value={subTopic.id}>
+                                    <AccordionTrigger>
+                                        <div className="topic-details">
+                                            <h3 className="topic-title">{subTopic.representative_text}</h3> {/* Use h3 for sub-topics */}
+                                            <div className="topic-meta">
+                                                <Badge variant="secondary">{getTopicType(subTopic.count)}</Badge>
+                                                <Badge variant="outline" className="ml-1">{subTopic.count} ideas</Badge>
+                                            </div>
+                                        </div>
+                                        {/* Maybe a different button/action for sub-topics? */}
+                                        {/* Or just display ideas directly */}
+                                    </AccordionTrigger>
+                                    <AccordionContent>
+                                        {(!subTopic.ideas || subTopic.ideas.length === 0) ? (
+                                            <p className="text-muted-foreground text-sm p-4">No ideas found in this sub-topic.</p>
+                                        ) : (
+                                            <div className="ideas-in-topic">
+                                                {subTopic.ideas.map((idea: Idea) => ( // Ensure type for idea
+                                                    <div className="idea-card" key={idea.id}>
+                                                        <p className="idea-text">{idea.text}</p>
+                                                        <div className="idea-meta">
+                                                            <span className="idea-user">
+                                                                {idea.verified ? (
+                                                                    <Badge variant="success" size="sm">✓ {idea.submitter_display_id || 'Verified'}</Badge>
+                                                                ) : (
+                                                                    <Badge variant="default" size="sm">👤 {idea.submitter_display_id || 'Anonymous'}</Badge>
+                                                                )}
+                                                            </span>
+                                                            {idea.timestamp && (
+                                                                <span className="idea-timestamp">
+                                                                    {new Date(idea.timestamp).toLocaleString()}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </AccordionContent>
+                                </AccordionItem>
+                            </Accordion>
+                        </div>
+                    ))
+                ) : (
+                    // Render message if drill-down yielded no sub-topics (and no error occurred)
+                    !error && <p className="text-muted-foreground p-4">No further sub-topics were generated for this topic.</p>
+                )}
+            </div>
         </div>
     );
 }
