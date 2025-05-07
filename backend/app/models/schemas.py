@@ -21,6 +21,7 @@ class Idea(BaseModel):
     timestamp: datetime
     embedding: list[float] | None = None
     topic_id: Optional[str] = None
+    discussion_id: Optional[str] = None
     intent: Optional[str] = None
     keywords: Optional[list[str]] = []
     sentiment: Optional[str] = None
@@ -34,8 +35,8 @@ class Topic(BaseModel):
     representative_text: str
     count: int
     ideas: List[Idea]
+    idea_ids: Optional[List[str]] = []
     centroid_embedding: Optional[list[float]] = None
-    last_updated: Optional[datetime]
 
 class Discussion(BaseModel):
     id: str

@@ -69,7 +69,7 @@ async def submit_idea(
     )
 
     # Add idea to processing queue
-    await add_to_queue(str(idea_id))
+    await add_to_queue(str(idea_data["_id"]))
     # await process_idea(idea_data, discussion_id)
 
     return {"id": str(idea_id), "message": "Idea submitted and queued for processing"}

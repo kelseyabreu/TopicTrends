@@ -7,12 +7,13 @@ from app.core.redis import get_batch_from_queue, remove_from_processing, retry_f
 from app.services.genkit.idea import process_idea
 
 logger = logging.getLogger(__name__)
-
+interval = 10 # how often to run the worker in seconds
+item_batch_size = 10 # maybe add to env? should correspond with llm limit we want to target
 async def process_idea_batch():
     """Process a batch of ideas from the queue."""
     try:
         # Get batch of ideas from queue
-        idea_ids = await get_batch_from_queue()
+        idea_ids = await get_batch_from_queue(item_batch_size)
         if not idea_ids:
             return
         
@@ -29,7 +30,8 @@ async def process_idea_batch():
                     continue
                 idea_copy = idea.copy()
                 # Process the idea
-                await process_idea(idea_copy, idea["discussion_id"])
+                logger.info(f"Idea copy? {idea_copy}")
+                await process_idea(idea_copy, idea_copy["discussion_id"])
                 await remove_from_processing(idea_id)
                 logger.info(f"Successfully processed idea {idea_id}")
                 
@@ -51,7 +53,7 @@ async def run_worker():
             await process_idea_batch()
             # Wait for 1 minute before next batch
             logger.info("Waiting for next batch")
-            await asyncio.sleep(60)
+            await asyncio.sleep(interval)
         except Exception as e:
             logger.error(f"Error in worker loop: {str(e)}")
             # Wait before retrying
