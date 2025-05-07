@@ -9,15 +9,14 @@ class DiscussionCreate(BaseModel):
 # Idea when being received from the front end
 class IdeaSubmit(BaseModel):
     text: str
-    user_id: str
-    verified: bool = False
-    verification_method: Optional[str] = None
 # Ideas belong to topics.
 class Idea(BaseModel):
     id: str
     text: str
-    user_id: str
+    user_id: Optional[str] = None 
+    anonymous_user_id: Optional[str] = None
     verified: bool
+    submitter_display_id: Optional[str] = None
     timestamp: datetime
     embedding: list[float] | None = None
     topic_id: Optional[str] = None
@@ -31,20 +30,28 @@ class Idea(BaseModel):
 # Topics have many ideas
 class Topic(BaseModel):
     id: str
-    representative_idea_id: str  # Updated to match usage in api.py
+    representative_idea_id: Optional[str] = None
     representative_text: str
     count: int
     ideas: List[Idea]
+
     idea_ids: Optional[List[str]] = []
     centroid_embedding: Optional[list[float]] = None
-
+class TopicIdPayload(BaseModel):
+    topic_id: str
 class Discussion(BaseModel):
     id: str
     title: str
     prompt: str
     require_verification: bool
+    creator_id: Optional[str] = None 
     created_at: datetime
+    last_activity: Optional[datetime] = None 
     idea_count: int = 0
     topic_count: int = 0
-    join_link: str
-    qr_code: str
+    join_link: Optional[str] = None
+    qr_code: Optional[str] = None
+
+class EmbedToken(BaseModel):
+    """Response model for participation token requests."""
+    participation_token: str

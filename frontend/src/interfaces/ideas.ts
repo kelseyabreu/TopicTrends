@@ -1,4 +1,5 @@
 export interface Idea {
+    submitter_display_id: string;
     id: string;
     text: string;
     user_id: string;
