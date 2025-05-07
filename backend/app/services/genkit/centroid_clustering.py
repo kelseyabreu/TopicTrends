@@ -63,13 +63,17 @@ class CentroidClustering:
         topic_id = str(uuid.uuid4())
         
         try:
+            # Create a copy of the idea and transform _id to id
+            idea_for_storage = idea.copy()
+            idea_for_storage['id'] = str(idea_for_storage.pop('_id'))
+            
             topic = {
                 '_id': topic_id,
                 'discussion_id': discussion_id,
                 'centroid_embedding': embedding.tolist(),
-                'representative_idea_id': idea['_id'],
-                'representative_idea_text': idea['text'],
-                'ideas': [idea],
+                'representative_idea_id': idea['_id'],  # Keep original _id for reference
+                'representative_text': idea['text'],
+                'ideas': [idea_for_storage],  # Store transformed idea
                 'count': 1,
             }
             
@@ -101,6 +105,11 @@ class CentroidClustering:
             db = await get_db()
             current_centroid = np.array(topic['centroid_embedding'])
             new_centroid = (current_centroid * topic['count'] + new_embedding) / (topic['count'] + 1)
+
+            # Create a copy of the idea and transform _id to id
+            idea_for_storage = idea.copy()
+            idea_for_storage['id'] = str(idea_for_storage.pop('_id'))
+            
             
             await db.topics.update_one(
                 {'_id': topic['_id']},
@@ -110,7 +119,7 @@ class CentroidClustering:
                         'count': topic['count'] + 1
                     },
                     '$push': {
-                        'idea_ids': idea['_id']
+                        'ideas': idea_for_storage
                     }
                 }
             )
