@@ -34,11 +34,11 @@ class Topic(BaseModel):
     representative_text: str
     count: int
     ideas: List[Idea]
-
-    idea_ids: Optional[List[str]] = []
     centroid_embedding: Optional[list[float]] = None
+
 class TopicIdPayload(BaseModel):
     topic_id: str
+    
 class Discussion(BaseModel):
     id: str
     title: str
