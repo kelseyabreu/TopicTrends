@@ -272,10 +272,10 @@ async def submit_idea(
         # Log database errors during count updates but allow the request to succeed since the idea is saved
         logger.error(f"Database error updating counts for discussion {discussion_id} / topic {default_topic_id}: {e}", exc_info=True)
 
-    # --- 9. Trigger Background AI Task (Formatting Only) ---
+    # --- 9. Trigger Background AI Task (Queues up the idea for later processing ) ---
     # Schedule the AI processing (like formatting, keyword extraction) to run after the response is sent.
-    # Pass the full idea_data dictionary, including the '_id', to the background task.
-    background_tasks.add_task(background_ai_processes, discussion_id=discussion_id, idea_data=idea_data)
+    background_tasks.add_task(add_to_queue, idea_id=str(idea_data["_id"]))
+
 
     # --- 10. Prepare and Return API Response ---
     # Map the internal '_id' field to 'id' for the response payload, matching the Pydantic model.
