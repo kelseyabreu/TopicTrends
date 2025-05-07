@@ -42,11 +42,19 @@ async def embed_ideas(ideas: list) -> list:
             embedded_ideas.append(idea_copy)
     return embedded_ideas
 
-async def embed_idea(idea: dict):
+async def embed_idea(text: str):
     """Create embeddings for the given texts"""
-    idea_text = idea.get("text")
-    embedding_response = await ai.embed(
-        embedder=ollama_name(EMBEDDER_MODEL),
-        documents=[Document.from_text(idea_text)],
-    )
-    return embedding_response.embeddings[0].embedding
+    try:
+        print(f"Whats the idea text????: {text}")
+        if not isinstance(text, str):
+            raise ValueError("Input must be a string")
+        if not text.strip():
+            raise ValueError("Input string cannot be empty")
+        embedding_response = await ai.embed(
+            embedder=ollama_name(EMBEDDER_MODEL),
+            documents=[Document.from_text(text)],
+        )
+        return embedding_response.embeddings[0].embedding
+    except Exception as e:
+        # Re-raise the exception to be handled by caller
+        raise e

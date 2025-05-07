@@ -1,9 +1,10 @@
 from app.core.database import get_db
 from app.models.ai_schemas import FormattedIdea
-from app.models.schemas import Discussion
+from app.models.schemas import Discussion, Idea
 from app.services.genkit.flows.format_idea import format_idea_flow
 from app.services.genkit.embedders.idea_embedder import embed_idea
 from app.core.socketio import sio
+from app.services.genkit.centroid_clustering import CentroidClustering
 import logging
 logger = logging.getLogger(__name__)
 
@@ -31,10 +32,15 @@ async def _upsert_formatted_idea(idea: dict, formatted_idea: FormattedIdea):
     
     # Update with formatted idea data
     formatted_data = dict(formatted_idea)
+    print(f'Updating with combined idea: {combined_idea}')
     combined_idea.update(formatted_data)
     
     # Add embedding to the combined data
-    combined_idea["embedding"] = await embed_idea(formatted_data)
+    # Get text from formatted_idea directly since it's a FormattedIdea object
+    idea_text = combined_idea.get("text") if combined_idea else None
+    print(f'Text being embedded: {idea_text}')  # Debug print
+    combined_idea["embedding"] = await embed_idea(idea_text)
+    # TODO: Optimize embeddings for saving in the database
     
     logging.info("Saving combined idea with ID: %s", combined_idea["_id"])
     
@@ -43,7 +49,15 @@ async def _upsert_formatted_idea(idea: dict, formatted_idea: FormattedIdea):
         {"$set": combined_idea},
         upsert=True
     )
+    await find_ideas_main_idea(combined_idea, combined_idea["discussion_id"])
 
+async def find_ideas_main_idea(idea: dict, discussion_id: str):
+    clustering = CentroidClustering(similarity_threshold=0.85) 
+    await clustering.process_idea(
+        embedding=idea['embedding'],
+        idea=idea,
+        discussion_id=discussion_id
+    )
 
 async def process_idea(idea_data:dict, discussion_id: str):
     """
