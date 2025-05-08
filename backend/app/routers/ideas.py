@@ -172,7 +172,7 @@ async def submit_idea(
     idea_text = idea_payload.text.strip() # Remove leading/trailing whitespace
     if not idea_text: # Check for empty idea
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Idea text cannot be empty")
-    # Enforce maximum length
+    # Enforce maximum length TODO: This could probably be handled in the pydantic model, remove?
     MAX_IDEA_LENGTH = 500 # Consider making this configurable via settings
     if len(idea_text) > MAX_IDEA_LENGTH:
         raise HTTPException(
@@ -183,8 +183,6 @@ async def submit_idea(
     # --- 6. Prepare Idea Document for Database ---
     idea_id = str(uuid.uuid4()) # Generate unique ID for the idea
     now_utc = datetime.now(timezone.utc) # Get current timestamp
-    # Define the standard ID for the discussion's default 'New Ideas' topic
-    default_topic_id = f"{discussion_id}_new"
 
     idea_data = {
         "_id": idea_id,                         # Internal DB ID
@@ -195,7 +193,7 @@ async def submit_idea(
         "verified": is_verified_submission,     # Boolean flag based on auth method
         "submitter_display_id": submitter_display_id, # Username or anonymous ID
         "timestamp": now_utc,
-        "topic_id": default_topic_id,           # Assign to the 'New Ideas' topic
+        "topic_id": None,
         # Initialize AI-populated fields to null/empty states
         "embedding": None,
         "intent": None,
@@ -209,7 +207,7 @@ async def submit_idea(
 # --- 7. Insert Idea into Database ---
     try:
         await db.ideas.insert_one(idea_data)
-        logger.info(f"Idea {idea_id} saved to default topic {default_topic_id} for discussion {discussion_id}.")
+        logger.info(f"Idea {idea_id} saved for discussion {discussion_id}.")
 
         try:
             # Prepare data matching the Idea Pydantic model for the client
@@ -222,7 +220,7 @@ async def submit_idea(
                 "submitter_display_id": idea_data["submitter_display_id"],
                 "timestamp": idea_data["timestamp"].isoformat(), # Already datetime object
                 "embedding": None, # Don't send embedding
-                "topic_id": idea_data["topic_id"],
+                "topic_id": None,
                 "intent": idea_data["intent"],
                 "keywords": idea_data["keywords"],
                 "sentiment": idea_data["sentiment"],
@@ -258,19 +256,12 @@ async def submit_idea(
             {"_id": discussion_id},
             {"$inc": {"idea_count": 1}, "$set": {"last_activity": now_utc}}
         )
-        # Increment the count field for the 'New Ideas' topic specifically
-        update_topic_result = await db.topics.update_one(
-             {"_id": default_topic_id},
-             {"$inc": {"count": 1}} # Increment the counter for the default topic
-        )
         # Log warnings if the updates didn't modify any documents (e.g., ID mismatch)
         if update_discussion_result.modified_count == 0:
              logger.warning(f"Failed to update counts/activity for discussion {discussion_id} (document not found or no change needed)")
-        if update_topic_result.modified_count == 0:
-            logger.warning(f"Failed to update count for default topic {default_topic_id} (document not found or no change needed)")
     except Exception as e:
         # Log database errors during count updates but allow the request to succeed since the idea is saved
-        logger.error(f"Database error updating counts for discussion {discussion_id} / topic {default_topic_id}: {e}", exc_info=True)
+        logger.error(f"Database error updating counts for discussion {discussion_id}: {e}", exc_info=True)
 
     # --- 9. Trigger Background AI Task (Queues up the idea for later processing ) ---
     # Schedule the AI processing (like formatting, keyword extraction) to run after the response is sent.

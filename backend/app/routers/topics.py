@@ -26,7 +26,6 @@ async def get_discussion_topics(discussion_id: str, db=Depends(get_db)):
     topic_docs = await db.topics.find({"discussion_id": discussion_id}).sort("_id", 1).to_list(length=None)
 
     results = []
-    default_topic_id = f"{discussion_id}_new" # Define default ID
 
     # 3. Iterate through topic documents and fetch their associated ideas
     for topic_doc in topic_docs:
@@ -61,7 +60,7 @@ async def get_discussion_topics(discussion_id: str, db=Depends(get_db)):
 
     # 6. Sort the final list (e.g., 'New Ideas' first, then by idea count)
     results.sort(key=lambda t: (
-        0 if t.id == default_topic_id else 1, 
+        1, 
         -t.count 
     ))
 
