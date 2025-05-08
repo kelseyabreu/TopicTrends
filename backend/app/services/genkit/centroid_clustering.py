@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class CentroidClustering:
-    def __init__(self, similarity_threshold: float = 0.85):
+    def __init__(self, similarity_threshold: float = 0.65):
         self.similarity_threshold = similarity_threshold
         logger.info(f"Initialized CentroidClustering with similarity threshold: {similarity_threshold}")
         
@@ -73,7 +73,7 @@ class CentroidClustering:
                 'centroid_embedding': embedding.tolist(),
                 'representative_idea_id': idea['_id'],  # Keep original _id for reference
                 'representative_text': idea['text'],
-                'ideas': [idea_for_storage],  # Store transformed idea
+                'ideas': [idea_for_storage],  # TODO: stop putting ideas in the topic. They're retrieved on GET
                 'count': 1,
             }
             
@@ -109,20 +109,32 @@ class CentroidClustering:
             # Create a copy of the idea and transform _id to id
             idea_for_storage = idea.copy()
             idea_for_storage['id'] = str(idea_for_storage.pop('_id'))
+            idea_for_storage['topic_id'] = topic['_id']
+            async with await db.client.start_session() as session:
+                async with session.start_transaction():
+                    # Insert the topic
+                    await db.topics.update_one(
+                        {'_id': topic['_id']},
+                        {
+                            '$set': {
+                                'centroid_embedding': new_centroid.tolist(),
+                                'count': topic['count'] + 1
+                            },
+                            '$push': {
+                                'ideas': idea_for_storage # TODO: stop putting ideas in the topic.
+                            }
+                        },
+                        session=session,
+                    )
+                    # Update the idea with the topic ID
+                    await db.ideas.update_one(
+                        {"_id": idea['_id']},
+                        {"$set": {"topic_id": topic['_id']}},
+                        session=session
+                    )
             
             
-            await db.topics.update_one(
-                {'_id': topic['_id']},
-                {
-                    '$set': {
-                        'centroid_embedding': new_centroid.tolist(),
-                        'count': topic['count'] + 1
-                    },
-                    '$push': {
-                        'ideas': idea_for_storage
-                    }
-                }
-            )
+            
             
             topic['centroid_embedding'] = new_centroid.tolist()
             topic['count'] += 1

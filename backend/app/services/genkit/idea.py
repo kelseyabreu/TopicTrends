@@ -52,7 +52,7 @@ async def _upsert_formatted_idea(idea: dict, formatted_idea: FormattedIdea):
     await find_ideas_main_idea(combined_idea, combined_idea["discussion_id"])
 
 async def find_ideas_main_idea(idea: dict, discussion_id: str):
-    clustering = CentroidClustering(similarity_threshold=0.85) 
+    clustering = CentroidClustering(similarity_threshold=0.65) 
     await clustering.process_idea(
         embedding=idea['embedding'],
         idea=idea,
