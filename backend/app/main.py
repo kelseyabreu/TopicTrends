@@ -18,6 +18,8 @@ from typing import Callable, Dict, Any
 # --- Third-Party Imports ---
 from fastapi import FastAPI, Request, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
+import os
+import asyncio
 from fastapi.exceptions import HTTPException
 from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
@@ -115,7 +117,11 @@ async def startup_event():
     try:
         await initialize_database() 
         logger.info("Database initialization complete.")
-        # Initialize other resources if needed (e.g., Redis cache connection)
+        # Start the background worker
+        from app.services.worker import run_worker
+        # Runs concurrently :o
+        asyncio.create_task(run_worker())
+        logger.info("Background worker started.")
     except Exception as e:
         logger.exception("FATAL: Database initialization failed. Application will exit.", exc_info=True)
         # Optionally: Send alert here
