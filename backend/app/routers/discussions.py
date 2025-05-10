@@ -97,19 +97,6 @@ async def create_discussion(
         "topic_count": 1, # Start with 1 topic (the default)
         "join_link": join_link,
         "qr_code": qr_code,
-        # Add a field to store the default topic ID if needed elsewhere, though derivable
-        "default_topic_id": f"{discussion_id}_new"
-    }
-
-    # --- Create the default "New Ideas" topic ---
-    default_topic_id = f"{discussion_id}_new"
-    default_topic_data = {
-        "_id": default_topic_id,
-        "discussion_id": discussion_id,
-        "representative_idea_id": None, # No representative idea initially
-        "representative_text": "New Ideas", # Default name
-        "count": 0, # Starts empty
-        "ideas": [] # Starts empty
     }
 
     # --- Insert both discussion and default topic ---
@@ -117,8 +104,7 @@ async def create_discussion(
     # for atomicity, but sequential inserts are often sufficient.
     try:
         await db.discussions.insert_one(discussion_data)
-        await db.topics.insert_one(default_topic_data)
-        logger.info(f"Discussion {discussion_id} and default topic {default_topic_id} created by user {user_id}")
+        logger.info(f"Discussion {discussion_id} created by user {user_id}")
     except Exception as e:
         logger.error(f"Error creating discussion or default topic for {discussion_id}: {e}", exc_info=True)
         # Attempt to clean up if one insert succeeded but the other failed? Or rely on eventual consistency/manual cleanup.
