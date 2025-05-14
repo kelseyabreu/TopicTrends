@@ -14,7 +14,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
 import Header from './components/Header.tsx';
 import TopicView from './pages/TopicView';
-import ProtectedRoute from './components/ProtectedRoute.tsx';
+import ProtectedRoute from './guards/ProtectedRoute.tsx';
 import UserSettings from './pages/UserSettings.tsx';
 import IdeaView from './pages/IdeaView.tsx';
 
