@@ -10,9 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "../context/AuthContext";
 import { AuthStatus } from "../enums/AuthStatus";
-import { Loader2, Trash2, Zap } from "lucide-react"; // Import Zap icon or similar for grouping
+import { Loader2, Trash2, Waves, Zap } from "lucide-react"; // Import Zap icon or similar for grouping
 import { Discussion } from "../interfaces/discussions"; // Import Discussion type
-import { Topic } from "../interfaces/topics";         // Import Topic type
+import { Topic, TopicsResponse } from "../interfaces/topics";         // Import Topic type
 import { Idea } from "../interfaces/ideas";           // Import Idea type
 // Define Session Storage Key function for Participation Token
 const getParticipationTokenKey = (discussionId: string | undefined): string =>
@@ -26,16 +26,16 @@ function DiscussionView() {
     const [discussion, setDiscussion] = useState<Discussion | null>(null);
     const [idea, setIdea] = useState("");
     const [topics, setTopics] = useState<Topic[]>([]);
+    const [unclusteredCount, setUnclusteredCount] = useState<number>(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isDeleting, setIsDeleting] = useState(false);
     const [participationToken, setParticipationToken] = useState<string | null>(null);
     const [showShareModal, setShowShareModal] = useState(false);
     const socketRef = useRef<Socket | null>(null);
-    const [isClustering, setIsClustering] = useState(false); 
+    const [isClustering, setIsClustering] = useState(false);
 
     const ensureParticipationToken = useCallback(async () => {
-        // ... (no changes needed here) ...
         if (!discussionId || authStatus !== AuthStatus.Unauthenticated) {
             if (authStatus === AuthStatus.Authenticated && participationToken) {
                 const storageKey = getParticipationTokenKey(discussionId);
@@ -92,17 +92,16 @@ function DiscussionView() {
         try {
             await api.delete(`/discussions/${discussionId}`);
             toast.success(`Discussion "${discussion.title}" deleted successfully.`);
-            navigate('/discussions'); 
+            navigate('/discussions');
         } catch (error) {
             console.error("Error deleting discussion:", error);
             // Error object likely comes from the api client interceptor now
             toast.error(error?.message || "Failed to delete discussion. You might not have permission.");
-            setIsDeleting(false); 
+            setIsDeleting(false);
         }
     };
 
-
-// --- Combined Effect for Data Fetching, Socket Connection, PT Management, and Real-time Idea Updates ---
+    // --- Combined Effect for Data Fetching, Socket Connection, PT Management, and Real-time Idea Updates ---
     useEffect(() => {
         console.log(`[DiscussionView Effect ${discussionId}] Starting. AuthStatus: ${authStatus}`);
         let isMounted = true;
@@ -141,21 +140,15 @@ function DiscussionView() {
             try {
                 const [discussionResponse, topicsResponse] = await Promise.all([
                     api.get<Discussion>(`/discussions/${discussionId}`),
-                    api.get<Topic[]>(`/discussions/${discussionId}/topics`),
+                    api.get<TopicsResponse>(`/discussions/${discussionId}/topics`),
                 ]);
 
                 if (isMounted) {
                     setDiscussion(discussionResponse.data);
-                    const fetchedTopics = Array.isArray(topicsResponse.data) ? topicsResponse.data : [];
-                    const defaultTopicId = `${discussionId}_new`;
-                    const sortedTopics = [...fetchedTopics].sort((a, b) => {
-                         const aIsNew = a.id === defaultTopicId;
-                         const bIsNew = b.id === defaultTopicId;
-                         if (aIsNew && !bIsNew) return -1;
-                         if (!aIsNew && bIsNew) return 1;
-                         return b.count - a.count;
-                    });
+                    const fetchedTopics = Array.isArray(topicsResponse.data.topics) ? topicsResponse.data.topics : [];
+                    const sortedTopics = [...fetchedTopics].sort((a, b) => b.count - a.count);
                     setTopics(sortedTopics);
+                    setUnclusteredCount(topicsResponse.data.unclustered_count || 0);
                     console.log(`[DiscussionView Effect ${discussionId}] Data fetched successfully.`);
                 }
             } catch (error) { // Catch any error type
@@ -213,23 +206,18 @@ function DiscussionView() {
             }
         };
 
-        const handleTopicsUpdated = (data: { discussion_id: string; topics: Topic[] }) => {
+        const handleTopicsUpdated = (data: { discussion_id: string; topics: Topic[]; unclustered_count: number }) => {
             if (data.discussion_id === discussionId && isMounted) {
                 console.log(`[Socket ${discussionId}] Received topics_updated event with ${data.topics?.length} topics.`);
                 const updatedTopics = Array.isArray(data.topics) ? data.topics : [];
-                const defaultTopicId = `${discussionId}_new`;
-                const sortedTopics = [...updatedTopics].sort((a, b) => {
-                    const aIsNew = a.id === defaultTopicId;
-                    const bIsNew = b.id === defaultTopicId;
-                    if (aIsNew && !bIsNew) return -1;
-                    if (!aIsNew && bIsNew) return 1;
-                    return b.count - a.count;
-                });
+                const sortedTopics = [...updatedTopics].sort((a, b) => b.count - a.count);
                 setTopics(sortedTopics);
-                // Update discussion topic count (idea count updated by 'new_idea')
+                setUnclusteredCount(data.unclustered_count);
+
+                // Update discussion topic count
                 setDiscussion((prev) => prev ? { ...prev, topic_count: updatedTopics.length } : null);
             } else if (isMounted) {
-                 console.log(`[Socket ${discussionId}] Ignored 'topics_updated' for different discussion (${data.discussion_id})`);
+                console.log(`[Socket ${discussionId}] Ignored 'topics_updated' for different discussion (${data.discussion_id})`);
             }
         };
 
@@ -241,7 +229,7 @@ function DiscussionView() {
         };
 
         const handleIdeaProcessingError = (data: { discussion_id: string; idea_id: string; error?: string }) => {
-             if (data.discussion_id === discussionId && isMounted) {
+            if (data.discussion_id === discussionId && isMounted) {
                 console.warn(`[Socket ${discussionId}] Received idea_processing_error for idea ${data.idea_id}:`, data.error);
                 toast.warn(`AI processing issue for one idea: ${data.error || 'Processing failed.'}`, { autoClose: 7000 });
             }
@@ -251,7 +239,6 @@ function DiscussionView() {
         const handleNewIdea = (data: { discussion_id: string; idea: Idea }) => {
             if (data.discussion_id === discussionId && isMounted) {
                 console.log(`[Socket ${discussionId}] Received new_idea event:`, data.idea.id);
-                const newIdeaData = data.idea;
 
                 // Update overall discussion idea count
                 setDiscussion((prevDiscussion) =>
@@ -260,45 +247,10 @@ function DiscussionView() {
                         : null
                 );
 
-                // Update the 'New Ideas' topic specifically
-                setTopics((prevTopics) => {
-                    const defaultTopicId = `${discussionId}_new`;
-                    let foundNewIdeasTopic = false;
-
-                    // Map and update the specific topic
-                    const updatedTopics = prevTopics.map(topic => {
-                        if (topic.id === defaultTopicId) {
-                            foundNewIdeasTopic = true;
-                            // Ensure the new idea isn't already present (edge case for rapid events)
-                            if (topic.ideas?.some(i => i.id === newIdeaData.id)) {
-                                return topic; // Already have it, return unchanged
-                            }
-                            return {
-                                ...topic,
-                                count: (topic.count || 0) + 1,
-                                ideas: [newIdeaData, ...(topic.ideas || [])] // Prepend new idea
-                            };
-                        }
-                        return topic;
-                    });
-
-                    // If the "New Ideas" topic wasn't found (e.g., initial state), create it
-                    if (!foundNewIdeasTopic) {
-                        const newIdeasTopic: Topic = {
-                            id: defaultTopicId,
-                            representative_idea_id: null, // Or appropriate default
-                            representative_text: "New Ideas", // Default name
-                            count: 1,
-                            ideas: [newIdeaData]
-                        };
-                        // Prepend the new topic to maintain sorting preference
-                        return [newIdeasTopic, ...updatedTopics];
-                    }
-
-                    return updatedTopics;
-                });
+                // Increment unclustered count since new ideas are now unclustered
+                setUnclusteredCount(prev => prev + 1);
             } else if (isMounted) {
-                 console.log(`[Socket ${discussionId}] Ignored 'new_idea' event for different discussion (${data.discussion_id})`);
+                console.log(`[Socket ${discussionId}] Ignored 'new_idea' event for different discussion (${data.discussion_id})`);
             }
         };
         // >>> END Handler for new_idea <<<
@@ -336,16 +288,10 @@ function DiscussionView() {
                 socketRef.current.disconnect();
                 socketRef.current = null; // Clear the ref
             } else {
-                 console.log(`[DiscussionView Cleanup ${discussionId}] No socket found in ref to cleanup.`);
+                console.log(`[DiscussionView Cleanup ${discussionId}] No socket found in ref to cleanup.`);
             }
         };
-    // Dependency array includes discussionId, navigate, authStatus, and the ensureParticipationToken callback
-    // participationToken is included because if it changes (e.g., fetched), we might need effect logic based on it,
-    // though in this structure, ensureParticipationToken handles setting it.
-    // }, [discussionId, navigate, authStatus, ensureParticipationToken, participationToken]); // Original deps
-    // Let's refine dependencies: ensureParticipationToken doesn't change often, participationToken is managed by it.
-    // Primarily depend on discussionId and authStatus. navigate is stable.
-    }, [discussionId, navigate, authStatus, ensureParticipationToken]);
+    }, [discussionId, navigate, authStatus, ensureParticipationToken, participationToken]);
 
 
     // --- Idea Submission Handler (remains mostly the same, no clustering call) ---
@@ -446,19 +392,11 @@ function DiscussionView() {
     };
     const goSwim = (topicId: string) => {
         if (discussionId && topicId) {
-            // Prevent navigating *into* the "New Ideas" topic view
-            if (topicId === `${discussionId}_new`) {
-                toast.info("These are newly submitted ideas waiting to be grouped.");
-                return;
-            }
             navigate(`/discussion/${discussionId}/topic/${topicId}`);
         } else {
             console.error("Missing IDs for topic navigation.");
         }
     };
-
-    // Helper to find the "New Ideas" topic
-    const newIdeasTopic = topics.find(t => t.id === `${discussionId}_new`);
 
     // --- Render Logic ---
     if (isLoading || authStatus === AuthStatus.Loading) {
@@ -491,7 +429,7 @@ function DiscussionView() {
                         <p className="prompt">{discussion.prompt}</p>
                         <div className="stats">
                             {/* Recalculate stats based on current topics state */}
-                            <div className="stat"><span className="stat-value">{topics.reduce((sum, t) => sum + t.count, 0)}</span><span className="stat-label">Ideas</span></div>
+                            <div className="stat"><span className="stat-value">{topics.reduce((sum, t) => sum + t.count, 0) + unclusteredCount}</span><span className="stat-label">Ideas</span></div>
                             <div className="stat"><span className="stat-value">{topics.length || 0}</span><span className="stat-label">Currents</span></div>
                             {/* Add counts for specific types if needed */}
                         </div>
@@ -501,19 +439,29 @@ function DiscussionView() {
                             </Button>
                             {/* <<< Add Clustering Button >>> */}
                             {authStatus === AuthStatus.Authenticated && ( // Only show if logged in
-                                <Button
-                                    variant="default"
-                                    onClick={handleClusterClick}
-                                    disabled={isClustering || (newIdeasTopic?.count ?? 0) === 0} // Disable if clustering or no new ideas
-                                    className="ml-2"
-                                >
-                                    {isClustering ? (
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    ) : (
-                                        <Zap className="mr-2 h-4 w-4" /> // Use an appropriate icon
-                                    )}
-                                    Group New Ideas ({(newIdeasTopic?.count ?? 0)})
-                                </Button>
+                                <>
+                                    <Button
+                                        variant="default"
+                                        onClick={handleClusterClick}
+                                        disabled={isClustering}
+                                        className="ml-2"
+                                    >
+                                        {isClustering ? (
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        ) : (
+                                            <Zap className="mr-2 h-4 w-4" />
+                                        )}
+                                        Regroup All Ideas
+                                    </Button>
+                                    <Button
+                                        variant="default"
+                                        onClick={() => navigate(`/new-ideas/${discussionId}`)/* Doesnt exist yet jason, we can also show something on this page if we want */}
+                                        className="ml-2"
+                                    >
+                                        <Waves className="mr-2 h-4 w-4" />
+                                        Drifting Ideas ({unclusteredCount})
+                                    </Button>
+                                </>
                             )}
                             <Button
                                 variant="default"
@@ -576,24 +524,19 @@ function DiscussionView() {
                                                             <div className="topic-details">
                                                                 <h3 className="topic-title line-clamp-2">{topic.representative_text}</h3>
                                                                 <div className="topic-meta">
-                                                                    {/* Show "New" badge for the default topic */}
-                                                                    {topic.id === `${discussionId}_new` && <Badge variant="default" className="mr-1">New</Badge>}
                                                                     <Badge variant="default">{getTopicType(topic.count)}</Badge>
                                                                     <Badge variant="default">{topic.count} Ideas</Badge>
                                                                 </div>
                                                             </div>
-                                                            {/* Don't show "View Topic" for "New Ideas" */}
-                                                            {topic.id !== `${discussionId}_new` && (
-                                                                <Button
-                                                                    variant="default"
-                                                                    size="sm"
-                                                                    onClick={(e) => { e.stopPropagation(); goSwim(topic.id); }}
-                                                                    className="go-swim-button"
-                                                                    aria-label={`View details for topic ${topic.representative_text}`}
-                                                                >
-                                                                    View Topic
-                                                                </Button>
-                                                            )}
+                                                            <Button
+                                                                variant="default"
+                                                                size="sm"
+                                                                onClick={(e) => { e.stopPropagation(); goSwim(topic.id); }}
+                                                                className="go-swim-button"
+                                                                aria-label={`View details for topic ${topic.representative_text}`}
+                                                            >
+                                                                View Topic
+                                                            </Button>
                                                         </div>
                                                     </AccordionTrigger>
                                                     <AccordionContent>
@@ -622,8 +565,8 @@ function DiscussionView() {
                                                                         </div>
                                                                     </div>
                                                                 ))}
-                                                                {/* Show 'View All' button only for non-default topics */}
-                                                                {topic.ideas.length > 5 && topic.id !== `${discussionId}_new` && (
+                                                                {/* Show 'View All' button if many ideas */}
+                                                                {topic.ideas.length > 5 && (
                                                                     <Button variant="link" size="sm" onClick={() => goSwim(topic.id)} className="mt-2">
                                                                         View all {topic.ideas.length} ideas in topic...
                                                                     </Button>

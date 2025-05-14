@@ -13,7 +13,7 @@ from app.core.config import settings
 # Import security functions and dependencies
 from app.services.auth import (
     verify_token_cookie,
-    create_participation_token, # Added PT generator
+    create_participation_token,
     verify_csrf_dependency,
     verify_api_key
 )
@@ -74,9 +74,9 @@ async def create_discussion(
     request: Request,
     discussion: DiscussionCreate,
     current_user: Annotated[dict, Depends(verify_token_cookie)],
-    db=Depends(get_db) # Ensure db dependency
+    db=Depends(get_db)
 ):
-    """Create a new discussion and a default 'New Ideas' topic."""
+    """Create a new discussion"""
     user_id = str(current_user["_id"])
     logger.info(f"User {user_id} creating discussion: {discussion.title}")
 
@@ -94,27 +94,21 @@ async def create_discussion(
         "created_at": now,
         "last_activity": now,
         "idea_count": 0,
-        "topic_count": 1, # Start with 1 topic (the default)
+        "topic_count": 0,
         "join_link": join_link,
         "qr_code": qr_code,
     }
 
-    # --- Insert both discussion and default topic ---
-    # Consider using a transaction here if your MongoDB setup supports it
-    # for atomicity, but sequential inserts are often sufficient.
+    # --- Insert discussion ---
     try:
         await db.discussions.insert_one(discussion_data)
         logger.info(f"Discussion {discussion_id} created by user {user_id}")
     except Exception as e:
-        logger.error(f"Error creating discussion or default topic for {discussion_id}: {e}", exc_info=True)
-        # Attempt to clean up if one insert succeeded but the other failed? Or rely on eventual consistency/manual cleanup.
-        # Raising allows the global error handler to catch it.
+        logger.error(f"Error creating discussion for {discussion_id}: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to initialize discussion components.")
 
     # Map _id to id for the response model
     discussion_data["id"] = discussion_data["_id"]
-    # Remove internal fields not in response model if necessary
-    del discussion_data["default_topic_id"]
 
     return Discussion(**discussion_data)
 
@@ -122,7 +116,7 @@ async def create_discussion(
 @router.get("/discussions/{discussion_id}", response_model=Discussion)
 @limiter.limit(settings.DISCUSSION_READ_RATE_LIMIT)
 async def get_discussion_details(
-    request: Request, # Need request for limiter
+    request: Request, 
     discussion_id: str
 ):
     """Get discussion details by ID"""
@@ -141,8 +135,8 @@ async def get_discussion_details(
 @router.get("/discussions", response_model=List[Discussion])
 @limiter.limit(settings.DISCUSSION_READ_RATE_LIMIT)
 async def get_discussions(
-    request: Request, # Need request for limiter
-    limit: int = 20, # Add pagination
+    request: Request, 
+    limit: int = 20, 
     skip: int = 0
 ):
     """Get all discussions (paginated)"""
@@ -206,7 +200,7 @@ async def delete_discussion(
 @router.post("/discussions/{discussion_id}/initiate-anonymous", response_model=EmbedToken, dependencies=[Depends(verify_api_key)])
 @limiter.limit(settings.TOKEN_GEN_RATE_LIMIT)
 async def initiate_anonymous_session(
-    request: Request, # Need request for limiter
+    request: Request,
     discussion_id: str):
     """Generates a participation token (Requires valid X-API-Key header)."""
     await get_discussion_by_id_internal(discussion_id) # Ensure discussion exists
@@ -229,7 +223,7 @@ async def get_embed_token(
     return EmbedToken(participation_token=token)
 
 @router.post("/discussions/{discussion_id}/cluster", status_code=status.HTTP_202_ACCEPTED, dependencies=[Depends(verify_csrf_dependency)])
-@limiter.limit("10/minute") # Add a rate limit
+@limiter.limit("10/minute") 
 async def trigger_discussion_clustering(
     request: Request,
     discussion_id: str,
@@ -238,7 +232,7 @@ async def trigger_discussion_clustering(
     db=Depends(get_db) # Keep db dependency if needed for validation
 ):
     """
-    Manually triggers the clustering of ideas currently in the 'New Ideas' topic
+    Manually triggers the clustering of all ideas
     for the specified discussion. Runs as a background task.
     """
     user_id = str(current_user["_id"])
@@ -251,7 +245,6 @@ async def trigger_discussion_clustering(
     #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the discussion creator can trigger clustering.")
 
     # 2. Add clustering task to background
-    # It will fetch ideas from the default topic automatically due to logic changes
     background_tasks.add_task(cluster_ideas_into_topics, discussion_id=discussion_id, persist_results=True)
 
     return {"message": "Idea grouping process initiated."}
