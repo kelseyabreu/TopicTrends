@@ -57,20 +57,20 @@ function Header() {
                   {user ? (
                     <>
                       <ListItem
-                        href="create"
+                        href="/create"
                         title="Create Discussion"
                       >
                         Start your very own discussion and start engaging with
                         others.
                       </ListItem>
                       <ListItem
-                        href="discussions"
+                        href="/discussions"
                         title="Search Discussions"
                       >
                         Find a discussion you want to contribute to.
                       </ListItem>
                       <ListItem
-                        href="my-ideas"
+                        href="/my-ideas"
                         title="View My Ideas"
                       >
                         See all the ideas you have contributed to.
@@ -104,7 +104,7 @@ function Header() {
                           </div>
                         </NavigationMenuLink>
                       </li>
-                      <ListItem href="settings" title="Settings">
+                      <ListItem href="/settings" title="Settings">
                         Changes your settings.
                       </ListItem>
                       <ListItem onClick={handleLogout} title="Logout">
@@ -116,7 +116,7 @@ function Header() {
               ) : (
                 <>
                   <NavigationMenuLink
-                    href="login"
+                    href="/login"
                     className={navigationMenuTriggerStyle()}
                   >
                     Login
