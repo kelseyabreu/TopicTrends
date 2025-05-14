@@ -90,7 +90,8 @@ class CentroidClustering:
                         session=session
                     )
             
-            logger.info(f"Created new topic {topic_id} with representative idea {idea['_id']}")
+            idea_text_preview = idea['text'][:10] + "..." if len(idea['text']) > 10 else idea['text']
+            logger.info(f"Created new topic {topic_id} with representative idea {idea['_id']} ({idea_text_preview})")
             return topic
             
         except Exception as e:
@@ -138,7 +139,6 @@ class CentroidClustering:
             
             topic['centroid_embedding'] = new_centroid.tolist()
             topic['count'] += 1
-            topic['idea_ids'].append(idea['_id'])
             logger.info(f"Updated topic {topic['_id']} with new idea {idea['_id']}, new count: {topic['count']}")
             return topic
             
