@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import io, { Socket } from "socket.io-client";
 import "../styles/DiscussionView.css";
@@ -584,15 +584,9 @@ function DiscussionView() {
                                                             </div>
                                                             {/* Don't show "View Topic" for "New Ideas" */}
                                                             {topic.id !== `${discussionId}_new` && (
-                                                                <Button
-                                                                    variant="default"
-                                                                    size="sm"
-                                                                    onClick={(e) => { e.stopPropagation(); goSwim(topic.id); }}
-                                                                    className="go-swim-button"
-                                                                    aria-label={`View details for topic ${topic.representative_text}`}
-                                                                >
+                                                                <Link to={{pathname: `/discussion/${discussionId}/topic/${topic.id}`}} className="go-swim-button">
                                                                     View Topic
-                                                                </Button>
+                                                                </Link>
                                                             )}
                                                         </div>
                                                     </AccordionTrigger>
@@ -609,9 +603,9 @@ function DiscussionView() {
                                                                         <div className="idea-meta">
                                                                             <span className="idea-user">
                                                                                 {ideaItem.verified ? (
-                                                                                    <Badge variant="success" size="sm">✓ {ideaItem.submitter_display_id || 'Verified'}</Badge>
+                                                                                    <Badge variant="default">✓ {ideaItem.submitter_display_id || 'Verified'}</Badge>
                                                                                 ) : (
-                                                                                    <Badge variant="default" size="sm">👤 {ideaItem.submitter_display_id || 'Anonymous'}</Badge>
+                                                                                    <Badge variant="neutral">👤 {ideaItem.submitter_display_id || 'Anonymous'}</Badge>
                                                                                 )}
                                                                             </span>
                                                                             {ideaItem.timestamp && (
@@ -624,7 +618,7 @@ function DiscussionView() {
                                                                 ))}
                                                                 {/* Show 'View All' button only for non-default topics */}
                                                                 {topic.ideas.length > 5 && topic.id !== `${discussionId}_new` && (
-                                                                    <Button variant="link" size="sm" onClick={() => goSwim(topic.id)} className="mt-2">
+                                                                    <Button variant="default" size="sm" onClick={() => goSwim(topic.id)} className="mt-2">
                                                                         View all {topic.ideas.length} ideas in topic...
                                                                     </Button>
                                                                 )}
