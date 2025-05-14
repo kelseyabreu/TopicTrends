@@ -36,6 +36,10 @@ class Topic(BaseModel):
     ideas: List[Idea]
     centroid_embedding: Optional[list[float]] = None
 
+class TopicsResponse(BaseModel):
+    topics: List[Topic]
+    unclustered_count: int
+
 class TopicIdPayload(BaseModel):
     topic_id: str
     
