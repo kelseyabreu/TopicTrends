@@ -499,6 +499,9 @@ function DiscussionView() {
                             <Button variant="reverse" onClick={() => setShowShareModal(true)} disabled={!discussion.join_link} className="shareBtn">
                                 Share
                             </Button>
+                            <Button variant="reverse" onClick={() => setShowShareModal(true)} disabled={!discussion.join_link} className="shareBtn">
+                                New Idea
+                            </Button>
                             {/* <<< Add Clustering Button >>> */}
                             {authStatus === AuthStatus.Authenticated && ( // Only show if logged in
                                 <Button
