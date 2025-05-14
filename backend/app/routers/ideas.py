@@ -40,9 +40,9 @@ router = APIRouter(tags=["ideas"])
 
 # Routes
 @router.get("/ideas/{idea_id}", response_model=Idea)
-@limiter.limit("200/minute") # Limit idea reads
+@limiter.limit("200/minute")
 async def get_idea_by_id(
-    request: Request, # Need request for limiter
+    request: Request,
     idea_id:str
     ):
     """Get an idea by its ID"""
@@ -80,9 +80,6 @@ async def submit_idea(
 ):
     """
     Submit an idea to a specific discussion.
-
-    Handles authentication via HttpOnly cookie (with CSRF) or Participation Token header.
-    Assigns the new idea to the discussion's default 'New Ideas' topic.
     Triggers a background AI task for idea formatting.
     """
 
@@ -278,7 +275,7 @@ async def submit_idea(
 @router.get("/discussions/{discussion_id}/ideas", response_model=List[Idea])
 @limiter.limit(settings.DISCUSSION_READ_RATE_LIMIT)
 async def get_discussion_ideas(
-    request: Request, # Need request for limiter
+    request: Request,
     discussion_id: str,
     db=Depends(get_db)
     ):
