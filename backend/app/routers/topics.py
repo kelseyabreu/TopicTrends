@@ -2,7 +2,7 @@ from fastapi import APIRouter, BackgroundTasks, Body, Depends
 from typing import List
 from app.services.genkit.ai import cluster_ideas_into_topics
 from app.services.genkit.cluster import _map_ideas_for_output
-from app.models.schemas import Topic, TopicIdPayload
+from app.models.schemas import Topic, TopicIdPayload, TopicsResponse
 from app.core.database import get_db
 from app.routers.discussions import get_discussion_by_id_internal
 import logging
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["topics"])
 
 # Routes
-@router.get("/discussions/{discussion_id}/topics", response_model=List[Topic])
+@router.get("/discussions/{discussion_id}/topics", response_model=TopicsResponse)
 async def get_discussion_topics(discussion_id: str, db=Depends(get_db)):
     """
     Get all topics for a discussion, dynamically fetching associated ideas
@@ -25,9 +25,15 @@ async def get_discussion_topics(discussion_id: str, db=Depends(get_db)):
     # 2. Fetch all topic documents for the discussion
     topic_docs = await db.topics.find({"discussion_id": discussion_id}).sort("_id", 1).to_list(length=None)
 
+    # 3. Get count of unclustered ideas
+    unclustered_count = await db.ideas.count_documents({
+        "discussion_id": discussion_id,
+        "topic_id": None
+    })
+
     results = []
 
-    # 3. Iterate through topic documents and fetch their associated ideas
+    # 4. Iterate through topic documents and fetch their associated ideas
     for topic_doc in topic_docs:
         topic_id = str(topic_doc["_id"])
         logger.debug(f"Processing topic: {topic_id} ('{topic_doc.get('representative_text')}')")
@@ -36,11 +42,11 @@ async def get_discussion_topics(discussion_id: str, db=Depends(get_db)):
         ideas_cursor = db.ideas.find({"topic_id": topic_id}).sort("timestamp", 1) # Sort ideas chronologically
         ideas_list = await ideas_cursor.to_list(length=None) # Fetch all ideas for this topic
 
-        # 4. Map fetched ideas to the required output format
+        # 5. Map fetched ideas to the required output format
         # Use the existing helper function if suitable, ensure it maps _id correctly
         nested_ideas_data = _map_ideas_for_output(ideas_list)
 
-        # 5. Construct the final Topic object using fetched data
+        # 6. Construct the final Topic object using fetched data
         # Use the helper function for mapping topic doc to schema dict
         topic_data_for_pydantic = {
             "id": topic_id,
@@ -58,7 +64,7 @@ async def get_discussion_topics(discussion_id: str, db=Depends(get_db)):
              logger.error(f"Pydantic validation failed for topic {topic_id} in get_discussion_topics: {e}. Skipping topic.", exc_info=True)
              # Skip adding this topic if validation fails
 
-    # 6. Sort the final list (e.g., 'New Ideas' first, then by idea count)
+    # 7. Sort the final list (e.g., 'New Ideas' first, then by idea count)
     results.sort(key=lambda t: (
         1, 
         -t.count 
@@ -66,7 +72,10 @@ async def get_discussion_topics(discussion_id: str, db=Depends(get_db)):
 
     logger.info(f"Finished fetching and processing {len(results)} topics for discussion {discussion_id}")
     # FastAPI will handle serializing the list of Pydantic models
-    return results
+    return {
+        "topics": results,
+        "unclustered_count": unclustered_count
+    }
 
 
 @router.post("/topics", response_model=List[dict]) 

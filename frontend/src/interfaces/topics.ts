@@ -1,3 +1,4 @@
+import { Idea } from "./ideas";
 export interface Topic {
     id: string;
     representative_idea_id: string;
@@ -8,4 +9,9 @@ export interface Topic {
 
 export interface TopicResponse {
     data: Topic[];
+}
+
+export interface TopicsResponse {
+    topics: Topic[];
+    unclustered_count: number;
 }
