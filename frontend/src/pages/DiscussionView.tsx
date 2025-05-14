@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "../context/AuthContext";
 import { AuthStatus } from "../enums/AuthStatus";
-import { Loader2, Trash2, Zap } from "lucide-react"; // Import Zap icon or similar for grouping
+import { Loader2, Trash2, Waves, Zap } from "lucide-react"; // Import Zap icon or similar for grouping
 import { Discussion } from "../interfaces/discussions"; // Import Discussion type
 import { Topic, TopicsResponse } from "../interfaces/topics";         // Import Topic type
 import { Idea } from "../interfaces/ideas";           // Import Idea type
@@ -458,6 +458,7 @@ function DiscussionView() {
                                         onClick={() => navigate(`/new-ideas/${discussionId}`)/* Doesnt exist yet jason, we can also show something on this page if we want */}
                                         className="ml-2"
                                     >
+                                        <Waves className="mr-2 h-4 w-4" />
                                         Drifting Ideas ({unclusteredCount})
                                     </Button>
                                 </>
