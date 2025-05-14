@@ -439,7 +439,6 @@ async def update_database_and_emit(discussion_id: str, topics_temp_data: dict) -
         List of topic results
     """
     db = await get_db()
-    default_topic_id = f"{discussion_id}_new"
     topic_results = []
     
     try:
@@ -449,7 +448,6 @@ async def update_database_and_emit(discussion_id: str, topics_temp_data: dict) -
         try:
             delete_result = await db.topics.delete_many({
                 "discussion_id": discussion_id,
-                "_id": {"$ne": default_topic_id}
             })
             logger.info(f"Deleted {delete_result.deleted_count} existing topics")
         except Exception as e:
@@ -556,14 +554,6 @@ async def update_database_and_emit(discussion_id: str, topics_temp_data: dict) -
         # Add idea updates
         if idea_update_tasks:
             all_tasks.extend(idea_update_tasks)
-            
-        # Reset the default "New Ideas" topic
-        all_tasks.append(
-            db.topics.update_one(
-                {"_id": default_topic_id},
-                {"$set": {"count": 0, "ideas": []}}
-            )
-        )
         
         # Execute all tasks
         if all_tasks:
@@ -1013,10 +1003,7 @@ async def recommend_topics_for_user(user_id: str, discussion_id: str, limit: int
         topic_scores = []
         
         for topic in topics:
-            # Skip default "New Ideas" topic
-            if topic["_id"].endswith("_new"):
-                continue
-                
+               
             # Skip topics the user has already contributed to
             user_idea_ids = [str(idea["_id"]) for idea in user_ideas]
             topic_idea_ids = [idea["id"] for idea in topic.get("ideas", [])]
