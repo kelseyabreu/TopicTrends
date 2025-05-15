@@ -74,7 +74,7 @@ function Header() {
                         title="View My Ideas"
                       >
                         See all the ideas you have contributed to.
-                      </ListItem>
+                                          </ListItem>
                     </>
                   ) : (
                     <>
@@ -104,6 +104,9 @@ function Header() {
                           </div>
                         </NavigationMenuLink>
                       </li>
+                      <ListItem href="/dashboard" title="Dashboard">
+                          View your discussions and stats.
+                      </ListItem>
                       <ListItem href="/settings" title="Settings">
                         Changes your settings.
                       </ListItem>
