@@ -13,7 +13,7 @@ function Home() {
         
         <div className="action-buttons">
           <Link to="/create" className="btn btn-primary">Create Discussion</Link>
-          <button className="btn btn-secondary">Learn More</button>
+          <Link to="/about" className="btn btn-secondary">Learn More</Link>
         </div>
       </div>
       

@@ -18,7 +18,7 @@ import ProtectedRoute from './guards/ProtectedRoute.tsx';
 import UserSettings from './pages/UserSettings.tsx';
 import IdeaView from './pages/IdeaView.tsx';
 import MyIdeas from './pages/MyIdeas.tsx';
-
+import About from './pages/About.tsx';
 function App() {
     return (
         <Router>
@@ -27,6 +27,7 @@ function App() {
                 <div className="container">
                     <Routes>
                         <Route path="/" element={<Home />} />
+                        <Route path="/about" element={<About />} />
                         <Route path="/login" element={<Login />} />
                         <Route path="/register" element={<Register />} />
                         <Route path="/verify" element={<VerifyEmail />} />
