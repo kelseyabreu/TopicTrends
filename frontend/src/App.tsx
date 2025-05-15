@@ -19,6 +19,7 @@ import UserSettings from './pages/UserSettings.tsx';
 import IdeaView from './pages/IdeaView.tsx';
 import MyIdeas from './pages/MyIdeas.tsx';
 import About from './pages/About.tsx';
+import UserDashboard from './pages/UserDashboard.tsx';
 function App() {
     return (
         <Router>
@@ -54,7 +55,15 @@ function App() {
                                             <UserSettings />
                                         </ProtectedRoute>
                                     }
-                                />
+                        />
+                        <Route
+                            path="/dashboard"
+                            element={
+                                <ProtectedRoute>
+                                    <UserDashboard />
+                                </ProtectedRoute>
+                            }
+                        />
                         </Routes>
             </div>
             <ToastContainer position="bottom-right" />
