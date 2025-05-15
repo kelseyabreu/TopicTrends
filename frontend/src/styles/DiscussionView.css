@@ -58,8 +58,7 @@
 }
 
 .main-content {
-    display: grid;
-    grid-template-columns: 350px 1fr;
+    display: flex;
     gap: 30px;
     width: 100%;
     max-width: 1200px;
@@ -88,13 +87,16 @@
         gap: 20px;
     }
 
-.user-info {
+.user-info-dialog {
+    align-self: center;
     display: flex;
-    align-items: center;
-    justify-content: flex-end;
+    align-items: start;
+    justify-content: flex-start;
 }
 
 .topics-section {
+    width:100%;
+    flex:1;
     background-color: white;
     border-radius: 10px;
     padding: 25px;
