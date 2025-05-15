@@ -144,7 +144,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     log_prefix = f"[Req ID: {req_id}]"
     
     if exc.status_code >= 500:
-         logger.error(f"{log_prefix} Server Error: HTTPException {exc.status_code}: {exc.detail} for {request.method} {request.url.path}", exc_info=settings.LOG_TRACEBACKS)
+         logger.error(f"{log_prefix} Server Error: HTTPException {exc.status_code}: {exc.detail} for {request.method} {request.url.path}")
     elif exc.status_code >= 400:
          # Log client errors as warnings or info, maybe not always with full detail unless debugging
          logger.warning(f"{log_prefix} Client Error: HTTPException {exc.status_code}: {exc.detail} for {request.method} {request.url.path}")
