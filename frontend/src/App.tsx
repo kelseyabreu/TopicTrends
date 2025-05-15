@@ -17,6 +17,7 @@ import TopicView from './pages/TopicView';
 import ProtectedRoute from './guards/ProtectedRoute.tsx';
 import UserSettings from './pages/UserSettings.tsx';
 import IdeaView from './pages/IdeaView.tsx';
+import MyIdeas from './pages/MyIdeas.tsx';
 
 function App() {
     return (
@@ -33,6 +34,14 @@ function App() {
                         <Route path="/reset-password" element={<ResetPassword />} />
                         <Route path="/create" element={<CreateDiscussion />} />
                         <Route path="/ideas/:ideaId" element={<IdeaView />} />
+                        <Route
+                            path="/my-ideas"
+                            element={
+                                <ProtectedRoute>
+                                    <MyIdeas />
+                                </ProtectedRoute>
+                            }
+                        />
                         <Route path="/join/:discussionId" element={<JoinDiscussion />} />
                         <Route path="/discussions" element={<AllDiscussionsView />} />
                         <Route path="/discussion/:discussionId" element={<DiscussionView />} />
