@@ -115,7 +115,7 @@ The API will be available at http://localhost:8000
 
 5. **Start the development server**:
    ```bash
-   python main.py
+   uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
    ```
 
 ## AI Architecture

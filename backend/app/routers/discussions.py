@@ -81,7 +81,7 @@ async def create_discussion(
     logger.info(f"User {user_id} creating discussion: {discussion.title}")
 
     discussion_id = str(uuid.uuid4())
-    join_link = f"{str(request.base_url).rstrip('/')}/join/{discussion_id}"
+    join_link = f"{settings.FRONTEND_URL}/discussion/{discussion_id}"
     qr_code = generate_qr_code(join_link)
     now = datetime.now(timezone.utc)
 
