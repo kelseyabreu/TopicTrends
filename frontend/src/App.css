@@ -7,14 +7,15 @@
 :root {
     --primary: #3498db;
     --primary-dark: #2980b9;
+    --primary-light: #eaf5fc;          
     --secondary: #2ecc71;
     --secondary-dark: #27ae60;
-    --dark: #2c3e50;
-    --light: #ecf0f1;
-    --gray: #95a5a6;
+    --dark: #2c3e50;                   
+    --light: #ecf0f1;                  
+    --gray: #95a5a6;                   
     --danger: #e74c3c;
     --warning: #f39c12;
-    --background: #f5f7fa;
+    --background: #f5f7fa;                   
 }
 #root {
     width:100%;
