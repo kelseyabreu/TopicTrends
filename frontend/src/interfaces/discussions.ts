@@ -6,4 +6,8 @@ export interface Discussion {
     id: string;
     title: string;
     prompt: string;
+    creator_id?: string | null;
+    created_at: string;
+    last_activity?: string | null;
+    topic_count: number;
 }
