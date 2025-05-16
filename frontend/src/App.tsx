@@ -20,6 +20,8 @@ import IdeaView from './pages/IdeaView.tsx';
 import MyIdeas from './pages/MyIdeas.tsx';
 import About from './pages/About.tsx';
 import UserDashboard from './pages/UserDashboard.tsx';
+import NewIdeasView from './pages/NewIdeasView.tsx';
+
 function App() {
     return (
         <Router>
@@ -48,6 +50,7 @@ function App() {
                         <Route path="/discussions" element={<AllDiscussionsView />} />
                         <Route path="/discussion/:discussionId" element={<DiscussionView />} />
                         <Route path="/discussion/:discussionId/topic/:topicId" element={<TopicView />} />
+                        <Route path="/discussion/:discussionId/new-ideas" element={<NewIdeasView />} />
                         <Route
                                 path="/settings"
                                     element={
