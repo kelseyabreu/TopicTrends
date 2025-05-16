@@ -636,7 +636,6 @@ function DiscussionView() {
               <BreadcrumbLink href="/">Home</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
-            <BreadcrumbSeparator />
             <BreadcrumbItem>
               <BreadcrumbLink href="/discussions">Discussions</BreadcrumbLink>
             </BreadcrumbItem>
@@ -715,8 +714,8 @@ function DiscussionView() {
                     onClick={
                       () =>
                         navigate(
-                          `/new-ideas/${discussionId}`
-                        ) /* Doesnt exist yet jason, we can also show something on this page if we want */
+                            `/discussion/${discussionId}/new-ideas`
+                        )
                     }
                     className="ml-2"
                   >
