@@ -65,7 +65,11 @@ function ResetPassword() {
         setLoading(true);
 
         try {
-            await authService.resetPassword(email, token, formData.password);
+            await authService.resetPassword({
+                email: email,
+                token: token,
+                password: formData.password
+            });
             toast.success('Password reset successful! You can now login with your new password.');
             navigate('/login');
         } catch (error) {
