@@ -18,7 +18,6 @@ import {
   CardFooter,
   CardDescription,
 } from "@/components/ui/card";
-import { TrendingUp } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Label, Pie, PieChart, XAxis } from "recharts";
 import {
   ChartConfig,
