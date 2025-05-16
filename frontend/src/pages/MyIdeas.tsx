@@ -15,8 +15,18 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  CardFooter,
   CardDescription,
 } from "@/components/ui/card";
+import { TrendingUp } from "lucide-react";
+import { Bar, BarChart, CartesianGrid, Label, Pie, PieChart, XAxis } from "recharts";
+import {
+  ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -28,7 +38,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { Loader2, Filter, Calendar, MessageSquare, ArrowDownNarrowWide, ArrowDownWideNarrow } from "lucide-react";
+import {
+  Loader2,
+  Filter,
+  Calendar,
+  MessageSquare,
+  ArrowDownNarrowWide,
+  ArrowDownWideNarrow,
+} from "lucide-react";
 import "../styles/MyIdeas.css";
 
 // Helper Types
@@ -239,10 +256,13 @@ const MyIdeas: React.FC = () => {
                 <SelectGroup>
                   <SelectLabel>Sort By</SelectLabel>
                   <SelectItem value="newest">
-                  <ArrowDownNarrowWide />Newest First
+                    <ArrowDownNarrowWide />
+                    Newest First
                   </SelectItem>
                   <SelectItem value="oldest">
-                  <ArrowDownWideNarrow />Oldest First</SelectItem>
+                    <ArrowDownWideNarrow />
+                    Oldest First
+                  </SelectItem>
                 </SelectGroup>
               </SelectContent>
             </Select>
@@ -605,13 +625,52 @@ const IdeasStats: React.FC<IdeasStatsProps> = ({
     neutral: 0,
     negative: 0,
   };
-
+  
+  // Count sentiments
   ideas.forEach((idea) => {
     if (idea.sentiment) {
       sentimentCounts[idea.sentiment] =
         (sentimentCounts[idea.sentiment] || 0) + 1;
     }
   });
+
+  // Config for Bar chart
+  const chartConfig = {
+    ideas: {
+      label: "Ideas",
+      color: "var(--chart-1)",
+    },
+    date: {
+      label: "Date",
+      color: "#00c8ef",
+    },
+  } satisfies ChartConfig;
+
+  // Create pie chart data in the format matching the example
+  const sentimentChartData = [
+    { sentiment: "positive", visitors: sentimentCounts.positive, fill: "#00c8ef" },
+    { sentiment: "neutral", visitors: sentimentCounts.neutral, fill: "#e8e8e8" },
+    { sentiment: "negative", visitors: sentimentCounts.negative, fill: "#000" },
+  ];
+
+  // Pie chart configuration
+  const pieConfig = {
+    visitors: {
+      label: "Ideas",
+    },
+    positive: {
+      label: "Positive",
+      color: "var(--chart-1)",
+    },
+    neutral: {
+      label: "Neutral",
+      color: "var(--chart-2)",
+    },
+    negative: {
+      label: "Negative",
+      color: "var(--chart-3)",
+    }
+  } satisfies ChartConfig;
 
   return (
     <div className="ideas-stats">
@@ -647,7 +706,58 @@ const IdeasStats: React.FC<IdeasStatsProps> = ({
             <CardDescription>Emotional tone of your ideas</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="sentiment-chart">
+
+
+
+          <ChartContainer
+          config={pieConfig}
+          className="mx-auto aspect-square max-h-[250px]"
+        >
+          <PieChart>
+            <ChartTooltip
+              cursor={false}
+              content={<ChartTooltipContent hideLabel />}
+            />
+            <Pie
+              data={sentimentChartData}
+              dataKey="visitors"
+              nameKey="sentiment"
+              innerRadius={60}
+              strokeWidth={2}
+            >
+              <Label
+                content={({ viewBox }) => {
+                  if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                    return (
+                      <text
+                        x={viewBox.cx}
+                        y={viewBox.cy}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                      >
+                        <tspan
+                          x={viewBox.cx}
+                          y={viewBox.cy}
+                          className="fill-foreground text-3xl font-bold"
+                        >
+                          {stats.totalIdeas.toLocaleString()}
+                        </tspan>
+                        <tspan
+                          x={viewBox.cx}
+                          y={(viewBox.cy || 0) + 24}
+                          className="fill-foreground"
+                        >
+                          Ideas
+                        </tspan>
+                      </text>
+                    )
+                  }
+                }}
+              />
+            </Pie>
+          </PieChart>
+        </ChartContainer>
+            {/* <div className="sentiment-chart">
               <div className="sentiment-bars">
                 {Object.entries(sentimentCounts).map(([sentiment, count]) => (
                   <div key={sentiment} className="sentiment-bar-container">
@@ -664,38 +774,43 @@ const IdeasStats: React.FC<IdeasStatsProps> = ({
                   </div>
                 ))}
               </div>
-            </div>
+            </div> */}
           </CardContent>
         </Card>
       </div>
 
-      <Card className="activity-card">
+      <Card className="bg-secondary-background text-foreground">
         <CardHeader>
           <CardTitle>Activity Timeline</CardTitle>
           <CardDescription>Your idea submissions over time</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="activity-chart">
-            {sortedDates.map((date) => (
-              <div key={date} className="activity-day">
-                <div className="activity-date">{date}</div>
-                <div className="activity-bar-container">
-                  <div
-                    className="activity-bar"
-                    style={{
-                      width: `${Math.min(
-                        (ideasByDate[date] /
-                          Math.max(...Object.values(ideasByDate))) *
-                          100,
-                        100
-                      )}%`,
-                    }}
-                  />
-                  <span className="activity-count">{ideasByDate[date]}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+          <ChartContainer config={chartConfig}>
+            <BarChart
+              data={sortedDates.map((date) => ({
+                fill: "#00c8ef",
+                date,
+                ideas: ideasByDate[date],
+              }))}
+            >
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis
+                dataKey="date"
+                tickLine={false}
+                tickMargin={10}
+                axisLine={false}
+              />
+              <ChartTooltip
+                cursor={false}
+                content={<ChartTooltipContent indicator="dot" />}
+              />
+              <Bar
+                dataKey="ideas"
+                fill="var(--primary)"
+                radius={[4, 4, 0, 0]}
+              />
+            </BarChart>
+          </ChartContainer>
         </CardContent>
       </Card>
     </div>
