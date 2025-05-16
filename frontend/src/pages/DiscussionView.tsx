@@ -678,10 +678,17 @@ function DiscussionView() {
               >
                 Share
               </Button>
-              {/* <<< Add Clustering Button >>> */}
+              <Button
+                  variant="default"
+                  onClick={() => setShowNewIdeaModal(true)}
+                  disabled={isClustering}
+                  className="ml-2">
+                  <Lightbulb className="mr-2 h-4 w-4" />
+                  New Idea
+              </Button>
               {authStatus === AuthStatus.Authenticated && ( // Only show if logged in
-                <>
-                  <Button
+                  <>
+                      <Button
                     variant="default"
                     onClick={() => setShowNewIdeaModal(true)}
                     disabled={isClustering}
