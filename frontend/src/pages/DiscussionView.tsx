@@ -1,16 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useParams, useNavigate, Link, NavLink } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import io, { Socket } from "socket.io-client";
 import "../styles/DiscussionView.css";
 import api, { API_URL } from "../utils/api";
 import { Button } from "@/components/ui/button";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "../context/AuthContext";
@@ -19,6 +13,7 @@ import { Lightbulb, Loader2, Trash2, Waves, Zap } from "lucide-react"; // Import
 import { Discussion } from "../interfaces/discussions"; // Import Discussion type
 import { Topic, TopicsResponse } from "../interfaces/topics"; // Import Topic type
 import { Idea } from "../interfaces/ideas"; // Import Idea type
+import TopicListItem from "../components/TopicListItem"; // Import our custom TopicListItem component
 import {
   Dialog,
   DialogClose,
@@ -27,7 +22,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Breadcrumb,
@@ -35,7 +29,6 @@ import {
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbSeparator,
-  BreadcrumbEllipsis,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
 // Define Session Storage Key function for Participation Token
@@ -735,108 +728,24 @@ function DiscussionView() {
           <div className="main-content">
             {/* Topics Section */}
             <div className="topics-section">
-              <h2>Motions in the Ocean</h2>
               {topics.length === 0 ? (
                 <div className="no-topics">
                   <p>No currents flowing yet. Share an idea!</p>
                 </div>
               ) : (
                 <div className="topics-list">
-                  {/* Render topics using map */}
+                  {/* Render topics using our custom TopicListItem component */}
                   {topics.map((topic) => (
-                    <div key={topic.id} className="topic-view-content">
-                      <Accordion type="single" collapsible className="w-full">
-                        <AccordionItem value={topic.id}>
-                          <AccordionTrigger>
-                            <div className="topic-header-grid">
-                              <div className="topic-details">
-                                <h3 className="topic-title line-clamp-2">
-                                  {topic.representative_text}
-                                </h3>
-                                <div className="topic-meta">
-                                  <Badge variant="default">
-                                    {getTopicType(topic.count)}
-                                  </Badge>
-                                  <Badge variant="default">
-                                    {topic.count} Ideas
-                                  </Badge>
-                                </div>
-                              </div>
-                              <NavLink
-                                to={{
-                                  pathname: `/discussion/${discussionId}/topic/${topic.id}`,
-                                }}
-                                className="go-swim-button"
-                                aria-label={`View details for topic ${topic.representative_text}`}
-                              >
-                                View Topic
-                              </NavLink>
-                            </div>
-                          </AccordionTrigger>
-                          <AccordionContent>
-                            {/* Display ideas within the topic */}
-                            {!topic.ideas || topic.ideas.length === 0 ? (
-                              <p className="text-muted-foreground text-sm p-4">
-                                No ideas found in this topic.
-                              </p>
-                            ) : (
-                              <div className="ideas-in-topic">
-                                {/* Show limited ideas initially */}
-                                {topic.ideas.slice(0, 5).map(
-                                  (
-                                    ideaItem: Idea // Add explicit type
-                                  ) => (
-                                    <div
-                                      className="idea-card"
-                                      key={ideaItem.id}
-                                    >
-                                      <p className="idea-text">
-                                        {ideaItem.text}
-                                      </p>
-                                      <div className="idea-meta">
-                                        <span className="idea-user">
-                                          {ideaItem.verified ? (
-                                            <Badge variant="default">
-                                              ✓{" "}
-                                              {ideaItem.submitter_display_id ||
-                                                "Verified"}
-                                            </Badge>
-                                          ) : (
-                                            <Badge variant="neutral">
-                                              👤{" "}
-                                              {ideaItem.submitter_display_id ||
-                                                "Anonymous"}
-                                            </Badge>
-                                          )}
-                                        </span>
-                                        {ideaItem.timestamp && (
-                                          <span className="idea-timestamp">
-                                            {new Date(
-                                              ideaItem.timestamp
-                                            ).toLocaleString()}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  )
-                                )}
-                                {/* Show 'View All' button if many ideas */}
-                                {topic.ideas.length > 5 && (
-                                  <Button
-                                    size="sm"
-                                    onClick={() => goSwim(topic.id)}
-                                    className="mt-2"
-                                  >
-                                    View all {topic.ideas.length} ideas in
-                                    topic...
-                                  </Button>
-                                )}
-                              </div>
-                            )}
-                          </AccordionContent>
-                        </AccordionItem>
-                      </Accordion>
-                    </div>
+                    <TopicListItem 
+                      key={topic.id}
+                      topic={topic}
+                      discussionId={discussionId || ''}
+                      onVote={(topicId, direction) => {
+                        // Handle voting - in a real app, this would call an API
+                        console.log(`Vote ${direction} for topic ${topicId}`);
+                        toast.info(`Voted ${direction} for topic`);
+                      }}
+                    />
                   ))}
                 </div>
               )}
