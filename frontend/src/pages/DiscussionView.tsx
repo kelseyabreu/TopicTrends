@@ -29,6 +29,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbSeparator,
+  BreadcrumbEllipsis,
+  BreadcrumbPage,
+} from "@/components/ui/breadcrumb";
 // Define Session Storage Key function for Participation Token
 const getParticipationTokenKey = (discussionId: string | undefined): string =>
   `TopicTrends_participation_token_${discussionId || "unknown"}`;
@@ -560,7 +569,7 @@ function DiscussionView() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-            <Lightbulb className="inline" /> New Idea
+              <Lightbulb className="inline" /> New Idea
             </DialogTitle>
             <DialogDescription>
               Share your thoughts on this discussion.
@@ -620,7 +629,24 @@ function DiscussionView() {
           </form>
         </DialogContent>
       </Dialog>
-
+      <div className="bread-crumb-container">
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/">Home</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/discussions">Discussions</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{discussion.title}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      </div>
       {discussion ? (
         <>
           {/* Discussion Info Header */}
@@ -710,7 +736,6 @@ function DiscussionView() {
 
           {/* Main Content Area */}
           <div className="main-content">
-
             {/* Topics Section */}
             <div className="topics-section">
               <h2>Motions in the Ocean</h2>
