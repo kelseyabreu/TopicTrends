@@ -636,7 +636,6 @@ function DiscussionView() {
               <BreadcrumbLink href="/">Home</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
-            <BreadcrumbSeparator />
             <BreadcrumbItem>
               <BreadcrumbLink href="/discussions">Discussions</BreadcrumbLink>
             </BreadcrumbItem>
@@ -688,15 +687,6 @@ function DiscussionView() {
               </Button>
               {authStatus === AuthStatus.Authenticated && ( // Only show if logged in
                   <>
-                      <Button
-                    variant="default"
-                    onClick={() => setShowNewIdeaModal(true)}
-                    disabled={isClustering}
-                    className="ml-2"
-                  >
-                    <Lightbulb className="mr-2 h-4 w-4" />
-                    New Idea
-                  </Button>
                   <Button
                     variant="default"
                     onClick={handleClusterClick}
@@ -715,8 +705,8 @@ function DiscussionView() {
                     onClick={
                       () =>
                         navigate(
-                          `/new-ideas/${discussionId}`
-                        ) /* Doesnt exist yet jason, we can also show something on this page if we want */
+                            `/discussion/${discussionId}/new-ideas`
+                        )
                     }
                     className="ml-2"
                   >
