@@ -25,7 +25,7 @@
    - ✅ QR code generation for discussion links
    - ✅ Share modal with copyable link
    - ✅ Discussion link generation
-   - ❌ Fix backend joinLink, make it frontend
+   - ✅ Fix backend joinLink, make it frontend
    
 5.  **Core Refactoring & Consistency** 
    - ✅ **Completed Core Terminology Refactor (Session->Discussion, Cluster->Topic)** 

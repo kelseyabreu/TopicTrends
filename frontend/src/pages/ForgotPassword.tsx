@@ -23,7 +23,7 @@ function ForgotPassword() {
         setLoading(true);
 
         try {
-            await authService.requestPasswordReset(email);
+            await authService.forgotPassword(email);
             setSubmitted(true);
             toast.success('Password reset instructions sent to your email.');
         } catch (error) {
