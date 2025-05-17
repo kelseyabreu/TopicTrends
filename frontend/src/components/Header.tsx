@@ -65,7 +65,7 @@ function Header() {
                       </ListItem>
                       <ListItem
                         href="/discussions"
-                        title="Search Discussions"
+                        title="Explore Discussions"
                       >
                         Find a discussion you want to contribute to.
                       </ListItem>
