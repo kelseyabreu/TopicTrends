@@ -9,11 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "../context/AuthContext";
 import { AuthStatus } from "../enums/AuthStatus";
-import { Lightbulb, Loader2, Trash2, Waves, Zap } from "lucide-react"; // Import Zap icon or similar for grouping
+import { Lightbulb, Loader2, Trash2, Waves, Zap, Star } from "lucide-react"; // Import Zap icon or similar for grouping
 import { Discussion } from "../interfaces/discussions"; // Import Discussion type
 import { Topic, TopicsResponse } from "../interfaces/topics"; // Import Topic type
 import { Idea } from "../interfaces/ideas"; // Import Idea type
 import TopicListItem from "../components/TopicListItem"; // Import our custom TopicListItem component
+import InteractionButton, { EngagementActionType } from "../components/InteractionButton";
 import {
   Dialog,
   DialogClose,
@@ -138,6 +139,11 @@ function DiscussionView() {
       setIsDeleting(false);
     }
   };
+
+    const handleEngagementChange = useCallback((isActive: boolean, actionType: EngagementActionType) => {
+        console.log(`Discussion ${discussionId} - Action: ${actionType}, IsActive: ${isActive}`);
+        // You could potentially update discussion object here if it contains like/pin/save counts
+    }, [discussionId]);
 
   // --- Combined Effect for Data Fetching, Socket Connection, PT Management, and Real-time Idea Updates ---
   useEffect(() => {
@@ -330,7 +336,7 @@ function DiscussionView() {
           { autoClose: 7000 }
         );
       }
-    };
+      };
 
     // >>> Handler for the new_idea event <<<
     const handleNewIdea = (data: { discussion_id: string; idea: Idea }) => {
@@ -707,6 +713,37 @@ function DiscussionView() {
                     Drifting Ideas ({unclusteredCount})
                   </Button>
                 </>
+              )}
+              {discussionId && (
+                  <>
+                      <InteractionButton
+                          entityType="discussion"
+                          entityId={discussionId}
+                          actionType="like"
+                          onStateChange={handleEngagementChange}
+                          className="ml-2"
+                          activeLabel="Liked"
+                      // Optional: pass initialActive if discussion object has this info
+                      // initialActive={discussion.is_liked_by_user} 
+                      />
+                      <InteractionButton
+                          entityType="discussion"
+                          entityId={discussionId}
+                          actionType="pin"
+                          onStateChange={handleEngagementChange}
+                          className="ml-2"
+                      // initialActive={discussion.is_pinned_by_user}
+                      />
+                      <InteractionButton
+                          entityType="discussion"
+                          entityId={discussionId}
+                          actionType="save"
+                          activeIcon={<Star size={20} className="text-yellow-500" fill="currentColor" />}
+                          onStateChange={handleEngagementChange}
+                          className="ml-2"
+                      // initialActive={discussion.is_saved_by_user}
+                      />
+                  </>
               )}
               <Button
                 variant="default"

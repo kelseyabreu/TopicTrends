@@ -15,6 +15,7 @@ function IdeaView() {
     useEffect(() => {
         const fetchIdea = async () => {
             try {
+                await api.post(`/interaction/idea/${ideaId}/view`);
                 const response = await api.get(`/ideas/${ideaId}`);
                 setIdea(response.data);
             } catch (error) {

@@ -90,6 +90,9 @@ function TopicView() {
                         setError("Received unexpected data structure for sub-topics.");
                     }
                 }
+
+                // RECORD TOPIC VIEW EVENT 
+                await api.post(`/interaction/topic/${topicId}/view`);
             } catch (err) { // Catch any error type
                 console.error(`[TopicView Effect ${discussionId}/${topicId}] Error fetching data:`, err);
                 if (isMounted) {

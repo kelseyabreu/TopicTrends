@@ -51,6 +51,12 @@ async def initialize_database():
             await db.create_collection("topics")
         if "password_reset_tokens" not in collections:
             await db.create_collection("password_reset_tokens")
+        if "interaction_events" not in collections:
+            await db.create_collection("interaction_events")
+        if "entity_metrics" not in collections:
+            await db.create_collection("entity_metrics")
+        if "user_interaction_states" not in collections:
+            await db.create_collection("user_interaction_states")
 
         return db
             

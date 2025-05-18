@@ -33,7 +33,7 @@ from app.core.limiter import limiter
 # Socket.IO setup
 from app.core.socketio import socket_app
 # Routers (import AFTER settings/limiter might be needed if they use them at import time)
-from app.routers import discussions, ideas, topics, auth, users
+from app.routers import discussions, ideas, topics, auth, users, interaction
 
 # --- FastAPI App Creation ---
 # Create FastAPI app with metadata
@@ -185,6 +185,7 @@ app.include_router(discussions.router, prefix=api_prefix, tags=["Discussions"])
 app.include_router(ideas.router, prefix=api_prefix, tags=["Ideas"])
 app.include_router(topics.router, prefix=api_prefix, tags=["Topics"])
 app.include_router(users.router, prefix=api_prefix, tags=["Users"])
+app.include_router(interaction.router, prefix=api_prefix, tags=["Interaction"])
 # Add other routers here
 
 # --- Mount Sub-Applications (like Socket.IO) ---
