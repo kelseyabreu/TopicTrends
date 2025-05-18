@@ -349,7 +349,7 @@ async def get_current_user_engagement(
         engagement_data = {
             "participation_rate": participation_rate,
             "participated_discussions": participated_discussions_count,
-            "total_discussions_in_system": all_discussions_count, 
+            "total_discussions": all_discussions_count, 
             "avg_response_time_minutes": round(avg_response_time, 1),
             "activity_heatmap": {
                 "data": heatmap_data,
