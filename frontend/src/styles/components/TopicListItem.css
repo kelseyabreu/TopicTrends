@@ -156,6 +156,10 @@
     color: #666;
   }
   
+  .idea-interactions{
+      display: flex;
+  }
+
   .no-ideas-message {
     font-style: italic;
     color: #666;

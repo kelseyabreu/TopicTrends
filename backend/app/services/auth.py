@@ -415,3 +415,38 @@ async def check_csrf_manual(request: Request):
         logger.warning(f"Manual CSRF check failed: Token mismatch for {request.method} {request.url.path}")
         raise csrf_exception
     # logger.debug(f"Manual CSRF check passed for {request.method} {request.url.path}") # Reduce noise
+
+async def get_optional_current_user(
+    access_token: Annotated[str | None, Cookie()] = None
+) -> Optional[dict]:
+    """
+    Similar to verify_token_cookie but doesn't raise an exception if no token is provided.
+    
+    Args:
+        access_token: The access token cookie (optional)
+        
+    Returns:
+        User data dict if authenticated, None otherwise
+    """
+    if not access_token:
+        return None
+        
+    try:
+        payload = await _decode_jwt(access_token, SECRET_KEY, [ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            logger.warning("Token payload missing 'sub' (user_id).")
+            return None
+            
+        user = await get_user_by_id(user_id)
+        if user is None:
+            logger.warning(f"User not found for token sub: {user_id}")
+            return None
+            
+        return user
+        
+    except HTTPException:
+        return None
+    except Exception as e:
+        logger.error(f"Error in get_optional_current_user: {e}", exc_info=True)
+        return None

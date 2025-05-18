@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { AuthStatus } from '../enums/AuthStatus';
 import api from '../utils/api';
 import { Discussion } from '../interfaces/discussions';
+import { Interaction } from '../interfaces/interaction';
 import '../styles/UserDashboard.css';
 
 // Import UI components
@@ -24,7 +25,11 @@ import {
     PlusCircle,
     MessageSquare,
     Clock,
-    ChevronRight
+    ChevronRight,
+    Eye,
+    Heart,
+    Pin,
+    Bookmark,
 } from 'lucide-react';
 
 // Interface for stats data
@@ -62,6 +67,7 @@ const UserDashboard: React.FC = () => {
     const [discussions, setDiscussions] = useState<Discussion[]>([]);
     const [stats, setStats] = useState<UserStats | null>(null);
     const [engagement, setEngagement] = useState<EngagementData | null>(null);
+    const [recentInteractions, setRecentInteractions] = useState<Interaction[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -83,6 +89,7 @@ const UserDashboard: React.FC = () => {
                 setDiscussions(discussionsResponse.data.discussions);
                 setStats(statsResponse.data);
                 setEngagement(engagementResponse.data);
+                setRecentInteractions(engagementResponse.data.recent_interactions || []);
             } catch (error) {
                 console.error('Error fetching dashboard data:', error);
                 setError('Failed to load dashboard data. Please try again later.');
@@ -290,6 +297,107 @@ const UserDashboard: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            {recentInteractions.length > 0 && (
+                <div className="recentInteractions mt-8">
+                    <div className="section-header">
+                        <h2>Recent Interactions</h2>
+                        <Link to="/interactions" className="view-all-link">
+                            View All <ChevronRight className="h-4 w-4" />
+                        </Link>
+                    </div>
+                    <Card>
+                        <CardContent className="pt-6">
+                            <div className="space-y-3">
+                                {recentInteractions.map((interaction) => {
+                                    // Simple time formatting
+                                    const timeAgo = new Date(interaction.timestamp).toLocaleString();
+
+                                    // Define action text and icon
+                                    let actionText = interaction.action_type;
+                                    let ActionIcon = null;
+
+                                    // Set action text and icon
+                                    if (actionText === 'view') {
+                                        actionText = 'viewed';
+                                        ActionIcon = Eye;
+                                    }
+                                    else if (actionText === 'like') {
+                                        actionText = 'liked';
+                                        ActionIcon = Heart;
+                                    }
+                                    else if (actionText === 'pin') {
+                                        actionText = 'pinned';
+                                        ActionIcon = Pin;
+                                    }
+                                    else if (actionText === 'save') {
+                                        actionText = 'saved';
+                                        ActionIcon = Bookmark;
+                                    }
+                                    else if (actionText === 'unlike') {
+                                        actionText = 'unliked';
+                                        ActionIcon = Heart;
+                                    }
+                                    else if (actionText === 'unpin') {
+                                        actionText = 'unpinned';
+                                        ActionIcon = Pin;
+                                    }
+                                    else if (actionText === 'unsave') {
+                                        actionText = 'unsaved';
+                                        ActionIcon = Bookmark;
+                                    }
+
+                                    // Determine navigation path
+                                    let navigationPath = '';
+                                    if (interaction.entity_type === 'idea') {
+                                        navigationPath = `/ideas/${interaction.entity_id}`;
+                                    } else if (interaction.entity_type === 'discussion') {
+                                        navigationPath = `/discussion/${interaction.entity_id}`;
+                                    } else if (interaction.entity_type === 'topic' && interaction.parent_id) {
+                                        navigationPath = `/discussion/${interaction.parent_id}/topic/${interaction.entity_id}`;
+                                    }
+
+                                    return (
+                                        <div
+                                            key={interaction.id}
+                                            className="flex items-center justify-between rounded-md border p-3 hover:bg-muted/50"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                {ActionIcon && (
+                                                    <div className={`rounded-full p-2 ${actionText === 'liked' ? 'bg-red-100 text-red-500' :
+                                                            actionText === 'pinned' ? 'bg-blue-100 text-blue-500' :
+                                                                actionText === 'saved' ? 'bg-green-100 text-green-500' :
+                                                                    actionText === 'viewed' ? 'bg-purple-100 text-purple-500' :
+                                                                        'bg-gray-100 text-gray-500'
+                                                        }`}>
+                                                        <ActionIcon className="h-4 w-4" />
+                                                    </div>
+                                                )}
+                                                <div>
+                                                    <div className="font-medium">
+                                                        You {actionText} a {interaction.entity_type} {interaction.entity_id}
+                                                    </div>
+                                                    <div className="text-sm text-muted-foreground">
+                                                        {timeAgo}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => navigationPath && navigate(navigationPath)}
+                                                disabled={!navigationPath}
+                                            >
+                                                View
+                                            </Button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
 
             {/* Recent Activity */}
             {stats && Object.keys(stats.activity_by_date).length > 0 && (

@@ -6,6 +6,7 @@ import { ChevronUp, ChevronDown, BarChart3, ChevronsDownUp, ChevronsUpDown } fro
 import { Topic } from "../interfaces/topics";
 import { Idea } from "../interfaces/ideas";
 import "../styles/components/TopicListItem.css";
+import InteractionButton from "./InteractionButton";
 
 interface TopicListItemProps {
   topic: Topic;
@@ -61,6 +62,9 @@ const TopicListItem: React.FC<TopicListItemProps> = ({
         >
           <ChevronDown />
         </button>
+        <InteractionButton entityType="topic" entityId={topic.id} actionType="like" className="ml-2" activeLabel="Liked" showLabel={false}/>
+        <InteractionButton entityType="topic" entityId={topic.id} actionType="pin"  className="ml-2" showLabel={false}/>
+        <InteractionButton entityType="topic" entityId={topic.id} actionType="save" className="ml-2" showLabel={false}/>
       </div>
 
       {/* Content section */}
@@ -112,6 +116,11 @@ const TopicListItem: React.FC<TopicListItemProps> = ({
                               👤 {ideaItem.submitter_display_id || "Anonymous"}
                             </Badge>
                           )}
+                        </span>
+                        <span className="idea-interactions">
+                            <InteractionButton entityType="idea" entityId={ideaItem.id} actionType="like" showLabel={false} />
+                            <InteractionButton entityType="idea" entityId={ideaItem.id} actionType="pin" showLabel={false} />
+                            <InteractionButton entityType="idea" entityId={ideaItem.id} actionType="save" showLabel={false} />
                         </span>
                         {ideaItem.timestamp && (
                           <span className="idea-timestamp">
