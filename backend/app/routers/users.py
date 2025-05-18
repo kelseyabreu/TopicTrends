@@ -6,6 +6,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.services.auth import verify_token_cookie
 from datetime import timedelta, datetime, timezone
+from bson import ObjectId
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -324,16 +325,37 @@ async def get_current_user_engagement(
         # Calculate max count for scaling heatmap intensity
         max_count = max([item["count"] for item in heatmap_data]) if heatmap_data else 1
         
+        # --- Fetch last 5 interaction events for the user ---
+        recent_interactions_cursor = db.interaction_events.find({"user_id": user_id, "actionType":{"$ne":"view"}}).sort("timestamp", -1).limit(5)
+        raw_recent_interactions_from_db = await recent_interactions_cursor.to_list(length=5)
+        
+        processed_recent_interactions = []
+        for raw_doc in raw_recent_interactions_from_db:
+            doc_for_response = {}
+            for key, value in raw_doc.items():
+                if isinstance(value, ObjectId):
+                    doc_for_response[key] = str(value)
+                elif isinstance(value, datetime): 
+                    doc_for_response[key] = value.isoformat()
+                else:
+                    doc_for_response[key] = value
+            
+            if "_id" in doc_for_response:
+                doc_for_response["id"] = doc_for_response.pop("_id")
+            
+            processed_recent_interactions.append(doc_for_response)
+        
         # Return engagement data
         engagement_data = {
             "participation_rate": participation_rate,
             "participated_discussions": participated_discussions_count,
-            "total_discussions": all_discussions_count,
+            "total_discussions_in_system": all_discussions_count, 
             "avg_response_time_minutes": round(avg_response_time, 1),
             "activity_heatmap": {
                 "data": heatmap_data,
-                "max_count": max_count
-            }
+                "max_count": max_count 
+            },
+            "recent_interactions": processed_recent_interactions 
         }
         
         logger.info(f"Generated engagement analytics for user {user_id}")
