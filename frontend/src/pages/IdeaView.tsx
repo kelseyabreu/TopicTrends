@@ -27,7 +27,8 @@ import {
     Maximize, 
     Minimize,
     BadgeInfo,
-    Ear, 
+    Ear,
+    HandHelping, 
 } from "lucide-react";
 
 function IdeaView() {
@@ -101,6 +102,7 @@ if (!idea) {
             case 'idea':
                 return <Lightbulb className="h-4 w-4" />;
             case 'proposal':
+                return <HandHelping className="h-4 w-4" />
             case 'advocacy':
                 return <Megaphone className="h-4 w-4" />;
             case 'information':
