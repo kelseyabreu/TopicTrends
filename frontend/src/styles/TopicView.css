@@ -16,15 +16,6 @@
   color: var(--dark);
 }
 
-.topic-meta {
-  display: flex;
-  flex-direction: row;
-  gap:12px;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 15px;
-}
-
 .topic-page  .topic-type {
   background-color: var(--primary);
   color: white;
@@ -125,12 +116,6 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .topic-meta {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-  
   .idea-meta {
     flex-direction: column;
     align-items: flex-start;

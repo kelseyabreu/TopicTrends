@@ -3,6 +3,10 @@ import numpy as np
 from typing import List, Optional, Tuple
 from app.core.database import get_db
 import logging
+
+from app.services.genkit.flows.topic_names import topic_name_suggestion_flow
+from app.utils.ideas import get_ideas_by_topic_id
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -11,6 +15,20 @@ class CentroidClustering:
     def __init__(self, similarity_threshold: float = 0.65):
         self.similarity_threshold = similarity_threshold
         logger.info(f"Initialized CentroidClustering with similarity threshold: {similarity_threshold}")
+
+    def trigger_sequence():
+        yield 5
+        yield 15
+        yield 30
+        yield 50
+        next_trigger = 75
+        while True:
+            yield next_trigger
+            next_trigger += 25
+
+    trigger = trigger_sequence()
+    next_trigger_point = next(trigger)
+    idea_count =
         
     async def get_existing_topics(self, discussion_id: str) -> List[dict]:
         """Fetch existing topics from MongoDB for a discussion"""
@@ -97,7 +115,18 @@ class CentroidClustering:
         except Exception as e:
             logger.error(f"Failed to create topic for idea {idea['_id']}: {str(e)}")
             raise
-    
+
+    async def generate_topic_title(self, topic_id: str):
+        topic_ideas = await get_ideas_by_topic_id(topic_id)
+        # Generate topic name using AI
+        simplified_ideas = [{"text": idea["text"]} for idea in topic_ideas]
+
+        try:
+            topic_main_idea = await topic_name_suggestion_flow(simplified_ideas)
+            return topic_main_idea.get('representative_text')
+        except Exception as e:
+            logger.warning(f"Error generating topic name: {e}")
+
     async def update_topic(self, topic: dict, new_embedding: np.ndarray, idea: dict) -> dict:
         """
         Update an existing topic with a new related idea.

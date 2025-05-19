@@ -22,7 +22,7 @@ async def topic_name_suggestion_flow(ideas: list) -> MainIdea:
     idea_texts = "\n".join([f"- {idea['text']}" for idea in ideas])
     response = await ai.generate(
         model='googleai/gemini-2.0-flash',
-        prompt=f'Whats the general idea for this group of ideas:\n{idea_texts}',
+        prompt=f'You are a expert idea generalization engine, whats the general main idea for this group of ideas:\n{idea_texts}',
         output_schema=MainIdea
     )
     logging.info(f"topic_name_suggestion_flow!!: {response.output}")

@@ -132,19 +132,6 @@
   border-radius: 20px;
   font-size: 14px;
 }
-.topic-meta {
-  padding: 8px;
-  display: flex;
-  align-items: center;
-  flex-direction: row;
-  gap: 8px;
-}
-.topic-meta div:first-of-type {
-  flex: 1;
-  display: flex;
-  gap: 8px;
-}
-
 .topic-ideas {
   padding: 0 15px;
 }

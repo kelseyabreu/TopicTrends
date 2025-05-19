@@ -1,8 +1,13 @@
 import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ChevronUp, ChevronDown, BarChart3, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
+import {
+  ChevronUp,
+  ChevronDown,
+  BarChart3,
+  ChevronsDownUp,
+  ChevronsUpDown,
+} from "lucide-react";
 import { Topic } from "../interfaces/topics";
 import { Idea } from "../interfaces/ideas";
 import "../styles/components/TopicListItem.css";
@@ -62,29 +67,51 @@ const TopicListItem: React.FC<TopicListItemProps> = ({
         >
           <ChevronDown />
         </button>
-        <InteractionButton entityType="topic" entityId={topic.id} actionType="like" className="ml-2" activeLabel="Liked" showLabel={false}/>
-        <InteractionButton entityType="topic" entityId={topic.id} actionType="pin"  className="ml-2" showLabel={false}/>
-        <InteractionButton entityType="topic" entityId={topic.id} actionType="save" className="ml-2" showLabel={false}/>
+        {/* TODO: find a good spot for this */}
+        {/* <button className="expand-button">
+          {expanded ? <ChevronsDownUp /> : <ChevronsUpDown />}
+        </button> */}
       </div>
 
       {/* Content section */}
       <div className="topic-content-section">
         {/* Header with title and metadata */}
         <div className="topic-header" onClick={toggleExpanded}>
-          <h3 className="topic-title">{topic.representative_text}</h3>
           <div className="topic-meta">
+            <div className="topic-details">
             <Badge variant="default" className="topic-type-badge">
               {getTopicType(topic.count)}
             </Badge>
             <Badge variant="default" className="topic-count-badge">
               {topic.count} Ideas
             </Badge>
-            <button className="expand-button">
-            {
-                expanded ? <ChevronsDownUp /> : <ChevronsUpDown />
-            }       
-            </button>
+            </div>
+            <div className="interactions">
+            <InteractionButton
+              entityType="topic"
+              entityId={topic.id}
+              actionType="like"
+              className="ml-2"
+              activeLabel="Liked"
+              showLabel={false}
+            />
+            <InteractionButton
+              entityType="topic"
+              entityId={topic.id}
+              actionType="pin"
+              className="ml-2"
+              showLabel={false}
+            />
+            <InteractionButton
+              entityType="topic"
+              entityId={topic.id}
+              actionType="save"
+              className="ml-2"
+              showLabel={false}
+            />
+            </div>
           </div>
+          <h3 className="topic-title">{topic.representative_text}</h3>
         </div>
         {expanded && (
           <div className="topic-expanded-content">
@@ -103,7 +130,33 @@ const TopicListItem: React.FC<TopicListItemProps> = ({
                 <>
                   {/* Show limited ideas initially */}
                   {topic.ideas.slice(0, 5).map((ideaItem: Idea) => (
-                    <NavLink className="idea-card" key={ideaItem.id} to={`/ideas/${ideaItem.id}`}>
+                    <NavLink
+                      className="idea-card"
+                      key={ideaItem.id}
+                      to={`/ideas/${ideaItem.id}`}
+                    >
+                      <div className="idea-card-header">
+                        <span className="idea-interactions">
+                          <InteractionButton
+                            entityType="idea"
+                            entityId={ideaItem.id}
+                            actionType="like"
+                            showLabel={false}
+                          />
+                          <InteractionButton
+                            entityType="idea"
+                            entityId={ideaItem.id}
+                            actionType="pin"
+                            showLabel={false}
+                          />
+                          <InteractionButton
+                            entityType="idea"
+                            entityId={ideaItem.id}
+                            actionType="save"
+                            showLabel={false}
+                          />
+                        </span>
+                      </div>
                       <p className="idea-text">{ideaItem.text}</p>
                       <div className="idea-meta">
                         <span className="idea-user">
@@ -116,11 +169,6 @@ const TopicListItem: React.FC<TopicListItemProps> = ({
                               👤 {ideaItem.submitter_display_id || "Anonymous"}
                             </Badge>
                           )}
-                        </span>
-                        <span className="idea-interactions">
-                            <InteractionButton entityType="idea" entityId={ideaItem.id} actionType="like" showLabel={false} />
-                            <InteractionButton entityType="idea" entityId={ideaItem.id} actionType="pin" showLabel={false} />
-                            <InteractionButton entityType="idea" entityId={ideaItem.id} actionType="save" showLabel={false} />
                         </span>
                         {ideaItem.timestamp && (
                           <span className="idea-timestamp">
