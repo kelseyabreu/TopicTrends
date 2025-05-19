@@ -25,7 +25,9 @@ import {
     CheckCircle, 
     MinusCircle,
     Maximize, 
-    Minimize, 
+    Minimize,
+    BadgeInfo,
+    Ear, 
 } from "lucide-react";
 
 function IdeaView() {
@@ -95,12 +97,14 @@ if (!idea) {
     const getIntentIcon = (intent: string | undefined) => {
         switch (intent) {
             case 'suggestion':
+                return <Ear className="h-4 w-4" />
             case 'idea':
                 return <Lightbulb className="h-4 w-4" />;
             case 'proposal':
             case 'advocacy':
                 return <Megaphone className="h-4 w-4" />;
             case 'information':
+                return <BadgeInfo  className="h-4 w-4"/>
             case 'clarification':
                 return <Info className="h-4 w-4" />;
             case 'problem_identification':
