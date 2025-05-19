@@ -24,6 +24,35 @@ def trigger_sequence():
         next_trigger += 25
 
 
+def cosine_similarity(vec1: np.ndarray, vec2: np.ndarray) -> float:
+    """Calculate cosine similarity between two vectors."""
+    norm1 = np.linalg.norm(vec1)
+    norm2 = np.linalg.norm(vec2)
+    if norm1 == 0 or norm2 == 0:
+        return 0
+    return np.dot(vec1, vec2) / (norm1 * norm2)
+
+
+async def generate_topic_title(topic_id: str):
+    topic_ideas = await get_ideas_by_topic_id(topic_id)
+    # Generate topic name using AI
+    simplified_ideas = [{"text": idea["text"]} for idea in topic_ideas]
+
+    try:
+        topic_main_idea = await topic_name_suggestion_flow(simplified_ideas)
+        return topic_main_idea.get('representative_text')
+    except Exception as e:
+        logger.warning(f"Error generating topic name: {e}")
+
+
+async def get_existing_topics(discussion_id: str) -> List[dict]:
+    """Fetch existing topics from MongoDB for a discussion"""
+    db = await get_db()
+    topics = await db.topics.find({"discussion_id": discussion_id}).to_list(None)
+    logger.info(f"Found {len(topics)} existing topics for discussion {discussion_id}")
+    return topics
+
+
 class CentroidClustering:
     def __init__(self, similarity_threshold: float = 0.65):
         self.similarity_threshold = similarity_threshold
@@ -31,28 +60,13 @@ class CentroidClustering:
 
     trigger = trigger_sequence()
     next_trigger_point = next(trigger)
-        
-    async def get_existing_topics(self, discussion_id: str) -> List[dict]:
-        """Fetch existing topics from MongoDB for a discussion"""
-        db = await get_db()
-        topics = await db.topics.find({"discussion_id": discussion_id}).to_list(None)
-        logger.info(f"Found {len(topics)} existing topics for discussion {discussion_id}")
-        return topics
-    
-    def cosine_similarity(self, vec1: np.ndarray, vec2: np.ndarray) -> float:
-        """Calculate cosine similarity between two vectors."""
-        norm1 = np.linalg.norm(vec1)
-        norm2 = np.linalg.norm(vec2)
-        if norm1 == 0 or norm2 == 0:
-            return 0
-        return np.dot(vec1, vec2) / (norm1 * norm2)
-    
+
     async def find_closest_topic(self, embedding: np.ndarray, discussion_id: str) -> Tuple[Optional[dict], float]:
         """
         Find the closest topic to the given embedding from MongoDB.
         Returns (topic, similarity) tuple. If no topics exist, returns (None, 0).
         """
-        topics = await self.get_existing_topics(discussion_id)
+        topics = await get_existing_topics(discussion_id)
         if not topics:
             logger.info(f"No existing topics found for discussion {discussion_id}")
             return None, 0
@@ -62,7 +76,7 @@ class CentroidClustering:
         
         for topic in topics:
             if topic.get('centroid_embedding') is not None:
-                similarity = self.cosine_similarity(embedding, np.array(topic['centroid_embedding']))
+                similarity = cosine_similarity(embedding, np.array(topic['centroid_embedding']))
                 logger.debug(f"Similarity with topic {topic['_id']}: {similarity}")
                 if similarity > max_similarity:
                     max_similarity = similarity
@@ -118,17 +132,6 @@ class CentroidClustering:
             logger.error(f"Failed to create topic for idea {idea['_id']}: {str(e)}")
             raise
 
-    async def generate_topic_title(self, topic_id: str):
-        topic_ideas = await get_ideas_by_topic_id(topic_id)
-        # Generate topic name using AI
-        simplified_ideas = [{"text": idea["text"]} for idea in topic_ideas]
-
-        try:
-            topic_main_idea = await topic_name_suggestion_flow(simplified_ideas)
-            return topic_main_idea.get('representative_text')
-        except Exception as e:
-            logger.warning(f"Error generating topic name: {e}")
-
     async def update_topic(self, topic: dict, new_embedding: np.ndarray, idea: dict) -> dict:
         """
         Update an existing topic with a new related idea.
@@ -145,7 +148,7 @@ class CentroidClustering:
             # Check if its time to update the topic name
             topic_name = topic['representative_text'];
             if topic['count'] + 1 >= self.next_trigger_point:
-                topic_name = await self.generate_topic_title(topic['_id'])
+                topic_name = await generate_topic_title(topic['_id'])
                 if topic_name:
                     topic['representative_text'] = topic_name
                     self.next_trigger_point = next(self.trigger)
