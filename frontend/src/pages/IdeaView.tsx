@@ -95,7 +95,7 @@ if (!idea) {
     const getIntentIcon = (intent: string | undefined) => {
         switch (intent) {
             case 'suggestion':
-            case 'idea': // Assuming 'idea' might also be an intent value
+            case 'idea':
                 return <Lightbulb className="h-4 w-4" />;
             case 'proposal':
             case 'advocacy':
@@ -197,7 +197,6 @@ return (
                     </div>
                 )}
                 {idea?.keywords?.length > 0 && (
-                    
                     <div className="keywords flex flex-wrap gap-2">
                         <h4>Keywords</h4>
                         {idea.keywords.map((word) => (
