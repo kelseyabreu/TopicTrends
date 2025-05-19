@@ -9,17 +9,8 @@ import { Loader2 } from "lucide-react"; // Keep Loader
 import api from "../utils/api"; // Use the configured API client
 import { useAuth } from "../context/AuthContext"; // Import useAuth
 import { Discussion } from "../interfaces/discussions"; // Import Discussion type
-import { Topic } from "../interfaces/topics";         // Import Topic type
-import { Idea } from "../interfaces/ideas";           // Import Idea type
-import {
-    Accordion,
-    AccordionContent,
-    AccordionItem,
-    AccordionTrigger,
-} from "@/components/ui/accordion";
-import { Badge } from "@/components/ui/badge"; // Keep Badge import
-
-// Styles
+import { Topic } from "../interfaces/topics";
+import TopicListItem from "../components/TopicListItem";
 import "../styles/TopicView.css"; // Assuming styles exist
 
 // Define the structure of the response from POST /topics (for drill-down)
@@ -119,14 +110,6 @@ function TopicView() {
         // Dependency array includes IDs and navigate (for error navigation)
     }, [discussionId, topicId, navigate, authStatus]); // Include authStatus if needed later
 
-    // Helper function to determine topic type (can be reused or adapted)
-    const getTopicType = (count: number): string => {
-        if (count <= 10) return 'Ripple';
-        if (count <= 25) return 'Wave';
-        if (count <= 50) return 'Breaker';
-        return 'Tsunami';
-    };
-
     // --- Render Logic ---
 
     if (isLoading) {
@@ -177,54 +160,15 @@ function TopicView() {
             <div className="sub-topics-list"> {/* Use a specific class */}
                 {subTopics.length > 0 ? (
                     subTopics.map((subTopic) => (
-                        <div key={subTopic.id} className="topic-view-content"> {/* Reuse styling */}
-                            <Accordion type="single" collapsible className="w-full max-w-xl">
-                                <AccordionItem value={subTopic.id}>
-                                    <AccordionTrigger>
-                                        <div className="topic-details">
-                                            <h3 className="topic-title">{subTopic.representative_text}</h3> {/* Use h3 for sub-topics */}
-                                            <div className="topic-meta">
-                                                <Badge variant="secondary">{getTopicType(subTopic.count)}</Badge>
-                                                <Badge variant="outline" className="ml-1">{subTopic.count} ideas</Badge>
-                                            </div>
-                                        </div>
-                                        {/* Maybe a different button/action for sub-topics? */}
-                                        {/* Or just display ideas directly */}
-                                    </AccordionTrigger>
-                                    <AccordionContent>
-                                        {(!subTopic.ideas || subTopic.ideas.length === 0) ? (
-                                            <p className="text-muted-foreground text-sm p-4">No ideas found in this sub-topic.</p>
-                                        ) : (
-                                            <div className="ideas-in-topic">
-                                                {subTopic.ideas.map((idea: Idea) => ( // Ensure type for idea
-                                                    <div className="idea-card" key={idea.id}>
-                                                        <p className="idea-text">{idea.text}</p>
-                                                        <div className="idea-meta">
-                                                            <span className="idea-user">
-                                                                {idea.verified ? (
-                                                                    <Badge variant="success" size="sm">✓ {idea.submitter_display_id || 'Verified'}</Badge>
-                                                                ) : (
-                                                                    <Badge variant="default" size="sm">👤 {idea.submitter_display_id || 'Anonymous'}</Badge>
-                                                                )}
-                                                            </span>
-                                                            {idea.timestamp && (
-                                                                <span className="idea-timestamp">
-                                                                    {new Date(idea.timestamp).toLocaleString()}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </AccordionContent>
-                                </AccordionItem>
-                            </Accordion>
-                        </div>
+                        <TopicListItem
+                            key={subTopic.id}
+                            topic={subTopic}
+                            discussionId={discussionId!}
+                        />
                     ))
                 ) : (
                     // Render message if drill-down yielded no sub-topics (and no error occurred)
-                    !error && <p className="text-muted-foreground p-4">No further sub-topics were generated for this topic.</p>
+                    !error && <p className="text-muted-foreground p-sm p-4">No further sub-topics were generated for this topic.</p>
                 )}
             </div>
         </div>

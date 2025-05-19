@@ -3,7 +3,7 @@ import numpy as np
 from typing import List, Optional, Tuple
 from app.core.database import get_db
 import logging
-
+from app.core.socketio import sio
 from app.services.genkit.flows.topic_names import topic_name_suggestion_flow
 from app.utils.ideas import get_ideas_by_topic_id
 
@@ -11,20 +11,23 @@ from app.utils.ideas import get_ideas_by_topic_id
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+def trigger_sequence():
+    # These are the idea counts that will trigger a topic name update
+    yield 5
+    yield 15
+    yield 30
+    yield 50
+    next_trigger = 75
+    while True:
+        yield next_trigger
+        next_trigger += 25
+
+
 class CentroidClustering:
     def __init__(self, similarity_threshold: float = 0.65):
         self.similarity_threshold = similarity_threshold
         logger.info(f"Initialized CentroidClustering with similarity threshold: {similarity_threshold}")
-
-    def trigger_sequence():
-        yield 5
-        yield 15
-        yield 30
-        yield 50
-        next_trigger = 75
-        while True:
-            yield next_trigger
-            next_trigger += 25
 
     trigger = trigger_sequence()
     next_trigger_point = next(trigger)
@@ -139,6 +142,14 @@ class CentroidClustering:
             idea_for_storage = idea.copy()
             idea_for_storage['id'] = str(idea_for_storage.pop('_id'))
             idea_for_storage['topic_id'] = topic['_id']
+            # Check if its time to update the topic name
+            topic_name = topic['representative_text'];
+            if topic['count'] + 1 >= self.next_trigger_point:
+                topic_name = await self.generate_topic_title(topic['_id'])
+                if topic_name:
+                    topic['representative_text'] = topic_name
+                    self.next_trigger_point = next(self.trigger)
+                    logger.info(f"Updated topic name to {topic_name} for topic {topic['_id']}")
             async with await db.client.start_session() as session:
                 async with session.start_transaction():
                     # Insert the topic
@@ -146,6 +157,7 @@ class CentroidClustering:
                         {'_id': topic['_id']},
                         {
                             '$set': {
+                                'representative_text': topic_name,
                                 'centroid_embedding': new_centroid.tolist(),
                                 'count': topic['count'] + 1
                             },
@@ -173,30 +185,42 @@ class CentroidClustering:
         except Exception as e:
             logger.error(f"Error updating topic {topic['_id']}: {str(e)}")
             raise
-    
+
     async def process_idea(self, embedding: np.ndarray | List[float], idea: dict, discussion_id: str) -> dict:
-            """
-            Process a new idea by either creating a new topic or updating an existing one.
-            Parameters:
-                embedding: The embedding vector as either numpy array or list of floats
-                idea: The complete idea document containing _id and other properties
-                discussion_id: The ID of the discussion this idea belongs to
-            """
-            # Convert list to numpy array if needed
-            if isinstance(embedding, list):
-                embedding = np.array(embedding)
-                
-            logger.info(f"Processing idea {idea['_id']} for discussion {discussion_id}")
-            try:
-                closest_topic, similarity = await self.find_closest_topic(embedding, discussion_id)
-                
-                if closest_topic is None or similarity < self.similarity_threshold:
-                    logger.info(f"No suitable topic found (similarity: {similarity}), creating new topic")
-                    return await self.create_topic(embedding, idea, discussion_id)
-                else:
-                    logger.info(f"Found suitable topic {closest_topic['_id']} (similarity: {similarity}), updating")
-                    return await self.update_topic(closest_topic, embedding, idea)
-                    
-            except Exception as e:
-                logger.error(f"Error processing idea {idea['_id']}: {str(e)}")
-                raise
+        """
+        Process a new idea by either creating a new topic or updating an existing one.
+        Parameters:
+            embedding: The embedding vector as either numpy array or list of floats
+            idea: The complete idea document containing _id and other properties
+            discussion_id: The ID of the discussion this idea belongs to
+        """
+        # Convert list to numpy array if needed
+        if isinstance(embedding, list):
+            embedding = np.array(embedding)
+
+        logger.info(f"Processing idea {idea['_id']} for discussion {discussion_id}")
+        try:
+            closest_topic, similarity = await self.find_closest_topic(embedding, discussion_id)
+
+            if closest_topic is None or similarity < self.similarity_threshold:
+                logger.info(f"No suitable topic found (similarity: {similarity}), creating new topic")
+                create_results = await self.create_topic(embedding, idea, discussion_id)
+                await sio.emit(
+                    "topics_updated",
+                    {"discussion_id": discussion_id, "topic_created": create_results["_id"]},
+                    room=discussion_id
+                )
+                return create_results
+            else:
+                logger.info(f"Found suitable topic {closest_topic['_id']} (similarity: {similarity}), updating")
+                update_results = await self.update_topic(closest_topic, embedding, idea)
+                await sio.emit(
+                    "topics_updated",
+                    {"discussion_id": discussion_id, "topic_updated": update_results["_id"] },
+                    room=discussion_id
+                )
+                return update_results
+
+        except Exception as e:
+            logger.error(f"Error processing idea {idea['_id']}: {str(e)}")
+            raise

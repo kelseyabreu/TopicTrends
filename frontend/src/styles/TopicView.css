@@ -1,14 +1,6 @@
 /* File: src/styles/TopicView.css */
 /* Extending DiscussionView styles with topic-specific additions */
 
-.topic-page  .topic-details {
-  background-color: #fff;
-  border-radius: 8px;
-  padding: 20px;
-  margin: 20px 0;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
 .topic-title {
   font-size: 1.8rem;
   font-weight: 700;
@@ -18,7 +10,6 @@
 
 .topic-page  .topic-type {
   background-color: var(--primary);
-  color: white;
   padding: 6px 12px;
   border-radius: 4px;
   font-size: 1rem;
