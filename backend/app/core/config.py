@@ -110,15 +110,19 @@ class Settings(BaseSettings):
 
 
 # Create settings instance
-# pydantic-settings automatically loads from .env/environment and validates
 try:
     settings = Settings()
-    logger.info("Application settings loaded successfully.")
+    print("--- Settings instance created successfully ---")
+
+    # Add logging to check GOOGLE_API_KEY
+    logger.debug(f"Loaded GOOGLE_API_KEY: {settings.GOOGLE_API_KEY}")
 
     # Example: Log two main setting to confirm loading 
     logger.debug(f"Loaded FRONTEND_URL: {settings.FRONTEND_URL}")
     logger.debug(f"Loaded MONGODB_URL: {settings.MONGODB_URL.split('@')[-1]}")
 
 except Exception as e:
+    print("--- Caught exception during settings loading ---")
     logger.exception(f"CRITICAL: Failed to load application settings: {e}")
     raise SystemExit(f"Configuration Error: {e}")
+    print("--- Exiting due to configuration error ---")

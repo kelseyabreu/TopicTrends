@@ -23,6 +23,7 @@ async def get_redis():
         _redis = await aioredis.from_url(redis_url)
     return _redis
 
+# All this shit is no longer user
 async def add_to_queue(idea_id: str) -> bool:
     """Add an idea to the processing queue."""
     redis = await get_redis()

@@ -262,7 +262,9 @@ async def submit_idea(
 
     # --- 9. Trigger Background AI Task (Queues up the idea for later processing ) ---
     # Schedule the AI processing (like formatting, keyword extraction) to run after the response is sent.
-    background_tasks.add_task(add_to_queue, idea_id=str(idea_data["_id"]))
+    # background_tasks.add_task(add_to_queue, idea_id=str(idea_data["_id"]))
+    from app.tasks import process_idea_task
+    process_idea_task.delay(idea_data, discussion_id)
 
 
     # --- 10. Prepare and Return API Response ---

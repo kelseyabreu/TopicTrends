@@ -20,9 +20,6 @@ from slowapi.errors import RateLimitExceeded
 from app.core.config import settings 
 # Socket.IO setup
 from app.core.socketio import socket_app
-# Load environment variables from .env file 
-from dotenv import load_dotenv
-load_dotenv()
 # Routers (import AFTER settings/limiter might be needed if they use them at import time)
 from app.routers import discussions, ideas, topics, auth, users, interaction
 setup_logger()
@@ -34,7 +31,6 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     # --- Application-Specific Imports ---
     # Core components
-    global settings
     from app.core.database import initialize_database # Assuming init_db is deprecated based on code
     """Application startup logic: Initialize database connection."""
     logger.info(f"Application starting up in {settings.ENVIRONMENT} mode...")
@@ -42,13 +38,14 @@ async def lifespan(app: FastAPI):
     try:
         await initialize_database() 
         logger.info("Database initialization complete.")
-        # Start the background worker
-        from app.services.worker import run_worker
-        # Runs concurrently :o
-        asyncio.create_task(run_worker())
-        logger.info("Background worker started.")
+        # # Start the background worker
+        # from app.services.worker import run_worker
+        # # Runs concurrently :o
+        # asyncio.create_task(run_worker())
+        # logger.info("Background worker started.")
         yield
         logger.info("Shutdown complete.")
+        
     except Exception as e:
         logger.exception("FATAL: Database initialization failed. Application will exit.", exc_info=True)
         # Optionally: Send alert here
