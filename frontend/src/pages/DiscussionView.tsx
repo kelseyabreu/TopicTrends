@@ -764,6 +764,7 @@ function DiscussionView() {
                         console.log(`Vote ${direction} for topic ${topicId}`);
                         toast.info(`Voted ${direction} for topic`);
                       }}
+                      limitIdeas={true}
                     />
                   ))}
                 </div>

@@ -17,12 +17,14 @@ interface TopicListItemProps {
   topic: Topic;
   discussionId: string;
   onVote?: (topicId: string, direction: "up" | "down") => void;
+  limitIdeas?: boolean;
 }
 
 const TopicListItem: React.FC<TopicListItemProps> = ({
   topic,
   discussionId,
   onVote,
+  limitIdeas = true,
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [votes, setVotes] = useState(0); // In a real app, this would come from the server
@@ -128,8 +130,8 @@ const TopicListItem: React.FC<TopicListItemProps> = ({
                 </p>
               ) : (
                 <>
-                  {/* Show limited ideas initially */}
-                  {topic.ideas.slice(0, 5).map((ideaItem: Idea) => (
+                  {/* Conditionally show limited ideas */}
+                  {(limitIdeas ? topic.ideas.slice(0, 5) : topic.ideas).map((ideaItem: Idea) => (
                     <NavLink
                       className="idea-card"
                       key={ideaItem.id}
@@ -180,7 +182,7 @@ const TopicListItem: React.FC<TopicListItemProps> = ({
                   ))}
 
                   {/* Show 'View All' button if many ideas */}
-                  {topic.ideas.length > 5 && (
+                  {limitIdeas && topic.ideas.length > 5 && (
                     <NavLink
                       to={`/discussion/${discussionId}/topic/${topic.id}`}
                       className="view-all-button"

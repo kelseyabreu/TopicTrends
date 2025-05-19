@@ -11,7 +11,7 @@ import { useAuth } from "../context/AuthContext"; // Import useAuth
 import { Discussion } from "../interfaces/discussions"; // Import Discussion type
 import { Topic } from "../interfaces/topics";
 import TopicListItem from "../components/TopicListItem";
-import "../styles/TopicView.css"; // Assuming styles exist
+import "../styles/TopicView.css";
 
 // Define the structure of the response from POST /topics (for drill-down)
 // This assumes the backend returns data nested under a 'data' key
@@ -164,6 +164,7 @@ function TopicView() {
                             key={subTopic.id}
                             topic={subTopic}
                             discussionId={discussionId!}
+                            limitIdeas={false}
                         />
                     ))
                 ) : (
