@@ -18,3 +18,7 @@ async def get_ideas_by_discussion_id(discussion_id: str) -> list:
     # return [Idea(id=idea["_id"], **{k: v for k, v in idea.items() if k != '_id'}) for idea in ideas]
     db = await get_db()
     return await db.ideas.find({"discussion_id": discussion_id}).to_list(length=None)
+
+async def get_ideas_by_topic_id(topic_id: str) -> list:
+    db = await get_db()
+    return await db.ideas.find({"topic_id": topic_id}).to_list(length=None)

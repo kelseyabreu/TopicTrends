@@ -1,14 +1,6 @@
 /* File: src/styles/TopicView.css */
 /* Extending DiscussionView styles with topic-specific additions */
 
-.topic-page  .topic-details {
-  background-color: #fff;
-  border-radius: 8px;
-  padding: 20px;
-  margin: 20px 0;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
 .topic-title {
   font-size: 1.8rem;
   font-weight: 700;
@@ -16,18 +8,8 @@
   color: var(--dark);
 }
 
-.topic-meta {
-  display: flex;
-  flex-direction: row;
-  gap:12px;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 15px;
-}
-
 .topic-page  .topic-type {
   background-color: var(--primary);
-  color: white;
   padding: 6px 12px;
   border-radius: 4px;
   font-size: 1rem;
@@ -125,12 +107,6 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .topic-meta {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-  
   .idea-meta {
     flex-direction: column;
     align-items: flex-start;
