@@ -28,7 +28,6 @@ class CentroidClustering:
 
     trigger = trigger_sequence()
     next_trigger_point = next(trigger)
-    idea_count =
         
     async def get_existing_topics(self, discussion_id: str) -> List[dict]:
         """Fetch existing topics from MongoDB for a discussion"""
