@@ -53,6 +53,22 @@ services:
     command: ollama serve
     entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 10 && ollama pull phi3.5:latest && ollama pull nomic-embed-text && wait"]
 
+  celery:
+    build: .
+    command: celery -A app.core.idea_queue worker --loglevel=info
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - MONGODB_URL=${MONGODB_URL}
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
+    depends_on:
+      - app
+      - redis
+    networks:
+      - app-network
+
 volumes:
   ollama_data:
 

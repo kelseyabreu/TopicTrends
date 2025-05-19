@@ -1,41 +1,58 @@
 """Main FastAPI application entry point"""
-
-# Load environment variables from .env file 
-from dotenv import load_dotenv
-load_dotenv()
+from contextlib import asynccontextmanager
 # Configure logging
 from app.core.logging import setup_logger
-setup_logger()
-import logging
-logger = logging.getLogger(__name__)
-
+from app.core.limiter import limiter
 # --- Standard Python Imports ---
-import os
 import time
 import uuid
-from typing import Callable, Dict, Any
+from typing import Callable
 
 # --- Third-Party Imports ---
-from fastapi import FastAPI, Request, status, Depends
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-import os
 import asyncio
+import logging
 from fastapi.exceptions import HTTPException
 from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-
-# --- Application-Specific Imports ---
-# Core components
-from app.core.database import initialize_database # Assuming init_db is deprecated based on code
 from app.core.config import settings 
-from app.core.limiter import limiter
 # Socket.IO setup
 from app.core.socketio import socket_app
+# Load environment variables from .env file 
+from dotenv import load_dotenv
+load_dotenv()
 # Routers (import AFTER settings/limiter might be needed if they use them at import time)
 from app.routers import discussions, ideas, topics, auth, users, interaction
+setup_logger()
+logger = logging.getLogger(__name__)
 
 # --- FastAPI App Creation ---
+# --- Application Event Handlers ---
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # --- Application-Specific Imports ---
+    # Core components
+    global settings
+    from app.core.database import initialize_database # Assuming init_db is deprecated based on code
+    """Application startup logic: Initialize database connection."""
+    logger.info(f"Application starting up in {settings.ENVIRONMENT} mode...")
+    logger.info("Initializing database...")
+    try:
+        await initialize_database() 
+        logger.info("Database initialization complete.")
+        # Start the background worker
+        from app.services.worker import run_worker
+        # Runs concurrently :o
+        asyncio.create_task(run_worker())
+        logger.info("Background worker started.")
+        yield
+        logger.info("Shutdown complete.")
+    except Exception as e:
+        logger.exception("FATAL: Database initialization failed. Application will exit.", exc_info=True)
+        # Optionally: Send alert here
+        raise SystemExit(f"Database connection could not be established: {e}")
 # Create FastAPI app with metadata
 app = FastAPI(
     title=settings.API_TITLE,
@@ -43,6 +60,7 @@ app = FastAPI(
     docs_url="/api/docs",  # Custom path for Swagger UI
     redoc_url="/api/redoc",  # Custom path for ReDoc
     openapi_url="/api/openapi.json",  # Custom path for OpenAPI schema
+    lifespan=lifespan
     # Add other FastAPI parameters if needed (e.g., openapi_tags)
 )
 
@@ -107,34 +125,14 @@ app.add_middleware(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Note: Rate limits are typically applied via decorators on specific routes/routers
-
-# --- Application Event Handlers ---
-@app.on_event("startup")
-async def startup_event():
-    """Application startup logic: Initialize database connection."""
-    logger.info(f"Application starting up in {settings.ENVIRONMENT} mode...")
-    logger.info("Initializing database...")
-    try:
-        await initialize_database() 
-        logger.info("Database initialization complete.")
-        # Start the background worker
-        from app.services.worker import run_worker
-        # Runs concurrently :o
-        asyncio.create_task(run_worker())
-        logger.info("Background worker started.")
-    except Exception as e:
-        logger.exception("FATAL: Database initialization failed. Application will exit.", exc_info=True)
-        # Optionally: Send alert here
-        raise SystemExit(f"Database connection could not be established: {e}")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Application shutdown logic: Clean up resources."""
-    logger.info("Application shutting down...")
-    # Add cleanup operations here (e.g., close database connections, background task cleanup)
-    # Example: await close_database_connection()
-    # Example: await close_redis_pool()
-    logger.info("Shutdown complete.")
+# @app.on_event("shutdown")
+# async def shutdown_event():
+#     """Application shutdown logic: Clean up resources."""
+#     logger.info("Application shutting down...")
+#     # Add cleanup operations here (e.g., close database connections, background task cleanup)
+#     # Example: await close_database_connection()
+#     # Example: await close_redis_pool()
+#     logger.info("Shutdown complete.")
 
 # --- Custom Exception Handlers ---
 @app.exception_handler(HTTPException)
