@@ -28,7 +28,14 @@ import {
     Minimize,
     BadgeInfo,
     Ear,
-    HandHelping, 
+    HandHelping,
+    HeartHandshake,
+    Angry,
+    ConciergeBell,
+    SearchX,
+    Handshake,
+    StarHalf,
+    EyeOff, 
 } from "lucide-react";
 
 function IdeaView() {
@@ -110,6 +117,7 @@ if (!idea) {
             case 'clarification':
                 return <Info className="h-4 w-4" />;
             case 'problem_identification':
+                return <SearchX className="h-4 w-4"/>
             case 'warning':
                 return <AlertTriangle className="h-4 w-4 text-red-600" />;
             case 'personal_experience':
@@ -119,17 +127,23 @@ if (!idea) {
             case 'vision':
                 return <Eye className="h-4 w-4" />;
             case 'request':
+                return <ConciergeBell className="h-4 w-4" />
             case 'question':
                 return <HelpCircle className="h-4 w-4" />;
             case 'complaint':
+                return <Angry className="h-4 w-4" />;
             case 'criticism':
+                return <StarHalf className="h-4 w-4"/>
             case 'disagreement':
                 return <XCircle className="h-4 w-4 text-red-600" />;
             case 'praise':
+                return <HeartHandshake className="h-4 w-4" />
             case 'agreement':
+                return <Handshake />
             case 'defense':
                 return <CheckCircle className="h-4 w-4 text-green-600" />;
             case 'unclear':
+                return <EyeOff className="h-4 w-4"/>
             case 'off_topic':
                 return <MinusCircle className="h-4 w-4 text-gray-500" />;
             default:
