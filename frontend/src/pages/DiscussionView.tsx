@@ -14,7 +14,9 @@ import { Discussion } from "../interfaces/discussions"; // Import Discussion typ
 import { Topic, TopicsResponse } from "../interfaces/topics"; // Import Topic type
 import { Idea } from "../interfaces/ideas"; // Import Idea type
 import TopicListItem from "../components/TopicListItem"; // Import our custom TopicListItem component
-import InteractionButton, { EngagementActionType } from "../components/InteractionButton";
+import InteractionButton, {
+  InteractionActionType,
+} from "../components/InteractionButton";
 import {
   Dialog,
   DialogClose,
@@ -140,10 +142,57 @@ function DiscussionView() {
     }
   };
 
-    const handleEngagementChange = useCallback((isActive: boolean, actionType: EngagementActionType) => {
-        console.log(`Discussion ${discussionId} - Action: ${actionType}, IsActive: ${isActive}`);
-        // You could potentially update discussion object here if it contains like/pin/save counts
-    }, [discussionId]);
+  const handleEngagementChange = useCallback(
+    (isActive: boolean, actionType: InteractionActionType) => {
+      console.log(
+        `Discussion ${discussionId} - Action: ${actionType}, IsActive: ${isActive}`
+      );
+      // You could potentially update discussion object here if it contains like/pin/save counts
+    },
+    [discussionId]
+  );
+
+  // --- Fetch initial discussion data --- // Also used for refreshing topics after socket update
+  const fetchDiscussionData = useCallback(async () => {
+    if (!discussionId) return;
+    console.log(
+      `[DiscussionView Effect ${discussionId}] Fetching discussion data...`
+    );
+    try {
+      const [discussionResponse, topicsResponse] = await Promise.all([
+        api.get<Discussion>(`/discussions/${discussionId}`),
+        api.get<TopicsResponse>(`/discussions/${discussionId}/topics`),
+      ]);
+
+      // isMounted check is handled by the useEffect cleanup, no need here if useCallback is used correctly
+      setDiscussion(discussionResponse.data);
+      const fetchedTopics = Array.isArray(topicsResponse.data.topics)
+        ? topicsResponse.data.topics
+        : [];
+      const sortedTopics = [...fetchedTopics].sort((a, b) => b.count - a.count);
+      setTopics(sortedTopics);
+      setUnclusteredCount(topicsResponse.data.unclustered_count || 0);
+      console.log(
+        `[DiscussionView Effect ${discussionId}] Data fetched successfully.`
+      );
+    } catch (error) {
+      // Catch any error type
+      console.error(
+        `[DiscussionView Effect ${discussionId}] Error fetching discussion data:`,
+        error
+      );
+      // isMounted check is handled by the useEffect cleanup
+      if (error.response?.status === 404) {
+        toast.error("Discussion not found. It might have been deleted.");
+        navigate("/"); // Navigate away if discussion doesn't exist
+      } else {
+        toast.error(error.message || "Failed to load discussion data.");
+      }
+    } finally {
+      // isMounted check is handled by the useEffect cleanup
+      setIsLoading(false);
+    }
+  }, [discussionId, navigate]); // Add navigate to dependencies
 
   // --- Combined Effect for Data Fetching, Socket Connection, PT Management, and Real-time Idea Updates ---
   useEffect(() => {
@@ -181,54 +230,7 @@ function DiscussionView() {
     // Note: ensureParticipationToken is async, but we don't necessarily need to await it
     // here as the submission logic checks for its presence later.
 
-    // --- Fetch initial discussion data ---
-    const fetchDiscussionData = async () => {
-      if (!discussionId) return;
-      console.log(
-        `[DiscussionView Effect ${discussionId}] Fetching discussion data...`
-      );
-      try {
-        const [discussionResponse, topicsResponse] = await Promise.all([
-          api.get<Discussion>(`/discussions/${discussionId}`),
-          api.get<TopicsResponse>(`/discussions/${discussionId}/topics`),
-        ]);
-
-        if (isMounted) {
-          setDiscussion(discussionResponse.data);
-          const fetchedTopics = Array.isArray(topicsResponse.data.topics)
-            ? topicsResponse.data.topics
-            : [];
-          const sortedTopics = [...fetchedTopics].sort(
-            (a, b) => b.count - a.count
-          );
-          setTopics(sortedTopics);
-          setUnclusteredCount(topicsResponse.data.unclustered_count || 0);
-          console.log(
-            `[DiscussionView Effect ${discussionId}] Data fetched successfully.`
-          );
-        }
-      } catch (error) {
-        // Catch any error type
-        console.error(
-          `[DiscussionView Effect ${discussionId}] Error fetching discussion data:`,
-          error
-        );
-        if (isMounted) {
-          if (error.response?.status === 404) {
-            toast.error("Discussion not found. It might have been deleted.");
-            navigate("/"); // Navigate away if discussion doesn't exist
-          } else {
-            toast.error(error.message || "Failed to load discussion data.");
-          }
-        }
-      } finally {
-        // Only set loading false if the component is still mounted
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
+    // --- Fetch initial discussion data --- // Now called from outside useEffect
     fetchDiscussionData();
 
     // --- Socket.IO Setup ---
@@ -275,26 +277,14 @@ function DiscussionView() {
       }
     };
 
-    const handleTopicsUpdated = (data: {
-      discussion_id: string;
-      topics: Topic[];
-      unclustered_count: number;
-    }) => {
+    // Refactored handleTopicsUpdated to trigger data fetch
+    const handleTopicsUpdated = (data: { discussion_id: string }) => {
       if (data.discussion_id === discussionId && isMounted) {
         console.log(
-          `[Socket ${discussionId}] Received topics_updated event with ${data.topics?.length} topics.`
+          `[Socket ${discussionId}] Received topics_updated event. Fetching latest data...`
         );
-        const updatedTopics = Array.isArray(data.topics) ? data.topics : [];
-        const sortedTopics = [...updatedTopics].sort(
-          (a, b) => b.count - a.count
-        );
-        setTopics(sortedTopics);
-        setUnclusteredCount(data.unclustered_count);
-
-        // Update discussion topic count
-        setDiscussion((prev) =>
-          prev ? { ...prev, topic_count: updatedTopics.length } : null
-        );
+        // Trigger a fetch of the latest discussion data, which includes topics
+        fetchDiscussionData();
       } else if (isMounted) {
         console.log(
           `[Socket ${discussionId}] Ignored 'topics_updated' for different discussion (${data.discussion_id})`
@@ -336,7 +326,7 @@ function DiscussionView() {
           { autoClose: 7000 }
         );
       }
-      };
+    };
 
     // >>> Handler for the new_idea event <<<
     const handleNewIdea = (data: { discussion_id: string; idea: Idea }) => {
@@ -413,6 +403,7 @@ function DiscussionView() {
     authStatus,
     ensureParticipationToken,
     participationToken,
+    fetchDiscussionData, // Add fetchDiscussionData to dependencies
   ]);
 
   // --- Idea Submission Handler (remains mostly the same, no clustering call) ---
@@ -522,19 +513,6 @@ function DiscussionView() {
       .writeText(discussion.join_link)
       .then(() => toast.success("Link copied!"))
       .catch(() => toast.error("Failed to copy."));
-  };
-  const getTopicType = (count: number): string => {
-    if (count <= 10) return "Ripple";
-    if (count <= 25) return "Wave";
-    if (count <= 50) return "Breaker";
-    return "Tsunami";
-  };
-  const goSwim = (topicId: string) => {
-    if (discussionId && topicId) {
-      navigate(`/discussion/${discussionId}/topic/${topicId}`);
-    } else {
-      console.error("Missing IDs for topic navigation.");
-    }
   };
 
   // --- Render Logic ---
@@ -677,15 +655,16 @@ function DiscussionView() {
                 Share
               </Button>
               <Button
-                  variant="default"
-                  onClick={() => setShowNewIdeaModal(true)}
-                  disabled={isClustering}
-                  className="ml-2">
-                  <Lightbulb className="mr-2 h-4 w-4" />
-                  New Idea
+                variant="default"
+                onClick={() => setShowNewIdeaModal(true)}
+                disabled={isClustering}
+                className="ml-2"
+              >
+                <Lightbulb className="mr-2 h-4 w-4" />
+                New Idea
               </Button>
               {authStatus === AuthStatus.Authenticated && ( // Only show if logged in
-                  <>
+                <>
                   <Button
                     variant="default"
                     onClick={handleClusterClick}
@@ -701,11 +680,8 @@ function DiscussionView() {
                   </Button>
                   <Button
                     variant="default"
-                    onClick={
-                      () =>
-                        navigate(
-                            `/discussion/${discussionId}/new-ideas`
-                        )
+                    onClick={() =>
+                      navigate(`/discussion/${discussionId}/new-ideas`)
                     }
                     className="ml-2"
                   >
@@ -715,35 +691,41 @@ function DiscussionView() {
                 </>
               )}
               {discussionId && (
-                  <>
-                      <InteractionButton
-                          entityType="discussion"
-                          entityId={discussionId}
-                          actionType="like"
-                          onStateChange={handleEngagementChange}
-                          className="ml-2"
-                          activeLabel="Liked"
-                      // Optional: pass initialActive if discussion object has this info
-                      // initialActive={discussion.is_liked_by_user} 
+                <>
+                  <InteractionButton
+                    entityType="discussion"
+                    entityId={discussionId}
+                    actionType="like"
+                    onStateChange={handleEngagementChange}
+                    className="ml-2"
+                    activeLabel="Liked"
+                    // Optional: pass initialActive if discussion object has this info
+                    // initialActive={discussion.is_liked_by_user}
+                  />
+                  <InteractionButton
+                    entityType="discussion"
+                    entityId={discussionId}
+                    actionType="pin"
+                    onStateChange={handleEngagementChange}
+                    className="ml-2"
+                    // initialActive={discussion.is_pinned_by_user}
+                  />
+                  <InteractionButton
+                    entityType="discussion"
+                    entityId={discussionId}
+                    actionType="save"
+                    activeIcon={
+                      <Star
+                        size={20}
+                        className="text-yellow-500"
+                        fill="currentColor"
                       />
-                      <InteractionButton
-                          entityType="discussion"
-                          entityId={discussionId}
-                          actionType="pin"
-                          onStateChange={handleEngagementChange}
-                          className="ml-2"
-                      // initialActive={discussion.is_pinned_by_user}
-                      />
-                      <InteractionButton
-                          entityType="discussion"
-                          entityId={discussionId}
-                          actionType="save"
-                          activeIcon={<Star size={20} className="text-yellow-500" fill="currentColor" />}
-                          onStateChange={handleEngagementChange}
-                          className="ml-2"
-                      // initialActive={discussion.is_saved_by_user}
-                      />
-                  </>
+                    }
+                    onStateChange={handleEngagementChange}
+                    className="ml-2"
+                    // initialActive={discussion.is_saved_by_user}
+                  />
+                </>
               )}
               <Button
                 variant="default"
@@ -773,15 +755,16 @@ function DiscussionView() {
                 <div className="topics-list">
                   {/* Render topics using our custom TopicListItem component */}
                   {topics.map((topic) => (
-                    <TopicListItem 
+                    <TopicListItem
                       key={topic.id}
                       topic={topic}
-                      discussionId={discussionId || ''}
+                      discussionId={discussionId || ""}
                       onVote={(topicId, direction) => {
                         // Handle voting - in a real app, this would call an API
                         console.log(`Vote ${direction} for topic ${topicId}`);
                         toast.info(`Voted ${direction} for topic`);
                       }}
+                      limitIdeas={true}
                     />
                   ))}
                 </div>

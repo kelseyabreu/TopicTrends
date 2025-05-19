@@ -63,29 +63,37 @@
   
   .topic-header {
     cursor: pointer;
-    padding-bottom: 8px;
     display:flex;
-    flex-direction: row;
+    flex-direction: column;
   }
   
   .topic-title {
     font-size: 18px;
     font-weight: bold;
-    margin-bottom: 8px;
+    margin: 8px 0;
     line-height: 1.3;
     flex-grow: 1;
-    flex-basis:90%;
-    width:90%;
+    flex-basis:100%;
+    width:100%;
   }
   
   .topic-meta {
     display: flex;
     flex-direction: row;
-    flex-wrap: wrap;
     gap: 8px;
-    align-items: center;
-    flex-basis:10%;
-    width:10%;
+    justify-content: space-between;
+    flex-basis:100%;
+    width:100%;
+  }
+  .interactions, .topic-details {
+    display: flex;
+    width:50%;
+    flex-basis: 50%;
+    flex-direction: row;
+    gap:12px;
+  }
+  .interactions {
+    justify-content: flex-end;
   }
   
   .topic-type-badge, .topic-count-badge {
@@ -158,6 +166,7 @@
   
   .idea-interactions{
       display: flex;
+      justify-content: flex-end;
   }
 
   .no-ideas-message {
