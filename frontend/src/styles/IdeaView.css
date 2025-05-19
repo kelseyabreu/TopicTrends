@@ -54,7 +54,7 @@
     flex-wrap: wrap;
     gap: 0.5rem;
 }
-.idea-text {
+.idea-view-container .idea-text {
     font-size: 2rem!important;
     line-height: 1.6;
     color: #333;
