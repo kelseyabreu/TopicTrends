@@ -1,0 +1,118 @@
+.interactions-view-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+.interactions-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+    .interactions-header h1 {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .interactions-header p {
+        color: var(--foreground);
+        opacity: 0.8;
+    }
+
+.filters-card {
+    margin-bottom: 1.5rem;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.table-card {
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+}
+
+.table-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Loading and error states */
+.interactions-view-container.loading,
+.interactions-view-container.error {
+    min-height: 60vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    gap: 1rem;
+}
+
+/* Summary stats */
+.summary-card {
+    margin-top: 2rem;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    background-color: var(--background);
+    border: 2px solid var(--border);
+}
+
+.stat-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background-color: var(--background);
+    border: 1px solid var(--border);
+}
+
+.stat-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: var(--foreground);
+    opacity: 0.7;
+}
+.interactionGridRow button {
+    width: 70px;
+}
+
+.interactionsGridCard{
+    min-height:500px;
+    height:500px
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .interactions-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .filters-card .flex {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

@@ -79,6 +79,7 @@ class Settings(BaseSettings):
 
     # Rate Limiting (defaults, can be overridden per endpoint)
     DEFAULT_RATE_LIMIT: str = "500/hour"
+    HIGH_RATE_LIMIT: str = "500/minute"
     LOGIN_RATE_LIMIT: str = "10/minute"
     REGISTER_RATE_LIMIT: str = "5/minute"
     VERIFY_RATE_LIMIT: str = "10/minute"
