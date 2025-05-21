@@ -10,6 +10,14 @@ from app.models.interaction_schemas import (
     EntityMetrics, Metrics, TimeWindowMetricsContainer, HourlyMetric, DailyMetric,
     UserInteractionState, UserState
 )
+from app.models.query_models import (
+    InteractionQueryParameters, 
+    PaginatedResponse, 
+    FilterCondition, 
+    FilterOperator, 
+    SortDirection
+)
+from app.services.query_executor import create_interaction_query_executor
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +26,87 @@ logger = logging.getLogger(__name__)
 # - Idea's parent_id is its discussion_id (could also be topic_id if idea is part of a topic)
 
 class InteractionService:
+
+    async def get_interactions(
+        self,
+        params: InteractionQueryParameters,
+        additional_filter: Optional[Dict[str, Any]] = None
+    ) -> PaginatedResponse[InteractionEvent]:
+        """
+        Get paginated interaction events with filtering, sorting, and search.
+        
+        Args:
+            params: Query parameters for filtering, pagination, and sorting
+            additional_filter: Additional filter conditions to apply
+            
+        Returns:
+            Paginated response of interaction events
+        """
+        # Create a new executor instance for this query
+        # This ensures we get a fresh executor with the correct configuration
+        executor = create_interaction_query_executor(response_model=InteractionEvent)
+        
+        # Execute the query with the provided parameters and any additional filters
+        return await executor.execute(params, additional_filter)
+    
+    async def get_interactions_for_entity(
+        self,
+        params: InteractionQueryParameters,
+        entity_type: str,
+        entity_id: str
+    ) -> PaginatedResponse[InteractionEvent]:
+        """
+        Get paginated interaction events for a specific entity.
+        
+        Args:
+            params: Query parameters for filtering, pagination, and sorting
+            entity_type: The type of entity (discussion, topic, idea)
+            entity_id: The ID of the entity
+            
+        Returns:
+            Paginated response of interaction events
+        """
+        additional_filter = {
+            "entity_type": entity_type,
+            "entity_id": entity_id
+        }
+        return await self.get_interactions(params, additional_filter)
+    
+    async def get_interactions_for_user(
+        self,
+        params: InteractionQueryParameters,
+        user_id: str
+    ) -> PaginatedResponse[InteractionEvent]:
+        """
+        Get paginated interaction events for a specific user.
+        
+        Args:
+            params: Query parameters for filtering, pagination, and sorting
+            user_id: The ID of the user
+            
+        Returns:
+            Paginated response of interaction events
+        """
+        additional_filter = {"user_id": user_id}
+        return await self.get_interactions(params, additional_filter)
+    
+    async def get_interactions_by_action(
+        self,
+        params: InteractionQueryParameters,
+        action_type: Literal["like", "pin", "save", "view"]
+    ) -> PaginatedResponse[InteractionEvent]:
+        """
+        Get paginated interaction events of a specific action type.
+        
+        Args:
+            params: Query parameters for filtering, pagination, and sorting
+            action_type: The type of interaction action
+            
+        Returns:
+            Paginated response of interaction events
+        """
+        additional_filter = {"action_type": action_type}
+        return await self.get_interactions(params, additional_filter)
 
     async def _get_entity_parent_id(self, db, entity_id: str, entity_type: Literal["discussion", "topic", "idea"]) -> Optional[str]:
         """Helper to get parent_id for topic or idea."""

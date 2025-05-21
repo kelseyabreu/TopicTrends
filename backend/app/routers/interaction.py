@@ -1,14 +1,23 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Header, BackgroundTasks
-from typing import List, Optional, Dict, Any, Literal
+from typing import List, Optional, Dict, Any, Literal, Annotated
 
 from app.services.auth import get_optional_current_user, verify_token_cookie, verify_participation_token, check_csrf_manual
 from app.services.interaction import interaction_service
 from app.models.interaction_schemas import InteractionEvent, InteractionStateResponse, UserState,TrendingEntityResponseItem,SavedEntityResponseItem, Metrics, TimeWindowMetricsContainer
-from app.core.limiter import limiter # Assuming limiter is configured
-from app.core.config import settings # For rate limits
+from app.core.limiter import limiter 
+from app.core.config import settings 
+from app.models.query_models import InteractionQueryParameters
+from app.services.query_executor import create_interaction_query_executor
+from app.services.auth import verify_csrf_dependency
+
+
 import logging
 logger = logging.getLogger(__name__)
 
+# Create a reusable dependency
+interaction_query_executor = create_interaction_query_executor(
+    response_model=InteractionEvent
+)
 
 router = APIRouter(prefix="/interaction", tags=["Interaction"])
 
@@ -197,3 +206,80 @@ async def get_trending(
     )
     # The service method already projects to a structure matching TrendingEntityResponseItem
     return [TrendingEntityResponseItem(**item) for item in trending_results]
+
+@router.get("/", response_model=None) 
+@limiter.limit(settings.DEFAULT_RATE_LIMIT)
+async def get_interactions(
+    request: Request,
+    current_user: Annotated[dict, Depends(verify_token_cookie)],
+    # The params_dependency handles all query parameter parsing and validation
+    # This includes pagination, sorting, filtering, etc.
+):
+    """
+    Get interaction events with advanced filtering, sorting, and pagination.
+    
+    This endpoint supports:
+    - Pagination with page and page_size
+    - Sorting with sort and sort_dir
+    - Filtering with multiple operators (eq, ne, gt, lt, in, etc.)
+    - Text search across relevant fields
+    - Field projection to limit returned data
+    
+    Example queries:
+    - `/api/interactions?page=1&page_size=20&sort=timestamp&sort_dir=desc`
+    - `/api/interactions?filter.entity_type=discussion&filter.action_type=view`
+    - `/api/interactions?filter.timestamp.gte=2025-01-01T00:00:00Z`
+    """
+
+    return await interaction_query_executor.execute(
+        params=await interaction_query_executor.query_service.get_query_parameters_dependency()(request)
+    )
+
+# --- TanStack Table Integration ---
+# This endpoint provides data in a format compatible with TanStack Table's server-side processing
+@router.post("/table", dependencies=[Depends(verify_csrf_dependency)])
+@limiter.limit(settings.DEFAULT_RATE_LIMIT)
+async def get_interactions_table(
+    request: Request,
+    current_user: Annotated[dict, Depends(verify_token_cookie)]
+):
+    """
+    TanStack Table compatible endpoint for interaction events.
+    
+    This endpoint accepts TanStack Table state parameters either via:
+    - POST request with JSON body containing full TanStack state
+    - GET request with individual query parameters
+    
+    The response is formatted for TanStack Table consumption, including:
+    - rows: The data for the current page
+    - pageCount: Total number of pages
+    - totalRowCount: Total number of matching rows
+    - meta: Additional metadata (sort, filters, etc.)
+    """
+    # Process the TanStack Table request without additional filtering
+    return await interaction_query_executor.get_tanstack_endpoint_handler()(request)
+
+
+# Get interactions related to a specific entity
+@router.get("/entity/{entity_type}/{entity_id}")
+@limiter.limit(settings.DEFAULT_RATE_LIMIT)
+async def get_entity_interactions(
+    request: Request,
+    entity_type: str,
+    entity_id: str,
+    current_user: Annotated[dict, Depends(verify_token_cookie)]
+):
+    """
+    Get interactions for a specific entity.
+    
+    This endpoint supports all standard query parameters and applies
+    an additional filter for the specified entity type and ID.
+    """
+    params = await interaction_query_executor.query_service.get_query_parameters_dependency()(request)
+    return await interaction_query_executor.execute(
+        params=params,
+        additional_filter={
+            "entity_id": entity_id,
+            "entity_type": entity_type
+        }
+    )
