@@ -94,17 +94,20 @@
     color: var(--foreground);
     opacity: 0.7;
 }
+
 .interactionGridRow button {
     width: 70px;
 }
 
-.interactionsGridCard .card-content{
-     overflow: auto
+.interactionsGridCard .card-content {
+    overflow: auto;
+    min-height: 511px;
+    height: 511px;
 }
 
 .interactionsGridCard {
-    min-height: 500px;
-    height: 500px
+    min-height: 630px;
+    height: 630px
 }
 
 /* Responsive adjustments */
