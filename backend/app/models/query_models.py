@@ -225,8 +225,8 @@ class QueryParameters(BaseModel):
         `extra_kwargs` can be used to pass defaults for fields not in TanStack state
         (e.g. use_aggregation).
         """
-        query_args: Dict[str, Any] = {"filters": []} # Initialize filters as list
-        query_args.update(extra_kwargs) # Apply any extra defaults
+        query_args: Dict[str, Any] = {"filters": []} 
+        query_args.update(extra_kwargs)
 
         if "pagination" in params and isinstance(params["pagination"], dict):
             pagination = params["pagination"]
@@ -234,27 +234,38 @@ class QueryParameters(BaseModel):
             query_args["page_size"] = pagination.get("pageSize", cls.model_fields["page_size"].default)
             
         if "sorting" in params and isinstance(params["sorting"], list) and params["sorting"]:
-            sorting = params["sorting"][0] # Assuming single sort
-            query_args["sort"] = sorting.get("id")
-            query_args["sort_dir"] = SortDirection.DESC if sorting.get("desc", True) else SortDirection.ASC
+            sorting_list = params["sorting"]
+            if sorting_list: # Ensure not empty
+                sorting_item = sorting_list[0] 
+                query_args["sort"] = sorting_item.get("id")
+                query_args["sort_dir"] = SortDirection.DESC if sorting_item.get("desc", True) else SortDirection.ASC
             
-        # TanStack `columnFilters` can be:
-        # 1. Array: `[{id: 'status', value: 'active'}]` (simple EQ)
-        # 2. Object: `{'status': 'active', 'name': {'contains': 'John'}}` (complex)
         if "columnFilters" in params:
             filters_input = params["columnFilters"]
             parsed_filters: List[FilterCondition] = []
             if isinstance(filters_input, list): # Array format
                 for f_item in filters_input:
                     if isinstance(f_item, dict) and 'id' in f_item and 'value' in f_item:
-                        # This typically implies simple equality from TanStack Table
-                        parsed_filters.append(FilterCondition(field=f_item['id'], operator=FilterOperator.EQ, value=f_item['value']))
-            elif isinstance(filters_input, dict): # Object format
-                # This will be handled by the convert_flat_filters_to_list validator
-                # when it's passed as data['filters'] = filters_input
-                query_args["filters"] = filters_input # Pass dict directly
+                        field_id = f_item['id']
+                        filter_value = f_item['value']
+                        
+                        if isinstance(filter_value, dict):
+                            for op_str, op_val in filter_value.items():
+                                try:
+                                    # Attempt to map common range ops; extend if more are needed
+                                    op_enum = FilterOperator(op_str.lower()) # Ensure lowercase for gte, lte etc.
+                                    parsed_filters.append(FilterCondition(field=field_id, operator=op_enum, value=op_val))
+                                except ValueError:
+                                    logger.warning(f"TanStack `columnFilters` list: Unrecognized operator '{op_str}' in value for field '{field_id}'. Treating as EQ for the object.")
+                                    parsed_filters.append(FilterCondition(field=field_id, operator=FilterOperator.EQ, value=filter_value))
+                                    break 
+                        else:
+                            parsed_filters.append(FilterCondition(field=field_id, operator=FilterOperator.EQ, value=filter_value))
             
-            if parsed_filters and not query_args.get("filters"): # If parsed from list and not from dict
+            elif isinstance(filters_input, dict):
+                query_args["filters"] = filters_input
+            
+            if parsed_filters and not query_args.get("filters"): # If parsed from list and 'filters' wasn't set by dict format
                  query_args["filters"] = parsed_filters
         
         if "globalFilter" in params and params["globalFilter"]:

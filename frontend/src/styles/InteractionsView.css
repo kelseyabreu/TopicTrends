@@ -98,9 +98,13 @@
     width: 70px;
 }
 
-.interactionsGridCard{
-    min-height:500px;
-    height:500px
+.interactionsGridCard .card-content{
+     overflow: auto
+}
+
+.interactionsGridCard {
+    min-height: 500px;
+    height: 500px
 }
 
 /* Responsive adjustments */
