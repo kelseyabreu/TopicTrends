@@ -26,12 +26,10 @@ from app.services.query_service import MongoDBQueryService # Use  service
 from app.models.schemas import Discussion, Topic, Idea
 from app.models.interaction_schemas import EntityMetrics, InteractionEvent, UserInteractionState
 
-from app.core.limiter import limiter # For rate limiting
 from app.core.config import settings # For default settings like rate limits
 
 # Type variable for generic entity type (Pydantic model of the items in response)
 T_ResponseModel = TypeVar('T_ResponseModel', bound=BaseModel)
-# Type variable for specific QueryParameters type (e.g., DiscussionQueryParameters)
 T_Query_Params = TypeVar('T_Query_Params', bound=QueryParameters)
 
 logger = logging.getLogger(__name__)
@@ -123,8 +121,6 @@ class QueryExecutor(Generic[T_ResponseModel, T_Query_Params]):
             request: Request, # Request is needed for rate limiting
             params: T_Query_Params = Depends(params_dependency) # params is of type T_Query_Params
         ) -> PaginatedResponse[T_ResponseModel]:
-            if self.rate_limit:
-                await limiter.check(request) # Assumes limiter.check is an async method
             return await self.execute(params)
         
         execute_query_dependency.__doc__ = f"""
@@ -154,9 +150,6 @@ class QueryExecutor(Generic[T_ResponseModel, T_Query_Params]):
             filter_value: str = FastAPIQueryParam(..., description=f"Value to filter '{filter_field}' by using {filter_operator.value} operator."),
             params: T_Query_Params = Depends(params_dependency)
         ) -> PaginatedResponse[T_ResponseModel]:
-            if self.rate_limit:
-                 await limiter.check(request)
-            
             # Add the fixed filter to a copy of the params
             effective_params = params.model_copy(deep=True)
             effective_params.filters.append(
@@ -190,9 +183,6 @@ class QueryExecutor(Generic[T_ResponseModel, T_Query_Params]):
         SpecificQueryParamsModel: Type[T_Query_Params] = self.query_service.get_parameter_model()
 
         async def tanstack_endpoint_handler_function(request: Request):
-            if self.rate_limit:
-                await limiter.check(request)
-            
             params_instance: T_Query_Params
             
             # TanStack Table might send its state via GET (query params) or POST (JSON body).

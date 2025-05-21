@@ -208,7 +208,7 @@ async def get_trending(
     return [TrendingEntityResponseItem(**item) for item in trending_results]
 
 @router.get("/", response_model=None) 
-@limiter.limit(settings.DEFAULT_RATE_LIMIT)
+@limiter.limit(settings.HIGH_RATE_LIMIT)
 async def get_interactions(
     request: Request,
     current_user: Annotated[dict, Depends(verify_token_cookie)],

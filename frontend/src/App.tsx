@@ -21,6 +21,7 @@ import MyIdeas from './pages/MyIdeas.tsx';
 import About from './pages/About.tsx';
 import UserDashboard from './pages/UserDashboard.tsx';
 import NewIdeasView from './pages/NewIdeasView.tsx';
+import InteractionsView from './pages/InteractionsView.tsx';
 
 function App() {
     return (
@@ -43,6 +44,14 @@ function App() {
                             element={
                                 <ProtectedRoute>
                                     <MyIdeas />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/interactions" 
+                            element={
+                                <ProtectedRoute>
+                                    <InteractionsView />
                                 </ProtectedRoute>
                             }
                         />
