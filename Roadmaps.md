@@ -33,13 +33,14 @@
 ## What's Missing or Incomplete
 
 1. **User Experience**
-   - ❌ Likes on ideas (not implemented)
+   - ✅ Likes on ideas
    - ❌ Charts/visualizations of data (not implemented)
    - ❌ Filters for ideas (categories, keywords, etc.)
    - ❌ Responsive design needs improvement in some areas
 
 2. **User Management**
-   - ❌ Password reset functionality
+   - ✅ Password reset functionality
+   - ❌ Delete users and all associated data
    - ❌ User roles and permissions
    - ❌ Discussion ownership and access control
    - ❌ Admin dashboard
@@ -50,6 +51,9 @@
    - ❌ Trending/popular discussions view
    - ❌ Public vs. private discussion settings
    - ❌ Discussion categories or tags
+   - ❌ Mark as Complete or Archived
+   - ❌ Exports for admins
+   - ❌ Discussion analytics (views, likes, etc.) (charts/visualizations)
 
 4. **Fix sockerIO events for multiple users**
    - ❌ if idea/topic is added by one user, it should be reflected in other users' UI
@@ -76,6 +80,8 @@
    - ❌ Performance testing for grouping with large datasets
    - ❌ Concurrent submissions stress testing
    - ❌ End-to-end and integration tests
+   - ❌ No data retention/cleanup policies
+   - ❌ Database indexes
 
 9. **Deployment & Operations**
    - ❌ Production-ready configuration
@@ -111,7 +117,7 @@
    - 🔼 Clean up environment variables management
 
 2. **Medium-term (Feature Completion)**
-   - 🔼 Implement idea likes functionality
+   - ✅ Implement idea likes functionality
    - 🔼 Add discussion filtering and categorization
    - 🔼 Create "My Discussions" and "Joined Discussions" views
    - 🔼 Develop basic charts and visualizations
