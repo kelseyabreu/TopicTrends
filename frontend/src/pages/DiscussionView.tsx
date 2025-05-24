@@ -515,6 +515,23 @@ function DiscussionView() {
       .catch(() => toast.error("Failed to copy."));
   };
 
+  const handleDialogKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault(); 
+      
+      if (submitDisabled || isSubmitting) {
+        return; 
+      }
+      
+      const syntheticEvent = {
+        preventDefault: () => {},
+        currentTarget: document.querySelector('#new-idea-form')
+      } as React.FormEvent<HTMLFormElement>;
+      
+      handleSubmit(syntheticEvent);
+    }
+  };
+
   // --- Render Logic ---
   if (isLoading || authStatus === AuthStatus.Loading) {
     // ... (loading spinner remains the same) ...
@@ -543,7 +560,7 @@ function DiscussionView() {
     <div className="discussion-view-container">
       {/* New Idea Modal */}
       <Dialog open={showNewIdeaModal} onOpenChange={setShowNewIdeaModal}>
-        <DialogContent>
+        <DialogContent onKeyDown={handleDialogKeyDown}>
           <DialogHeader>
             <DialogTitle>
               <Lightbulb className="inline" /> New Idea
@@ -552,7 +569,7 @@ function DiscussionView() {
               Share your thoughts on this discussion.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit}>
+          <form id="new-idea-form" onSubmit={handleSubmit}>
             <div className="form-group">
               <label htmlFor="idea-input">Your Idea</label>
               <Textarea
@@ -570,7 +587,7 @@ function DiscussionView() {
                 maxLength={500}
               />
               <small className={idea.length > 500 ? "text-red-500" : ""}>
-                {idea.length}/500 chars
+                {idea.length}/500 chars • Press Ctrl+Enter to submit
               </small>
             </div>
             <DialogFooter className="mt-4">

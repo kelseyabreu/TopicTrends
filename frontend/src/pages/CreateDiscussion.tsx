@@ -87,6 +87,7 @@ const handleSubmit = async (e) => {
             <input
               type="checkbox"
               id="require-verification"
+              className="verificationCheckbox"
               checked={requireVerification}
               onChange={(e) => setRequireVerification(e.target.checked)}
             />
