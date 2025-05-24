@@ -104,7 +104,7 @@ async def get_current_user_discussions(
     
     try:
         # Fetch discussions created by this user
-        discussions_cursor = db.discussions.find({"creator_id": user_id})
+        discussions_cursor = db.discussions.find({"creator_id": user_id}).sort([("created_at", -1)])
         discussions_list = await discussions_cursor.to_list(None)
         
         # Process discussions to match expected format
@@ -179,7 +179,7 @@ async def get_current_user_stats(
                 "_id": "$date",
                 "count": {"$sum": 1}
             }},
-            {"$sort": {"_id": 1}}
+            {"$sort": {"_id": -1}}
         ]
         
         activity_cursor = db.ideas.aggregate(pipeline)
@@ -262,8 +262,9 @@ async def get_current_user_engagement(
         # First get discussions created by the user
         created_discussions_cursor = db.discussions.find(
             {"creator_id": user_id},
-            {"_id": 1, "created_at": 1}
-        )
+            {"_id": 1, "created_at": 1})
+            .sort([("created_at", -1)]
+            )
         created_discussions = await created_discussions_cursor.to_list(None)
         
         for disc in created_discussions:
@@ -298,7 +299,7 @@ async def get_current_user_engagement(
                 "_id": "$date",
                 "count": {"$sum": 1}
             }},
-            {"$sort": {"_id": 1}}
+            {"$sort": {"_id": -1}}
         ]
         
         activity_cursor = db.ideas.aggregate(pipeline)
@@ -343,7 +344,31 @@ async def get_current_user_engagement(
             if "_id" in doc_for_response:
                 doc_for_response["id"] = doc_for_response.pop("_id")
             
-            processed_recent_interactions.append(doc_for_response)
+            # Add displaytext based on entity type
+            entity_id = doc_for_response.get("entity_id")
+            entity_type = doc_for_response.get("entity_type")
+            displaytext = "Unknown"
+            
+            if entity_id and entity_type:
+                try:
+                    if entity_type == "topic":
+                        topic = await db.topics.find_one({"_id": entity_id}, {"representative_text": 1})
+                        if topic:
+                            displaytext = topic.get("representative_text", "Untitled Topic")
+                    elif entity_type == "idea":
+                        idea = await db.ideas.find_one({"_id": entity_id}, {"text": 1})
+                        if idea:
+                            displaytext = idea.get("text", "Empty idea")
+                    elif entity_type == "discussion":
+                        discussion = await db.discussions.find_one({"_id": entity_id}, {"title": 1})
+                        if discussion:
+                            displaytext = discussion.get("title", "Untitled Discussion")
+                except Exception as e:
+                    logger.warning(f"Error fetching displaytext for {entity_type} {entity_id}: {e}")
+
+            if displaytext != "Unknown":
+                doc_for_response["displaytext"] = displaytext
+                processed_recent_interactions.append(doc_for_response)
         
         # Return engagement data
         engagement_data = {

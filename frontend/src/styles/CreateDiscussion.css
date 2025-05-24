@@ -48,6 +48,10 @@
         font-size: 16px;
     } */
 
+    .verificationCheckbox{
+        width: auto !important;
+    }
+
     .form-group textarea {
         min-height: 120px;
         resize: vertical;

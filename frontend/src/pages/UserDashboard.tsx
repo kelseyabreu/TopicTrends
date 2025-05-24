@@ -264,7 +264,7 @@ const UserDashboard: React.FC = () => {
                     </div>
                 ) : (
                     <div className="discussions-grid">
-                        {discussions.slice(0, 4).map(discussion => (
+                        {discussions.slice(0, 6).map(discussion => (
                             <Card key={discussion.id} className="discussion-card">
                                 <CardHeader>
                                     <CardTitle>{discussion.title}</CardTitle>
@@ -302,7 +302,7 @@ const UserDashboard: React.FC = () => {
                 <div className="recentInteractions mt-8">
                     <div className="section-header">
                         <h2>Recent Interactions</h2>
-                        <Link to="/interactions" className="view-all-link">
+                        <Link to="/my-interactions" className="view-all-link">
                             View All <ChevronRight className="h-4 w-4" />
                         </Link>
                     </div>
@@ -375,7 +375,7 @@ const UserDashboard: React.FC = () => {
                                                 )}
                                                 <div>
                                                     <div className="font-medium">
-                                                        You {actionText} a {interaction.entity_type} {interaction.entity_id}
+                                                        You {actionText} {interaction.entity_type} <b>{interaction.displaytext}</b>
                                                     </div>
                                                     <div className="text-sm text-muted-foreground">
                                                         {timeAgo}
@@ -411,7 +411,6 @@ const UserDashboard: React.FC = () => {
                     <Card>
                         <CardContent className="activity-chart">
                             {Object.entries(stats.activity_by_date)
-                                .slice(-7) // Last 7 days
                                 .map(([date, count]) => (
                                     <div key={date} className="activity-day">
                                         <div className="activity-date">{date}</div>

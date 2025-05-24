@@ -28,4 +28,5 @@ export interface Interaction {
     action_type: "like" | "unlike" | "pin" | "unpin" | "save" | "unsave" | "view";
     timestamp: string;
     parent_id: string | null;
+    displaytext: string;
 }

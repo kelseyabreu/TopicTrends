@@ -37,7 +37,7 @@ function Header() {
               <NavigationMenuTrigger>Getting started</NavigationMenuTrigger>
               <NavigationMenuContent>
                 <ul className="grid w-[500px] gap-3 p-2 lg:grid-cols-[.75fr_1fr]">
-                  <li className="row-span-3">
+                  <li className="row-span-4">
                     <NavigationMenuLink asChild>
                       <a
                         className="flex h-full w-full select-none flex-col justify-end rounded-base p-6 no-underline outline-hidden"
@@ -56,25 +56,18 @@ function Header() {
                   </li>
                   {user ? (
                     <>
-                      <ListItem
-                        href="/create"
-                        title="Create Discussion"
-                      >
-                        Start your very own discussion and start engaging with
-                        others.
+                      <ListItem href="/create" title="Create Discussion">
+                        Start your very own discussion and start engaging with others.
                       </ListItem>
-                      <ListItem
-                        href="/discussions"
-                        title="Explore Discussions"
-                      >
+                      <ListItem href="/discussions" title="Explore Discussions">
                         Find a discussion you want to contribute to.
                       </ListItem>
-                      <ListItem
-                        href="/my-ideas"
-                        title="View My Ideas"
-                      >
+                      <ListItem href="/my-ideas" title="View My Ideas">
                         See all the ideas you have contributed to.
-                                          </ListItem>
+                       </ListItem>
+                       <ListItem href="/my-interactions" title="View My Interactions">
+                        View everything you've been up to.
+                       </ListItem>
                     </>
                   ) : (
                     <>

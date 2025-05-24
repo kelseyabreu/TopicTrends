@@ -48,7 +48,7 @@ function App() {
                             }
                         />
                         <Route
-                            path="/interactions" 
+                            path="/my-interactions" 
                             element={
                                 <ProtectedRoute>
                                     <InteractionsView />

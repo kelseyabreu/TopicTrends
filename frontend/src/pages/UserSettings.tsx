@@ -119,9 +119,19 @@ function UserSettings() {
                 <div className="user-info">
                     <p><strong>Username:</strong> {contextUser.username}</p>
                     <p><strong>Email:</strong> {contextUser.email}</p>
-                    <p><strong>Member since:</strong> {contextUser.created_at ? new Date(contextUser.created_at).toLocaleDateString() : 'N/A'}</p>
+                    <p>
+                        <strong>Member since:</strong>
+                        <span title={new Date(contextUser.created_at).toLocaleString()} style={{ cursor: 'help' }} className="p-1 underline">
+                            {new Date(contextUser.created_at).toLocaleDateString()}
+                        </span>
+                    </p>
                     {contextUser.modified_at && contextUser.modified_at !== contextUser.created_at && (
-                        <p><strong>Last updated:</strong> {new Date(contextUser.modified_at).toLocaleDateString()}</p>
+                        <p>
+                            <strong>Last updated:</strong> 
+                            <span title={new Date(contextUser.modified_at).toLocaleString()} style={{ cursor: 'help' }} className="p-1 underline">
+                                {new Date(contextUser.modified_at).toLocaleDateString()}
+                            </span>
+                        </p>
                     )}
                 </div>
 
