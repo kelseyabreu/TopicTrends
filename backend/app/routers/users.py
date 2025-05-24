@@ -262,9 +262,8 @@ async def get_current_user_engagement(
         # First get discussions created by the user
         created_discussions_cursor = db.discussions.find(
             {"creator_id": user_id},
-            {"_id": 1, "created_at": 1})
-            .sort([("created_at", -1)]
-            )
+            {"_id": 1, "created_at": 1}
+        ).sort([("created_at", -1)])
         created_discussions = await created_discussions_cursor.to_list(None)
         
         for disc in created_discussions:
