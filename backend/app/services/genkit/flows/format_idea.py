@@ -6,7 +6,7 @@ settings = Settings()
 GENERATIVE_MODEL = settings.GEMINI_MODEL
 API_KEY = settings.GOOGLE_API_KEY
 ai = Genkit(
-    plugins=[GoogleAI(api_key="AIzaSyBfRFz3pcIveQLWea_Sd_JmipPEBieNft4")],
+    plugins=[GoogleAI(api_key=API_KEY)],
     model=GENERATIVE_MODEL,
 )
 

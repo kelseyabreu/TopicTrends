@@ -4,11 +4,14 @@ from genkit.plugins.google_genai import (
     GoogleAI,
 )
 from genkit.ai import Document, Genkit
+from app.core.config import Settings
+settings = Settings()
 GENERATIVE_MODEL = os.environ.get("GENERATIVE_MODEL")
 EMBEDDING_MODEL = "googleai/text-embedding-004"
 EMBEDDER_DIMENSIONS = 512
+API_KEY = settings.GOOGLE_API_KEY
 ai = Genkit(
-    plugins=[GoogleAI(api_key="AIzaSyBfRFz3pcIveQLWea_Sd_JmipPEBieNft4")],
+    plugins=[GoogleAI(api_key=API_KEY)],
     model=EMBEDDING_MODEL,
 )
 
