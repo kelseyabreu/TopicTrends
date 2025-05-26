@@ -24,6 +24,7 @@ import NewIdeasView from './pages/NewIdeasView.tsx';
 import InteractionsView from './pages/InteractionsView.tsx';
 import AllIdeasView from './pages/AllIdeasView.tsx';
 import DiscussionAnalytics from './pages/DiscussionAnalytics.tsx';
+import PitchPage from './pages/PitchPage.tsx';
 
 function App() {
     return (
@@ -33,6 +34,7 @@ function App() {
                 <div className="container">
                     <Routes>
                         <Route path="/" element={<Home />} />
+                        <Route path="/pitch" element={<PitchPage />} /> {/* <<<--- ADD THIS ROUTE */}
                         <Route path="/about" element={<About />} />
                         <Route path="/login" element={<Login />} />
                         <Route path="/register" element={<Register />} />
