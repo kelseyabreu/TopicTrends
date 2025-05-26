@@ -1,21 +1,22 @@
 services:
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    volumes:
+      - redis-data:/data
     networks:
       - app-network
+    restart: unless-stopped
 
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
-    volumes:
-      - .:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
+      - ENVIRONMENT=staging
       - MONGODB_URL=${MONGODB_URL}
       - CORS_ORIGINS=${CORS_ORIGINS}
       - MODEL_NAME=${MODEL_NAME}
@@ -33,8 +34,13 @@ services:
       - redis
     networks:
       - app-network
+    restart: unless-stopped
     env_file:
-      - .env
+      - .env.staging
+
+volumes:
+  redis-data:
+
 networks:
   app-network:
     driver: bridge

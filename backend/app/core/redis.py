@@ -16,10 +16,26 @@ max_retries = 3
 retry_count_hash = 'retry_count_hash'
 
 async def get_redis():
-    """Get Redis connection."""
+    """Get Redis connection with optional authentication."""
     global _redis
     if _redis is None:
+        # Get Redis connection details from environment variables
         redis_url = os.getenv('REDIS_URL', 'redis://localhost')
+        print(f"Connecting to Redis at {redis_url}")
+        redis_username = os.getenv('REDIS_USERNAME')
+        redis_password = os.getenv('REDIS_PASSWORD')
+        
+        # If username and password are provided, include them in connection
+        if redis_username and redis_password:
+            # Parse the existing URL to modify it with auth credentials
+            if '://' in redis_url:
+                protocol, address = redis_url.split('://', 1)
+                redis_url = f"{protocol}://{redis_username}:{redis_password}@{address}"
+            else:
+                # Fallback if URL doesn't have protocol
+                redis_url = f"redis://{redis_username}:{redis_password}@{redis_url.replace('redis://', '')}"
+            logger.info(f"Connecting to Redis with authentication")
+        
         _redis = await aioredis.from_url(redis_url)
     return _redis
 

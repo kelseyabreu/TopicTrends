@@ -23,7 +23,7 @@ This guide provides step-by-step instructions for deploying the TopicTrends back
 
    ```bash
    gcloud auth login
-   gcloud config set project Ideocean
+   gcloud config set project ideocean
    ```
 
 2. **Make the deployment script executable**
@@ -77,12 +77,13 @@ The Cloud Run deployment is configured to use an external Redis service. You hav
 
 2. **Use a managed Redis service** like Redis Labs or Upstash
 
-#### Ollama
+#### AI Services
 
-Since Ollama is used for local model inference, you'll need to replace it with a cloud-based alternative:
+For AI-powered text embeddings and language models in the cloud environment:
 
-- Consider using Google's Vertex AI or OpenAI API instead of Ollama
+- Use Google's Vertex AI or OpenAI API for text embeddings and language model capabilities
 - Update your application code to use these cloud services
+- Add the necessary API keys to your environment variables
 
 ## Troubleshooting
 

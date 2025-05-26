@@ -1,5 +1,5 @@
 steps:
-  # Build the container image
+  # Build the container image with fixed Dockerfile
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', 'gcr.io/$PROJECT_ID/topictrends-backend', '-f', 'Dockerfile.cloud', '.']
   # Push the container image to Container Registry
@@ -20,9 +20,9 @@ steps:
       - '--cpu=2'
       - '--min-instances=0'
       - '--max-instances=10'
-      - '--set-env-vars=MONGODB_URL=${_MONGODB_URL},CORS_ORIGINS=${_CORS_ORIGINS},MODEL_NAME=${_MODEL_NAME},EMBEDDER_MODEL=${_EMBEDDER_MODEL},GENERATIVE_MODEL=${_GENERATIVE_MODEL},GEMINI_MODEL=${_GEMINI_MODEL},DISTANCE_THRESHOLD_SMALL=${_DISTANCE_THRESHOLD_SMALL},DISTANCE_THRESHOLD_MEDIUM=${_DISTANCE_THRESHOLD_MEDIUM},DISTANCE_THRESHOLD_LARGE=${_DISTANCE_THRESHOLD_LARGE},SECRET_KEY=${_SECRET_KEY},FRONTEND_URL=${_FRONTEND_URL},GMAIL_SENDER_EMAIL=${_GMAIL_SENDER_EMAIL},GMAIL_APP_PASSWORD=${_GMAIL_APP_PASSWORD},EMAIL_FROM_NAME=${_EMAIL_FROM_NAME},GOOGLE_API_KEY=${_GOOGLE_API_KEY},PARTICIPATION_TOKEN_SECRET_KEY=${_PARTICIPATION_TOKEN_SECRET_KEY},CSRF_SECRET_KEY=${_CSRF_SECRET_KEY},ALLOWED_API_KEYS=${_ALLOWED_API_KEYS},ENVIRONMENT=production,PORT=8080'
+      - '--set-env-vars=MONGODB_URL=${_MONGODB_URL},CORS_ORIGINS=${_CORS_ORIGINS},MODEL_NAME=${_MODEL_NAME},EMBEDDER_MODEL=${_EMBEDDER_MODEL},GENERATIVE_MODEL=${_GENERATIVE_MODEL},GEMINI_MODEL=${_GEMINI_MODEL},DISTANCE_THRESHOLD_SMALL=${_DISTANCE_THRESHOLD_SMALL},DISTANCE_THRESHOLD_MEDIUM=${_DISTANCE_THRESHOLD_MEDIUM},DISTANCE_THRESHOLD_LARGE=${_DISTANCE_THRESHOLD_LARGE},SECRET_KEY=${_SECRET_KEY},FRONTEND_URL=${_FRONTEND_URL},GMAIL_SENDER_EMAIL=${_GMAIL_SENDER_EMAIL},GMAIL_APP_PASSWORD=${_GMAIL_APP_PASSWORD},EMAIL_FROM_NAME=${_EMAIL_FROM_NAME},GOOGLE_API_KEY=${_GOOGLE_API_KEY},PARTICIPATION_TOKEN_SECRET_KEY=${_PARTICIPATION_TOKEN_SECRET_KEY},CSRF_SECRET_KEY=${_CSRF_SECRET_KEY},ALLOWED_API_KEYS=${_ALLOWED_API_KEYS},ENVIRONMENT=production'
 substitutions:
-  _MONGODB_URL: 'mongodb+srv://your-mongodb-url'
+  _MONGODB_URL: 'mongodb+srv://topictrends-dev:topictrendsdev@topictrends-dev.hy4hbpt.mongodb.net/?retryWrites=true&w=majority&appName=topictrends-dev'
   _CORS_ORIGINS: '["https://your-frontend-url.com"]'
   _MODEL_NAME: 'all-mpnet-base-v2'
   _EMBEDDER_MODEL: 'nomic-embed-text:latest'
@@ -36,9 +36,9 @@ substitutions:
   _GMAIL_SENDER_EMAIL: 'your-email@gmail.com'
   _GMAIL_APP_PASSWORD: 'your-app-password'
   _EMAIL_FROM_NAME: 'TopicTrends'
-  _GOOGLE_API_KEY: 'your-google-api-key'
+  _GOOGLE_API_KEY: 'AIzaSyBfRFz3pcIveQLWea_Sd_JmipPEBieNft4'
   _PARTICIPATION_TOKEN_SECRET_KEY: 'your-participation-token-secret-key'
   _CSRF_SECRET_KEY: 'your-csrf-secret-key'
-  _ALLOWED_API_KEYS: '["apiKey1","apikey2"]'
+  _ALLOWED_API_KEYS: 'apikey1'
 images:
   - 'gcr.io/$PROJECT_ID/topictrends-backend'

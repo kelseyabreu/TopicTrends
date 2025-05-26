@@ -16,6 +16,7 @@ services:
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
+      - ENVIRONMENT=development
       - MONGODB_URL=${MONGODB_URL}
       - CORS_ORIGINS=${CORS_ORIGINS}
       - MODEL_NAME=${MODEL_NAME}
@@ -34,7 +35,8 @@ services:
     networks:
       - app-network
     env_file:
-      - .env
+      - .env.development
+
 networks:
   app-network:
     driver: bridge

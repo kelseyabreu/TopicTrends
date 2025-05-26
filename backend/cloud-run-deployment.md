@@ -20,7 +20,7 @@ This guide provides instructions for deploying the TopicTrends backend to Google
 gcloud auth login
 
 # Set your project ID
-gcloud config set project YOUR_PROJECT_ID
+gcloud config set project ideocean
 ```
 
 ### 2. Create a Cloud Run Service Configuration
@@ -91,7 +91,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Expose port - Cloud Run will use PORT env variable
-ENV PORT 8080
+ENV PORT 8000
 EXPOSE ${PORT}
 
 # Command to run the application
@@ -116,12 +116,13 @@ For Redis, you have two options:
 
 2. **Use a managed Redis service** like Redis Labs or Upstash
 
-#### Ollama
+#### AI Services
 
-Since Ollama is used for local model inference, you'll need to replace it with a cloud-based alternative:
+For AI-powered text embeddings and language models in the cloud environment:
 
-- Consider using Google's Vertex AI or OpenAI API instead of Ollama
+- Use Google's Vertex AI or OpenAI API for text embeddings and language model capabilities
 - Update your application code to use these cloud services
+- Add the necessary API keys to your environment variables
 
 ### 5. Update Environment Variables
 

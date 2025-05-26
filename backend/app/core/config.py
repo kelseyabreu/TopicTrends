@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     # Configure pydantic-settings
     # Reads from a .env file and environment variables (case-insensitive)
     model_config = SettingsConfigDict(
-        env_file='.env',
+        env_file='.env.development',
         env_file_encoding='utf-8',
         case_sensitive=False,
         extra='ignore'
@@ -22,7 +22,7 @@ class Settings(BaseSettings):
 
     # environment settings
     ENVIRONMENT: str = "development"
-    PORT: int = 8000
+    SERVER_PORT: int = 8000
 
     # API settings
     API_TITLE: str = "TopicTrends API"
@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     MONGODB_URL: str
 
     # AI Keys
-    AI_PROVIDER: str = "ollama"  # Options: "ollama", "googleai"
+    AI_PROVIDER: str = "googleai"
     GOOGLE_API_KEY: str
 
     # Model settings

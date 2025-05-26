@@ -225,13 +225,13 @@ if __name__ == "__main__":
     reload_flag = settings.ENVIRONMENT == "development"
     log_level = "debug" if settings.LOG_LEVEL == "DEBUG" else "info"
     
-    logger.info(f"Starting Uvicorn server on {host}:{settings.PORT}...")
+    logger.info(f"Starting Uvicorn server on {host}:{settings.SERVER_PORT}...")
     logger.info(f"Environment: {settings.ENVIRONMENT}, Reloading: {reload_flag}, Log Level: {log_level}")
     
     uvicorn.run(
         "app.main:app", # Point to the app instance
         host=host, 
-        port=settings.PORT, 
+        port=settings.SERVER_PORT, 
         reload=reload_flag,
         log_level=log_level.lower(),
         # Consider adding proxy_headers=True if behind a trusted proxy like Nginx/Traefik

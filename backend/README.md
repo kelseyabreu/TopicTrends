@@ -6,7 +6,7 @@ A FastAPI-based backend service for topic clustering and trend analysis using AI
 
 - Real-time topic clustering using advanced ML models
 - Hierarchical agglomerative clustering with dynamic thresholds
-- Integration with Ollama for text embeddings and LLM-based topic naming
+- AI-powered text embeddings and LLM-based topic naming
 - RESTful API with WebSocket support for real-time updates
 - MongoDB integration for persistent storage
 - Email notification system
@@ -58,7 +58,7 @@ Before running the backend, ensure you have one of the following setups:
 
 - Python 3.9+
 - MongoDB instance
-- Ollama for managing language models and embeddings
+- Access to AI services for text embeddings and language models (e.g., OpenAI API or Vertex AI)
 
 ## Getting Started
 
@@ -99,18 +99,11 @@ The API will be available at http://localhost:8000
    pip install -r requirements.txt
    ```
 
-2. **Install Ollama**:
-   Download and install Ollama from: https://ollama.com/download
+2. **Set up AI services**:
+   Configure access to AI services for embeddings and language models:
    ```bash
-   pip install genkit-plugin-ollama
-   ```
-
-3. **Pull the LLM models**:
-   ```bash
-   ollama pull gemma3
-   ollama pull nomic-embed-text
-   ```
-
+   # Install required packages for your chosen AI service
+   pip install genkit-plugin-google-genai  # For Google GenAI
 4. **Set up environment variables** as described in the Docker setup section
 
 5. **Start the development server**:
@@ -120,13 +113,13 @@ The API will be available at http://localhost:8000
 
 ## AI Architecture
 
-### Genkit Integration
+### AI Integration
 
-The backend uses Genkit with Ollama to perform text embedding and clustering:
+The backend uses AI services to perform text embedding and clustering:
 
-1. **Text Embedding**: Uses the nomic-embed-text model to convert idea text into high-dimensional vector representations (512 dimensions)
+1. **Text Embedding**: Uses embedding models to convert idea text into high-dimensional vector representations (512 dimensions)
 2. **Clustering**: Performs hierarchical agglomerative clustering on the embeddings with cosine distance
-3. **Naming**: Uses the gemma3 model to generate descriptive titles for each topic based on the ideas it contains
+3. **Naming**: Uses language models to generate descriptive titles for each topic based on the ideas it contains
 
 The implementation can be found in `app/services/genkit/ai.py` and relies on a threshold-based approach that adjusts clustering parameters based on the number of ideas.
 
