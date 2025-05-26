@@ -22,6 +22,7 @@ import About from './pages/About.tsx';
 import UserDashboard from './pages/UserDashboard.tsx';
 import NewIdeasView from './pages/NewIdeasView.tsx';
 import InteractionsView from './pages/InteractionsView.tsx';
+import AllIdeasView from './pages/AllIdeasView.tsx';
 
 function App() {
     return (
@@ -38,17 +39,16 @@ function App() {
                         <Route path="/forgot-password" element={<ForgotPassword />} />
                         <Route path="/reset-password" element={<ResetPassword />} />
                         <Route path="/create" element={<CreateDiscussion />} />
+                        <Route path="/ideas" element={<AllIdeasView />} />
                         <Route path="/ideas/:ideaId" element={<IdeaView />} />
-                        <Route
-                            path="/my-ideas"
+                        <Route path="/my-ideas"
                             element={
                                 <ProtectedRoute>
                                     <MyIdeas />
                                 </ProtectedRoute>
                             }
                         />
-                        <Route
-                            path="/my-interactions" 
+                        <Route path="/my-interactions" 
                             element={
                                 <ProtectedRoute>
                                     <InteractionsView />
@@ -60,16 +60,14 @@ function App() {
                         <Route path="/discussion/:discussionId" element={<DiscussionView />} />
                         <Route path="/discussion/:discussionId/topic/:topicId" element={<TopicView />} />
                         <Route path="/discussion/:discussionId/new-ideas" element={<NewIdeasView />} />
-                        <Route
-                                path="/settings"
-                                    element={
-                                        <ProtectedRoute>
-                                            <UserSettings />
-                                        </ProtectedRoute>
-                                    }
+                        <Route path="/settings"
+                            element={
+                                <ProtectedRoute>
+                                    <UserSettings />
+                                </ProtectedRoute>
+                            }
                         />
-                        <Route
-                            path="/dashboard"
+                        <Route path="/dashboard"
                             element={
                                 <ProtectedRoute>
                                     <UserDashboard />
