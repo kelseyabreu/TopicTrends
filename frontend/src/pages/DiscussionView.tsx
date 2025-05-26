@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "../context/AuthContext";
 import { AuthStatus } from "../enums/AuthStatus";
-import { Lightbulb, Loader2, Trash2, Waves, Zap, Star } from "lucide-react"; // Import Zap icon or similar for grouping
+import { Lightbulb, Loader2, Trash2, Waves, Zap, Star, BarChart3 } from "lucide-react"; // Import Zap icon or similar for grouping
 import { Discussion } from "../interfaces/discussions"; // Import Discussion type
 import { Topic, TopicsResponse } from "../interfaces/topics"; // Import Topic type
 import { Idea } from "../interfaces/ideas"; // Import Idea type
@@ -667,16 +667,14 @@ function DiscussionView() {
                 variant="default"
                 onClick={() => setShowShareModal(true)}
                 disabled={!discussion.join_link}
-                className="shareBtn ml-2"
-              >
+                className="shareBtn ml-2">
                 Share
               </Button>
               <Button
                 variant="default"
                 onClick={() => setShowNewIdeaModal(true)}
                 disabled={isClustering}
-                className="ml-2"
-              >
+                className="ml-2">
                 <Lightbulb className="mr-2 h-4 w-4" />
                 New Idea
               </Button>
@@ -686,8 +684,7 @@ function DiscussionView() {
                     variant="default"
                     onClick={handleClusterClick}
                     disabled={isClustering}
-                    className="ml-2"
-                  >
+                    className="ml-2">
                     {isClustering ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
@@ -700,10 +697,16 @@ function DiscussionView() {
                     onClick={() =>
                       navigate(`/discussion/${discussionId}/new-ideas`)
                     }
-                    className="ml-2"
-                  >
+                    className="ml-2">
                     <Waves className="mr-2 h-4 w-4" />
                     Drifting Ideas ({unclusteredCount})
+                  </Button>
+                  <Button
+                    variant="default"
+                    onClick={() => navigate(`/discussion/${discussionId}/analytics`)}
+                    className="ml-2">
+                    <BarChart3 className="mr-2 h-4 w-4" />
+                    Analytics
                   </Button>
                 </>
               )}

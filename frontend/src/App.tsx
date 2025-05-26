@@ -23,6 +23,7 @@ import UserDashboard from './pages/UserDashboard.tsx';
 import NewIdeasView from './pages/NewIdeasView.tsx';
 import InteractionsView from './pages/InteractionsView.tsx';
 import AllIdeasView from './pages/AllIdeasView.tsx';
+import DiscussionAnalytics from './pages/DiscussionAnalytics.tsx';
 
 function App() {
     return (
@@ -39,6 +40,7 @@ function App() {
                         <Route path="/forgot-password" element={<ForgotPassword />} />
                         <Route path="/reset-password" element={<ResetPassword />} />
                         <Route path="/create" element={<CreateDiscussion />} />
+                        <Route path="/discussion/:discussionId/analytics" element={<DiscussionAnalytics />} />
                         <Route path="/ideas" element={<AllIdeasView />} />
                         <Route path="/ideas/:ideaId" element={<IdeaView />} />
                         <Route path="/my-ideas"
