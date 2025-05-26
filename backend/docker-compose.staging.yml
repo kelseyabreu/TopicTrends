@@ -1,0 +1,46 @@
+services:
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+      - ENVIRONMENT=staging
+      - MONGODB_URL=${MONGODB_URL}
+      - CORS_ORIGINS=${CORS_ORIGINS}
+      - MODEL_NAME=${MODEL_NAME}
+      - DISTANCE_THRESHOLD_SMALL=${DISTANCE_THRESHOLD_SMALL}
+      - DISTANCE_THRESHOLD_MEDIUM=${DISTANCE_THRESHOLD_MEDIUM}
+      - DISTANCE_THRESHOLD_LARGE=${DISTANCE_THRESHOLD_LARGE}
+      - SECRET_KEY=${SECRET_KEY}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - GMAIL_SENDER_EMAIL=${GMAIL_SENDER_EMAIL}
+      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
+      - EMAIL_FROM_NAME=${EMAIL_FROM_NAME}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    networks:
+      - app-network
+    restart: unless-stopped
+    env_file:
+      - .env.staging
+
+volumes:
+  redis-data:
+
+networks:
+  app-network:
+    driver: bridge
