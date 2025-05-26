@@ -47,8 +47,7 @@ Whether used in town halls, corporate meetings, classrooms, or public forums, To
 - **Backend**: FastAPI (Python 3.13)
 - **Database**: MongoDB
 - **AI/Machine Learning**: 
-  - Currently uses Genkit with Ollama for embedding and clustering
-  - Uses nomic-embed-text for text embeddings and gemma3 for topic naming
+  - Uses googleai/text-embedding-004 for text embeddings and gemini 2.0-flash for topic naming
 - **Real-time Communication**: Socket.IO
 - **Deployment**: Vercel (backend), Netlify (frontend), MongoDB Atlas (database)
 
@@ -59,7 +58,6 @@ Whether used in town halls, corporate meetings, classrooms, or public forums, To
 - **Node.js**: v22.14.0 (recommended)
 - **Python**: v3.13 (required)
 - **MongoDB**: Local instance or MongoDB Atlas account
-- **Ollama**: Required for the embedding and clustering models
 
 ### Backend Setup
 
@@ -86,17 +84,7 @@ Whether used in town halls, corporate meetings, classrooms, or public forums, To
    pip install -r requirements.txt
    ```
 
-4. **Set up Ollama**:
-   ```bash
-   # Install Ollama 
-   https://ollama.com/download
-   
-   # Pull required models
-   ollama pull gemma3
-   ollama pull nomic-embed-text
-   ```
-
-5. **Set the Gemini API Key**:
+4. **Set the Gemini API Key**:
    ```bash
    # Linux/macOS
    export GOOGLE_API_KEY=your-api-key-here
@@ -105,14 +93,14 @@ Whether used in town halls, corporate meetings, classrooms, or public forums, To
    setx GOOGLE_API_KEY your-api-key-here
    ```
 
-6. **Set up MongoDB Atlas**:
+5. **Set up MongoDB Atlas**:
    - Sign up at https://www.mongodb.com/cloud/atlas
    - Create a free M0 cluster
    - Set up a database user with read/write permissions
    - Configure network access (IP whitelist)
    - Get your connection string in format: `mongodb+srv://<username>:<password>@<cluster>.mongodb.net/TopicTrends`
 
-7. **Create a `.env` file in the backend directory**:
+6. **Create a `.env` file in the backend directory**:
    ```
    MONGODB_URL=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/TopicTrends
    CORS_ORIGINS=http://localhost:5173
@@ -120,7 +108,7 @@ Whether used in town halls, corporate meetings, classrooms, or public forums, To
    SECRET_KEY=your-secret-key-here-for-development-only
    ```
 
-8. **Start the backend server**:
+7. **Start the backend server**:
    ```bash
    uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
    ```
@@ -289,10 +277,6 @@ The platform uses Socket.IO to provide immediate updates:
 ## Troubleshooting
 
 ### Backend Issues
-
-**"Error with embedding model"**
-- Ensure Ollama is running
-- Verify that the required models have been pulled
 
 **"MongoDB Connection Error"**
 - Verify your connection string format

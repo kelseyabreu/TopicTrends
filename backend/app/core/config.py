@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     MONGODB_URL: str
 
     # AI Keys
-    AI_PROVIDER: str = "ollama"  # Options: "ollama", "googleai"
+    AI_PROVIDER: str = "googleai"  # Options: "googleai"
     GOOGLE_API_KEY: str
 
     # Model settings

@@ -27,15 +27,11 @@ services:
       - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
       - EMAIL_FROM_NAME=${EMAIL_FROM_NAME}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - OLLAMA_HOST=http://ollama:11434
       - REDIS_URL=redis://redis:6379
     depends_on:
-      - ollama
       - redis
     networks:
       - app-network
-volumes:
-  ollama_data:
 
 networks:
   app-network:
