@@ -230,34 +230,10 @@ async def get_interactions(
     - `/api/interactions?filter.entity_type=discussion&filter.action_type=view`
     - `/api/interactions?filter.timestamp.gte=2025-01-01T00:00:00Z`
     """
-
-    return await interaction_query_executor.execute(
-        params=await interaction_query_executor.query_service.get_query_parameters_dependency()(request)
-    )
-
-# --- TanStack Table Integration ---
-# This endpoint provides data in a format compatible with TanStack Table's server-side processing
-@router.post("/table", dependencies=[Depends(verify_csrf_dependency)])
-@limiter.limit(settings.DEFAULT_RATE_LIMIT)
-async def get_interactions_table(
-    request: Request,
-    current_user: Annotated[dict, Depends(verify_token_cookie)]
-):
-    """
-    TanStack Table compatible endpoint for interaction events.
+    params = await interaction_query_executor.query_service.get_query_parameters_dependency()(request)
+    result = await interaction_query_executor.execute(params=params)
     
-    This endpoint accepts TanStack Table state parameters either via:
-    - POST request with JSON body containing full TanStack state
-    - GET request with individual query parameters
-    
-    The response is formatted for TanStack Table consumption, including:
-    - rows: The data for the current page
-    - pageCount: Total number of pages
-    - totalRowCount: Total number of matching rows
-    - meta: Additional metadata (sort, filters, etc.)
-    """
-    # Process the TanStack Table request without additional filtering
-    return await interaction_query_executor.get_tanstack_endpoint_handler()(request)
+    return result.to_tanstack_response()
 
 
 # Get interactions related to a specific entity

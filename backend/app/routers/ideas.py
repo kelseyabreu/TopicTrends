@@ -21,6 +21,11 @@ from app.services.auth import (
     csrf_exception 
 )
 
+from app.services.query_executor import create_idea_query_executor
+idea_query_executor = create_idea_query_executor(
+    response_model=Idea  
+)
+
 # Import discussion helper from discussions router
 from app.routers.discussions import get_discussion_by_id_internal
 
@@ -304,3 +309,16 @@ async def get_discussion_ideas(
         results.append(Idea(**idea_doc))
 
     return results
+
+@router.get("/ideas", response_model=None) 
+@limiter.limit(settings.HIGH_RATE_LIMIT)
+async def get_all_ideas(
+    request: Request,
+    current_user: Annotated[dict, Depends(verify_token_cookie)],
+    # The params_dependency handles all query parameter parsing and validation
+    # This includes pagination, sorting, filtering, etc.
+):
+    """Get ideas with searching, pagination, filtering, and sorting."""  
+    params = await idea_query_executor.query_service.get_query_parameters_dependency()(request)
+    result =  await idea_query_executor.execute(params=params)
+    return result.to_tanstack_response()

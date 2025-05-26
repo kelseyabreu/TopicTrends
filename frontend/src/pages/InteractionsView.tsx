@@ -623,14 +623,35 @@ const InteractionsView: React.FC = () => {
             lastRefreshTimeRef.current = new Date();
 
             try {
-                const tanStackStateForApi = {
-                    pagination: { pageIndex: pagination.pageIndex, pageSize: pagination.pageSize },
-                    sorting: sorting,
-                    columnFilters: columnFilters,
-                    globalFilter: debouncedGlobalFilter || undefined,
+                // Convert TanStack state to standard query parameters
+                const queryParams: Record<string, any> = {
+                    page: pagination.pageIndex + 1, // Convert 0-based to 1-based
+                    page_size: pagination.pageSize,
                 };
 
-                const response = await api.post<PaginatedInteractions>('/interaction/table', tanStackStateForApi);
+                if (sorting.length > 0) {
+                    queryParams.sort = sorting[0].id;
+                    queryParams.sort_dir = sorting[0].desc ? 'desc' : 'asc';
+                }
+
+                if (debouncedGlobalFilter) {
+                    queryParams.search = debouncedGlobalFilter;
+                }
+
+                columnFilters.forEach(filter => {
+                    if (typeof filter.value === 'object' && filter.value !== null) {
+                        Object.entries(filter.value).forEach(([op, val]) => {
+                            queryParams[`filter.${filter.id}.${op}`] = val;
+                        });
+                    } else {
+                        queryParams[`filter.${filter.id}`] = filter.value;
+                    }
+                });
+
+                const response = await api.get<PaginatedInteractions>('/interaction/', {
+                    params: queryParams
+                });
+
                 setData(response.data.rows);
                 setPageCount(response.data.pageCount);
                 setTotalRowCount(response.data.totalRowCount);
@@ -1425,8 +1446,8 @@ const InteractionsView: React.FC = () => {
                                             </AccordionTrigger>
                                             <AccordionContent>
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3 pt-2">
-                                                    {table.getHeaderGroups().flatMap(headerGroup =>
-                                                        headerGroup.headers.filter(header => header.column.columnDef.meta?.filterComponent)
+                                                    {table.getHeaderGroups()?.flatMap(headerGroup =>
+                                                        headerGroup.headers?.filter(header => header.column.columnDef.meta?.filterComponent)
                                                             .map(header => {
                                                                 const column = header.column;
                                                                 const FilterComponent = column.columnDef.meta!.filterComponent!;
