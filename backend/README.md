@@ -6,7 +6,7 @@ A FastAPI-based backend service for topic clustering and trend analysis using AI
 
 - Real-time topic clustering using advanced ML models
 - Hierarchical agglomerative clustering with dynamic thresholds
-- Integration with Ollama for text embeddings and LLM-based topic naming
+- Integration with Gemini for text embeddings and LLM-based topic naming
 - RESTful API with WebSocket support for real-time updates
 - MongoDB integration for persistent storage
 - Email notification system
@@ -58,7 +58,6 @@ Before running the backend, ensure you have one of the following setups:
 
 - Python 3.9+
 - MongoDB instance
-- Ollama for managing language models and embeddings
 
 ## Getting Started
 
@@ -99,21 +98,9 @@ The API will be available at http://localhost:8000
    pip install -r requirements.txt
    ```
 
-2. **Install Ollama**:
-   Download and install Ollama from: https://ollama.com/download
-   ```bash
-   pip install genkit-plugin-ollama
-   ```
+2. **Set up environment variables** as described in the Docker setup section
 
-3. **Pull the LLM models**:
-   ```bash
-   ollama pull gemma3
-   ollama pull nomic-embed-text
-   ```
-
-4. **Set up environment variables** as described in the Docker setup section
-
-5. **Start the development server**:
+3. **Start the development server**:
    ```bash
    uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
    ```
@@ -122,7 +109,7 @@ The API will be available at http://localhost:8000
 
 ### Genkit Integration
 
-The backend uses Genkit with Ollama to perform text embedding and clustering:
+The backend uses Genkit to perform text embedding and clustering:
 
 1. **Text Embedding**: Uses the nomic-embed-text model to convert idea text into high-dimensional vector representations (512 dimensions)
 2. **Clustering**: Performs hierarchical agglomerative clustering on the embeddings with cosine distance

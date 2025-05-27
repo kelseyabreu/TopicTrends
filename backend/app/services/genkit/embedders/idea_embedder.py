@@ -1,40 +1,30 @@
 import os
-from genkit.ai import Document, Genkit
-from genkit.plugins.ollama import Ollama, ollama_name
-from genkit.plugins.ollama.constants import OllamaAPITypes
-from genkit.plugins.ollama.models import (
-    EmbeddingModelDefinition,
-    ModelDefinition,
+from genkit.plugins.google_genai import (
+    EmbeddingTaskType,
+    GoogleAI,
 )
-EMBEDDER_MODEL = os.environ.get("EMBEDDER_MODEL")
+from genkit.ai import Document, Genkit
+from app.core.config import Settings
+settings = Settings()
 GENERATIVE_MODEL = os.environ.get("GENERATIVE_MODEL")
+EMBEDDING_MODEL = "googleai/text-embedding-004"
 EMBEDDER_DIMENSIONS = 512
+API_KEY = settings.GOOGLE_API_KEY
 ai = Genkit(
-    plugins=[
-        Ollama(
-            models=[
-                ModelDefinition(
-                    name=GENERATIVE_MODEL,
-                    api_type=OllamaAPITypes.GENERATE,
-                )
-            ],
-            embedders=[
-                EmbeddingModelDefinition(
-                    name=EMBEDDER_MODEL,
-                    dimensions=EMBEDDER_DIMENSIONS,
-                )
-            ],
-        )
-    ],
+    plugins=[GoogleAI(api_key=API_KEY)],
+    model=EMBEDDING_MODEL,
 )
 
 async def embed_ideas(ideas: list) -> list:
     """Create embeddings for the given texts"""
     embedded_ideas = []
+    
     for idea in ideas:
+        options = {'task_type': EmbeddingTaskType.CLUSTERING}
         embedding_response = await ai.embed(
-            embedder=ollama_name(EMBEDDER_MODEL),
-            documents=[Document.from_text(idea["text"])],
+            embedder=EMBEDDING_MODEL,
+            documents=[Document.from_text(idea['text'])],
+            options=options,
         )
         if embedding_response.embeddings:
             idea_copy = dict(idea)
@@ -45,14 +35,16 @@ async def embed_ideas(ideas: list) -> list:
 async def embed_idea(text: str):
     """Create embeddings for the given texts"""
     try:
-        print(f"Whats the idea text????: {text}")
+        print(f"Whats the idea text?\n: {text}")
         if not isinstance(text, str):
             raise ValueError("Input must be a string")
         if not text.strip():
             raise ValueError("Input string cannot be empty")
+        options = {'task_type': EmbeddingTaskType.CLUSTERING}
         embedding_response = await ai.embed(
-            embedder=ollama_name(EMBEDDER_MODEL),
+            embedder=EMBEDDING_MODEL,
             documents=[Document.from_text(text)],
+            options=options,
         )
         return embedding_response.embeddings[0].embedding
     except Exception as e:
