@@ -712,6 +712,7 @@ function DiscussionView() {
               )}
               {discussionId && (
                 <>
+                  <span className="flex">
                   <InteractionButton
                     entityType="discussion"
                     entityId={discussionId}
@@ -745,6 +746,7 @@ function DiscussionView() {
                     className="ml-2"
                     // initialActive={discussion.is_saved_by_user}
                   />
+                  </span>
                 </>
               )}
               <Button

@@ -1478,7 +1478,7 @@ const AllIdeasView: React.FC = () => {
                     {/* Search and Filters */}
                     <Card>
                         <CardHeader className="border-b p-4">
-                            <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+                            <div className="flex flex-col sm:flex-row justify-between items-center gap-3 allIdeasSearchAndFiltersDiv">
                                 <div className="relative w-full sm:max-w-md">
                                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <Input
@@ -1489,7 +1489,7 @@ const AllIdeasView: React.FC = () => {
                                         className="pl-8 h-9 w-full"
                                     />
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 w-full sm:w-auto">
                                     <Select
                                         value={viewMode}
                                         onValueChange={(value: 'table' | 'grid' | 'cards') => setViewMode(value)}
@@ -1659,11 +1659,11 @@ const AllIdeasView: React.FC = () => {
                                 </AccordionItem>
                             </Accordion>
                         </CardContent>
-                        <CardFooter className="border-t p-4 flex justify-between items-center">
-                            <div className="text-xs text-muted-foreground">
+                        <CardFooter className="border-t p-4 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 allideasFilterSearchFooter">
+                            <div className="text-xs text-muted-foreground text-center sm:text-left">
                                 Last refreshed: {formatDate(lastRefreshTimeRef.current.toISOString())}
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2">
                                 <Popover className="somePopover1">
                                     <PopoverTrigger asChild>
                                         {/* MODIFICATION: Wrap Button with span */}
