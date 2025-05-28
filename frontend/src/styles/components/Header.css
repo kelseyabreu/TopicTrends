@@ -125,3 +125,30 @@
     border-top: 1px solid #eee;
   }
 }
+
+@media screen and (max-width: 480px) {
+    .header {
+        padding: 5px 10px; 
+    }
+
+    .logo {
+        font-size: 18px; 
+    }
+
+    /* Make NavigationMenu even smaller on very small screens */
+    .header [data-slot="navigation-menu"] {
+        font-size: 13px;
+        padding: 2px;
+    }
+
+    .header [data-slot="navigation-menu-trigger"] {
+        height: 28px;
+        padding: 4px 8px;
+        font-size: 13px;
+    }
+
+    .header [data-slot="navigation-menu-link"] {
+        padding: 6px;
+        font-size: 13px;
+    }
+}
