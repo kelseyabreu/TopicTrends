@@ -89,6 +89,14 @@
 
 /* Mobile responsiveness */
 @media screen and (max-width: 768px) {
+  .header {
+      padding: 10px 15px; 
+  }
+  
+  .logo {
+      font-size: 18px; 
+  }
+
   .mobile-menu-icon {
     display: block;
   }
