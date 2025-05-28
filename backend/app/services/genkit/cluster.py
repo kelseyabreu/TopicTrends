@@ -100,7 +100,7 @@ async def embed_ideas_batched(ideas: list) -> list:
 
         # Make a single batch embedding request based on AI provider
         embedding_response = await ai.embed(
-                embedder=EMBEDDER_MODEL,
+                embedder=EMBEDDING_MODEL,
                 documents=documents_to_embed,
         )
 
