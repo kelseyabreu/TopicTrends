@@ -35,6 +35,16 @@ from app.core.socketio import socket_app
 # Routers (import AFTER settings/limiter might be needed if they use them at import time)
 from app.routers import discussions, ideas, topics, auth, users, interaction, analytics
 
+# Print all configuration properties at startup
+print("=" * 50)
+print("CONFIGURATION PROPERTIES:")
+print("=" * 50)
+for attr_name in dir(settings):
+    if not attr_name.startswith('_') and not callable(getattr(settings, attr_name)):
+        attr_value = getattr(settings, attr_name)
+        print(f"{attr_name}: {attr_value}")
+print("=" * 50)
+
 # --- FastAPI App Creation ---
 # Create FastAPI app with metadata
 app = FastAPI(
