@@ -289,3 +289,8 @@ The platform uses Socket.IO to provide immediate updates:
 - Check that the backend is running
 - Verify the VITE_API_URL environment variable
 - Ensure your firewall isn't blocking WebSocket connections
+
+
+
+
+ssh -i C:\privatekeys\oracle_topictrends.key ubuntu@158.101.109.18
