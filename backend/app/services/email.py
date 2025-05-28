@@ -9,7 +9,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Environment variables
-APP_ENV = os.environ.get("APP_ENV", "development")
+APP_ENV = os.environ.get("ENVIRONMENT", "development")
 DEV_MODE = APP_ENV.lower() == "development"
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 
