@@ -110,7 +110,8 @@ async def login(
         secure=True, 
         samesite="lax", 
         max_age=int(access_expires.total_seconds()),
-        path="/"
+        path="/",
+        domain=".amoneysolution.us"
     )
 
     # --- Generate and Set CSRF Token Cookie ---
@@ -122,7 +123,8 @@ async def login(
         secure=True, 
         samesite="lax",
         max_age=int(access_expires.total_seconds()),
-        path="/"
+        path="/",
+        domain=".amoneysolution.us"
     )
 
     logger.info(f"User logged in: {user['email']}")
@@ -140,8 +142,8 @@ async def logout(
     response: Response):
     """Logout user by clearing access and CSRF cookies."""
     # CSRF check is handled by the dependency
-    response.delete_cookie("access_token", path="/", secure=True, httponly=True, samesite="Lax")
-    response.delete_cookie(CSRF_COOKIE_NAME, path="/", secure=True, httponly=False, samesite="Lax")
+    response.delete_cookie("access_token", path="/", secure=True, httponly=True, samesite="Lax",domain=".amoneysolution.us")
+    response.delete_cookie(CSRF_COOKIE_NAME, path="/", secure=True, httponly=False, samesite="Lax",domain=".amoneysolution.us")
     logger.info(f"User logout initiated by request.")
     return {"message": "Logout successful"}
 
