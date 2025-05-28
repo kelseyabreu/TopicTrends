@@ -29,10 +29,9 @@ GENERATIVE_MODEL = settings.GENERATIVE_MODEL
 EMBEDDING_MODEL = "googleai/text-embedding-004"
 # Initialize the appropriate AI provider based on configuration
 ai = Genkit(
-    plugins=[GoogleAI(api_key=os.environ.get("GOOGLE_API_KEY"))],
+    plugins=[GoogleAI(api_key=settings.GOOGLE_API_KEY)],
     model=EMBEDDING_MODEL,
 )
-
 
 # --- Core Data Fetching Functions ---
 

@@ -9,9 +9,8 @@ settings = Settings()
 GENERATIVE_MODEL = os.environ.get("GENERATIVE_MODEL")
 EMBEDDING_MODEL = "googleai/text-embedding-004"
 EMBEDDER_DIMENSIONS = 512
-API_KEY = settings.GOOGLE_API_KEY
 ai = Genkit(
-    plugins=[GoogleAI(api_key=API_KEY)],
+    plugins=[GoogleAI(api_key=settings.GOOGLE_API_KEY)],
     model=EMBEDDING_MODEL,
 )
 
