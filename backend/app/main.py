@@ -53,6 +53,7 @@ app = FastAPI(
     docs_url="/api/docs",  # Custom path for Swagger UI
     redoc_url="/api/redoc",  # Custom path for ReDoc
     openapi_url="/api/openapi.json",  # Custom path for OpenAPI schema
+    redirect_slashes=False, # Disable automatic slash redirection
     # Add other FastAPI parameters if needed (e.g., openapi_tags)
 )
 
