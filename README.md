@@ -161,29 +161,50 @@ With both the backend and frontend running:
 
 ### Backend Deployment
 
-#### Deploying to Vercel
+#### Deploying to Oracle cloud free tier
 
-1. **Install Vercel CLI**:
+1. **Remote into oracle instance**:
    ```bash
-   npm install -g vercel
+   ssh -i C:\privatekeys\oracle_topictrends.key ubuntu@158.101.109.18
+   ```
+2. **Ensure Docker and NGINX are running**:
+   ```bash
+	# Check if Docker is running
+	sudo systemctl status docker
+
+	# Start Docker if it's not running
+	sudo systemctl start docker
+
+	# Check if NGINX is running
+	sudo systemctl status nginx
+
+	# Start NGINX if it's not running
+	sudo systemctl start nginx
    ```
 
-2. **Login to Vercel**:
+3. **Go to application path**:
    ```bash
-   vercel login
+   cd /opt/topictrends/TopicTrends/backend
    ```
 
-3. **Navigate to the project root and deploy**:
+4. **Stop containers**:
    ```bash
-   vercel
+   docker-compose down
    ```
 
-4. **Set environment variables in Vercel dashboard**:
-   - `MONGODB_URL`: Your MongoDB Atlas connection string
-
-5. **Deploy to production**:
+5. **Pull latest from main**:
    ```bash
-   vercel --prod
+   git pull origin
+   ```
+
+6. **Build latest pull**:
+   ```bash
+   sudo docker-compose build
+   ```
+
+7. **Push and run PROD container**:
+   ```bash
+   docker-compose -f docker-compose.prod.yml up -d
    ```
 
 ### Frontend Deployment
@@ -292,5 +313,16 @@ The platform uses Socket.IO to provide immediate updates:
 
 
 
+remote into this
 
 ssh -i C:\privatekeys\oracle_topictrends.key ubuntu@158.101.109.18
+
+cd /opt/topictrends/TopicTrends/backend
+
+docker-compose down
+
+git pull origin
+
+sudo docker-compose build
+
+docker-compose -f docker-compose.prod.yml up -d
