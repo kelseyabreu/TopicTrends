@@ -311,6 +311,7 @@ async def get_discussion_ideas(
     return results
 
 @router.get("/ideas", response_model=None) 
+@router.get("/ideas/", response_model=None) 
 @limiter.limit(settings.HIGH_RATE_LIMIT)
 async def get_all_ideas(
     request: Request,
