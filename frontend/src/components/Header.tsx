@@ -36,7 +36,7 @@ function Header() {
             <NavigationMenuItem>
               <NavigationMenuTrigger>Getting started</NavigationMenuTrigger>
               <NavigationMenuContent>
-                <ul className="grid w-full max-w-[500px] gap-3 p-2 grid-cols-1 lg:grid-cols-[.75fr_1fr]">
+                <ul className="grid navMenuDropdownWidth gap-3 p-2 grid-cols-1 lg:grid-cols-[.75fr_1fr]">
                   <li className="row-span-5">
                     <NavigationMenuLink asChild>
                       <a
@@ -87,7 +87,7 @@ function Header() {
                 <>
                   <NavigationMenuTrigger>{user.username}</NavigationMenuTrigger>
                   <NavigationMenuContent>
-                    <ul className="grid w-full max-w-[500px] gap-3 p-2 grid-cols-1 lg:grid-cols-[.75fr_1fr]">
+                    <ul className="grid navMenuDropdownWidth gap-3 p-2 grid-cols-1 lg:grid-cols-[.75fr_1fr]">
                       <li className="row-span-3">
                         <NavigationMenuLink asChild>
                           <div className="flex h-full w-full select-none flex-col justify-end rounded-base p-6 no-underline outline-hidden">
