@@ -106,6 +106,10 @@ const UserDashboard: React.FC = () => {
         navigate('/create');
     };
 
+    const handleGetStarted = () => {
+        navigate('/getting-started');
+    };
+
     if (isLoading) {
         return (
             <div className="user-dashboard dashboard-container loading">
@@ -134,6 +138,9 @@ const UserDashboard: React.FC = () => {
                     <h1>Dashboard</h1>
                     <p>Welcome {user?.username}</p>
                 </div>
+                <Button onClick={handleGetStarted}>
+                    New here? Read the Get Stated guide!
+                </Button>
                 <Button onClick={handleCreateDiscussion}>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Create Discussion

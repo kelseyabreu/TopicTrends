@@ -423,7 +423,8 @@ class InteractionService:
 
         db = await get_db()
         doc = await db.user_interaction_states.find_one(
-            {"user_identifier": user_identifier, "entity_id": entity_id}
+            {"user_identifier": user_identifier, "entity_id": entity_id},
+            sort=[("last_updated_at", DESCENDING)]
         )
         return UserState(**doc["state"]) if doc and "state" in doc else UserState()
 

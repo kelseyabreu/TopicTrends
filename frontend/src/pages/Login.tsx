@@ -17,7 +17,7 @@ function Login() {
     const { login, authStatus } = useAuth();
 
     // Get redirect path if any
-    const from = location.state?.from?.pathname || '/';
+    const from = location.state?.from?.pathname || '/dashboard';
 
     const handleChange = (e) => {
         const { name, value } = e.target;
