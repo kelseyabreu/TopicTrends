@@ -3,7 +3,7 @@ Centralized database connection manager for TopicTrends application.
 """
 
 import motor.motor_asyncio
-from pymongo import MongoClient
+from pymongo import MongoClient, ASCENDING, DESCENDING
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 import logging
 import os
@@ -57,6 +57,19 @@ async def initialize_database():
             await db.create_collection("entity_metrics")
         if "user_interaction_states" not in collections:
             await db.create_collection("user_interaction_states")
+
+        # --- Ensure minimal indexes (these consider 100-200 million ideas in 10-20 minutes) ---
+        await db.ideas.create_index([("discussion_id", ASCENDING), ("timestamp", DESCENDING)], name="idx_ideas_discussion_time_critical")
+        await db.users.create_index([("email", ASCENDING)], name="idx_users_email", unique=True)
+        await db.topics.create_index([("discussion_id", ASCENDING), ("count", DESCENDING)], name="idx_topics_discussion_count_read")
+        await db.discussions.create_index([("created_at", DESCENDING)], name="idx_discussions_created_at_list")
+        await db.interaction_events.create_index([("entity_id", ASCENDING), ("entity_type", ASCENDING), ("action_type", ASCENDING)], name="idx_interaction_entity_action_core")
+        await db.user_interaction_states.create_index([("user_identifier", ASCENDING), ("entity_id", ASCENDING), ("last_updated_at", DESCENDING)], name="idx_userstate_user_entity_lookup")
+        await db.entity_metrics.create_index([("entity_type", ASCENDING), ("metrics.last_activity_at", DESCENDING)], name="idx_entity_metrics_type_activity_trending")
+        await db.password_reset_tokens.create_index([("token", ASCENDING)], name="idx_pwd_reset_token_lookup", unique=True)
+
+        # TODO delete when it becomes a problem. These text indexes make it about 4-5 times slow to do writes, eventually offload to OpenSearch, Elasticsearch, Atlas Search
+        await db.ideas.create_index([("text", "text"), ("keywords", "text")], name="ideas_text_search_index")
 
         return db
             
