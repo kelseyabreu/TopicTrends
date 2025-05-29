@@ -132,7 +132,7 @@ const UserDashboard: React.FC = () => {
             <div className="dashboard-header">
                 <div>
                     <h1>Dashboard</h1>
-                    <p>Welcome back, {user?.username}</p>
+                    <p>Welcome {user?.username}</p>
                 </div>
                 <Button onClick={handleCreateDiscussion}>
                     <PlusCircle className="mr-2 h-4 w-4" />

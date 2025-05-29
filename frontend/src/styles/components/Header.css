@@ -91,9 +91,14 @@
   transform: rotate(-135deg);
 }
 
+.centerWelcomeUserHeader {
+    margin: auto;
+    text-align: center;
+}
+
 /* Mobile responsiveness */
 @media screen and (max-width: 768px) {
-  .header {
+    .header {
       padding: 10px 15px; 
   }
   

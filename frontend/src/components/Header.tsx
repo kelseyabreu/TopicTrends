@@ -37,7 +37,7 @@ function Header() {
               <NavigationMenuTrigger>Getting started</NavigationMenuTrigger>
               <NavigationMenuContent>
                 <ul className="grid navMenuDropdownWidth gap-3 p-2 grid-cols-1 lg:grid-cols-[.75fr_1fr]">
-                  <li className="row-span-5">
+                  <li className="row-span-6">
                     <NavigationMenuLink asChild>
                       <a
                         className="flex h-full w-full select-none flex-col justify-end rounded-base p-6 no-underline outline-hidden"
@@ -56,7 +56,10 @@ function Header() {
                   </li>
                   {user ? (
                     <>
-                      <ListItem href="/create" title="Create Discussion">
+                     <ListItem href="/getting-started" title="Get Started">
+                       Learn how to create discussions, gather ideas, and unlock collective insights get the most out of it.
+                     </ListItem> 
+                     <ListItem href="/create" title="Create Discussion">
                         Start your very own discussion and start engaging with others.
                       </ListItem>
                       <ListItem href="/discussions" title="Explore Discussions">
@@ -88,7 +91,7 @@ function Header() {
                   <NavigationMenuTrigger>{user.username}</NavigationMenuTrigger>
                   <NavigationMenuContent>
                     <ul className="grid navMenuDropdownWidth gap-3 p-2 grid-cols-1 lg:grid-cols-[.75fr_1fr]">
-                      <li className="row-span-3">
+                      <li className="row-span-3 centerWelcomeUserHeader">
                         <NavigationMenuLink asChild>
                           <div className="flex h-full w-full select-none flex-col justify-end rounded-base p-6 no-underline outline-hidden">
                             <div className="mb-2 mt-4 text-lg font-heading">

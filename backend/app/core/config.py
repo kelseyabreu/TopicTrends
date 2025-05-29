@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     CORS_ALLOW_HEADERS: List[str] = ["*"] # Default to allow all, or specify
     CORS_EXPOSE_HEADERS: List[str] = ["*"] # Default to allow all, or specify
     CORS_MAX_AGE: int = 86400 # Default to 24 hours (in seconds)
+    COOKIE_DOMAIN: str
 
     # MongoDB settings
     MONGODB_URL: str
