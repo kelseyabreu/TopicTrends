@@ -1,0 +1,117 @@
+/* src/styles/GettingStarted.css */
+.getting-started-container {
+    max-width: 1000px;
+    margin: 2rem auto;
+    padding: 1rem;
+    font-family: sans-serif;
+    color: #333;
+}
+
+.getting-started-hero {
+    text-align: center;
+    padding: 2rem;
+    background-color: var(--card-background); /* Using existing variable if available */
+    border-radius: var(--radius-base);
+}
+
+    .getting-started-hero h1 {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: var(--primary-foreground); /* Assuming primary is main color */
+        margin-bottom: 0.5rem;
+    }
+
+.getting-started-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+}
+
+@media (min-width: 768px) {
+    .getting-started-grid {
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    }
+}
+
+.getting-started-section {
+    background-color: var(--card-background);
+    border-radius: var(--radius-base);
+    box-shadow: var(--shadow-shadow);
+    transition: transform 0.2s ease-in-out;
+}
+
+    .getting-started-section:hover {
+        transform: translateY(-5px);
+    }
+
+    .getting-started-section .flex.items-center.justify-between {
+        padding: 0.5rem 0;
+        border-bottom: 1px solid var(--border-color-muted); /* A lighter border */
+    }
+
+        .getting-started-section .flex.items-center.justify-between:last-child {
+            border-bottom: none;
+        }
+
+
+    .getting-started-section .space-y-2 > p,
+    .getting-started-section .space-y-2 > ul {
+        margin-top: 0.75rem;
+    }
+
+    .getting-started-section .list-disc {
+        padding-left: 1.5rem; /* Ensure bullets are visible */
+    }
+
+        .getting-started-section .list-disc li {
+            margin-bottom: 0.3rem;
+        }
+
+        .getting-started-section .list-disc .list-disc { /* Nested lists */
+            margin-top: 0.25rem;
+        }
+
+
+    .getting-started-section strong {
+        color: var(--primary-foreground);
+    }
+
+    .getting-started-section .text-primary {
+        color: var(--primary-color); /* Use your primary color variable */
+    }
+
+        .getting-started-section .text-primary:hover {
+            text-decoration: underline;
+        }
+
+    .getting-started-section .text-muted-foreground {
+        color: var(--muted-foreground); /* Use your muted color variable */
+    }
+
+.getting-started-next-steps {
+    text-align: center;
+    margin-top: 3rem;
+    padding: 2rem;
+    background-color: var(--card-background);
+    border-radius: var(--radius-base);
+    border: 2px solid var(--border-color);
+}
+
+    .getting-started-next-steps h2 {
+        font-size: 1.8rem;
+        font-weight: bold;
+        margin-bottom: 0.75rem;
+    }
+
+.next-steps-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+/* Ensure Card components adapt if needed */
+.getting-started-section .lucide {
+    flex-shrink: 0; /* Prevent icons from shrinking */
+}

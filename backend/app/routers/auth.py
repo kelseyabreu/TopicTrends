@@ -103,15 +103,20 @@ async def login(
     )
 
     # --- Set HttpOnly Access Token Cookie ---
+    # Only Secure and set the cookie domain in prod
+    cookie_domain = None # Default for localhost
+    if settings.ENVIRONMENT != "development":
+        cookie_domain = settings.COOKIE_DOMAIN 
+
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=True, 
-        samesite="lax", 
+        secure=settings.ENVIRONMENT != "development", 
+        samesite="lax",
         max_age=int(access_expires.total_seconds()),
         path="/",
-        domain=".amoneysolution.us"
+        domain=cookie_domain
     )
 
     # --- Generate and Set CSRF Token Cookie ---
@@ -119,12 +124,12 @@ async def login(
     response.set_cookie(
         key=CSRF_COOKIE_NAME,
         value=csrf_token,
-        httponly=False, 
-        secure=True, 
+        httponly=False,
+        secure=settings.ENVIRONMENT != "development",
         samesite="lax",
         max_age=int(access_expires.total_seconds()),
         path="/",
-        domain=".amoneysolution.us"
+        domain=cookie_domain
     )
 
     logger.info(f"User logged in: {user['email']}")
@@ -142,8 +147,14 @@ async def logout(
     response: Response):
     """Logout user by clearing access and CSRF cookies."""
     # CSRF check is handled by the dependency
-    response.delete_cookie("access_token", path="/", secure=True, httponly=True, samesite="Lax",domain=".amoneysolution.us")
-    response.delete_cookie(CSRF_COOKIE_NAME, path="/", secure=True, httponly=False, samesite="Lax",domain=".amoneysolution.us")
+    cookie_domain = None
+    is_secure_cookie = False 
+    if settings.ENVIRONMENT != "development":
+        cookie_domain = settings.COOKIE_DOMAIN
+        is_secure_cookie = True
+
+    response.delete_cookie("access_token",path="/", secure=is_secure_cookie, httponly=True, samesite="Lax",domain=cookie_domain)
+    response.delete_cookie(CSRF_COOKIE_NAME,path="/",secure=is_secure_cookie, httponly=False,samesite="Lax",domain=cookie_domain)
     logger.info(f"User logout initiated by request.")
     return {"message": "Logout successful"}
 
