@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 import uuid
 from typing import Optional, Dict, Any, List, Literal, Tuple
 from fastapi import BackgroundTasks
-
+from pymongo import ASCENDING, DESCENDING
 from app.core.database import get_db
 from app.models.interaction_schemas import (
     InteractionEvent, InteractionEventClientInfo,
