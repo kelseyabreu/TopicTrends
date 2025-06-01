@@ -127,6 +127,7 @@ import {
     LayoutGrid,
     Coffee,
     FileBarChart,
+    Zap,
 } from 'lucide-react';
 
 // Import Chart components
@@ -149,6 +150,7 @@ interface EntityDetails {
     text?: string;
     type: string;
     id: string;
+    parent_id?: string;  // For topics that need parent discussion ID
 }
 
 interface ActivityByDay {
@@ -483,10 +485,12 @@ const InteractionsView: React.FC = () => {
                 return (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7">
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Open menu</span>
-                            </Button>
+                            <span>
+                                <Button variant="ghost" size="icon" className="h-7 w-7">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                    <span className="sr-only">Open menu</span>
+                                </Button>
+                            </span>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-[160px]">
                             <DropdownMenuLabel>Options</DropdownMenuLabel>
@@ -1184,7 +1188,7 @@ const InteractionsView: React.FC = () => {
                     <Card>
                         <CardHeader className="border-b p-4">
                             <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
-                                <div className="relative w-full sm:max-w-xs md:max-w-sm">
+                                <div className="relative w-full sm:max-w-md">
                                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <Input
                                         type="search"
@@ -1195,26 +1199,43 @@ const InteractionsView: React.FC = () => {
                                         aria-label="Global search for interactions"
                                     />
                                 </div>
-                                <div className="flex items-center gap-2 self-start sm:self-center">
+                                <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 w-full sm:w-auto">
                                     <Select
                                         value={viewMode}
                                         onValueChange={(value: 'table' | 'grid' | 'calendar') => setViewMode(value)}
                                     >
-                                        <SelectTrigger className="h-9 text-xs">
+                                        <SelectTrigger className="h-9 text-xs w-32">
                                             <SelectValue placeholder="View Mode" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="table">Table View</SelectItem>
-                                            <SelectItem value="grid">Grid View</SelectItem>
-                                            <SelectItem value="calendar">Calendar View</SelectItem>
+                                            <SelectItem value="table">
+                                                <div className="flex items-center">
+                                                    <LayoutGrid className="h-3 w-3 mr-2" />
+                                                    Table
+                                                </div>
+                                            </SelectItem>
+                                            <SelectItem value="grid">
+                                                <div className="flex items-center">
+                                                    <LayoutGrid className="h-3 w-3 mr-2" />
+                                                    Grid
+                                                </div>
+                                            </SelectItem>
+                                            <SelectItem value="calendar">
+                                                <div className="flex items-center">
+                                                    <Calendar className="h-3 w-3 mr-2" />
+                                                    Calendar
+                                                </div>
+                                            </SelectItem>
                                         </SelectContent>
                                     </Select>
 
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                            <Button variant="outline" size="sm" className="h-9 text-xs">
-                                                <Settings2 className="mr-1.5 h-3.5 w-3.5" /> Columns
-                                            </Button>
+                                            <span>
+                                                <Button variant="outline" size="sm" className="h-9 text-xs">
+                                                    <Settings2 className="mr-1.5 h-3.5 w-3.5" /> Columns
+                                                </Button>
+                                            </span>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="w-[180px]">
                                             <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
@@ -1233,7 +1254,7 @@ const InteractionsView: React.FC = () => {
                                     </DropdownMenu>
 
                                     <Button variant="ghost" size="sm" className="h-9 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={handleClearFilters}>
-                                        <XCircle className="mr-1.5 h-3.5 w-3.5" /> Clear All Filters
+                                        <XCircle className="mr-1.5 h-3.5 w-3.5" /> Clear All
                                     </Button>
                                 </div>
                             </div>
@@ -1331,11 +1352,11 @@ const InteractionsView: React.FC = () => {
                                 </>
                             )}
                         </CardContent>
-                        <CardFooter className="border-t p-4 flex justify-between items-center">
-                            <div className="text-xs text-muted-foreground">
+                        <CardFooter className="border-t p-4 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                            <div className="text-xs text-muted-foreground text-center sm:text-left">
                                 Last refreshed: {formatDate(lastRefreshTimeRef.current.toISOString())}
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2">
                                 <Button variant="outline" size="sm" onClick={handleRefresh}>
                                     <RefreshCw className="h-4 w-4 mr-2" />
                                     Refresh
@@ -1350,11 +1371,11 @@ const InteractionsView: React.FC = () => {
 
                     {/* Selection Actions */}
                     {Object.keys(rowSelection).length > 0 && (
-                        <div className="bg-muted/60 p-2 rounded-md flex justify-between items-center">
-                            <div className="text-sm">
+                        <div className="bg-muted/60 p-3 rounded-md flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                            <div className="text-sm text-center sm:text-left">
                                 <span className="font-semibold">{Object.keys(rowSelection).length}</span> {Object.keys(rowSelection).length === 1 ? 'item' : 'items'} selected
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2">
                                 <Button variant="outline" size="sm" onClick={() => setRowSelection({})}>
                                     Clear Selection
                                 </Button>
@@ -1533,7 +1554,10 @@ const InteractionsView: React.FC = () => {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <Card>
                                     <CardHeader className="p-4 pb-2">
-                                        <CardTitle className="text-base">Total Interactions</CardTitle>
+                                        <CardTitle className="text-base flex items-center">
+                                            <BarChart className="h-4 w-4 mr-2 text-blue-500" />
+                                            Total Interactions
+                                        </CardTitle>
                                     </CardHeader>
                                     <CardContent className="p-4 pt-0">
                                         <div className="flex flex-col">
@@ -1545,7 +1569,10 @@ const InteractionsView: React.FC = () => {
 
                                 <Card>
                                     <CardHeader className="p-4 pb-2">
-                                        <CardTitle className="text-base">Daily Average</CardTitle>
+                                        <CardTitle className="text-base flex items-center">
+                                            <Activity className="h-4 w-4 mr-2 text-green-500" />
+                                            Daily Average
+                                        </CardTitle>
                                     </CardHeader>
                                     <CardContent className="p-4 pt-0">
                                         <div className="flex flex-col">
@@ -1557,16 +1584,19 @@ const InteractionsView: React.FC = () => {
 
                                 <Card>
                                     <CardHeader className="p-4 pb-2">
-                                        <CardTitle className="text-base">Current Streak</CardTitle>
+                                        <CardTitle className="text-base flex items-center">
+                                            <Zap className="h-4 w-4 mr-2 text-amber-500" />
+                                            Current Streak
+                                        </CardTitle>
                                     </CardHeader>
                                     <CardContent className="p-4 pt-0">
                                         <div className="flex flex-col">
                                             <div className="flex items-end gap-2">
-                                                <span className="text-3xl font-bold">{stats.streakData.currentStreak}</span>
+                                                <span className="text-3xl font-bold">{stats.streakData?.currentStreak || 0}</span>
                                                 <span className="text-sm text-muted-foreground mb-1">days</span>
                                             </div>
                                             <span className="text-xs text-muted-foreground">
-                                                Longest: {stats.streakData.longestStreak} days
+                                                Longest: {stats.streakData?.longestStreak || 0} days
                                             </span>
                                         </div>
                                     </CardContent>
@@ -1594,6 +1624,81 @@ const InteractionsView: React.FC = () => {
                                             Activity Calendar
                                         </CardTitle>
                                     </CardHeader>
+                                    <CardContent className="p-4">
+                                        <div className="space-y-3">
+                                            <div className="text-sm text-muted-foreground">
+                                                Activity over the last 30 days
+                                            </div>
+
+                                            {/* Day labels */}
+                                            <div className="grid grid-cols-7 gap-1 text-xs text-muted-foreground text-center">
+                                                <div>Sun</div>
+                                                <div>Mon</div>
+                                                <div>Tue</div>
+                                                <div>Wed</div>
+                                                <div>Thu</div>
+                                                <div>Fri</div>
+                                                <div>Sat</div>
+                                            </div>
+
+                                            {/* Activity grid */}
+                                            <div className="grid grid-cols-7 gap-1">
+                                                {(() => {
+                                                    const last30Days = stats.activityByDay.slice(-30);
+                                                    const today = new Date();
+                                                    const startDate = new Date(today);
+                                                    startDate.setDate(today.getDate() - 29);
+
+                                                    // Get the day of week for the start date (0 = Sunday)
+                                                    const startDayOfWeek = startDate.getDay();
+
+                                                    // Create array with empty cells for proper calendar alignment
+                                                    const calendarCells = [];
+
+                                                    // Add empty cells for days before our start date
+                                                    for (let i = 0; i < startDayOfWeek; i++) {
+                                                        calendarCells.push(
+                                                            <div key={`empty-${i}`} className="w-3 h-3"></div>
+                                                        );
+                                                    }
+
+                                                    // Add activity cells
+                                                    last30Days.forEach((day, index) => {
+                                                        const intensity = day.count > 0 ? Math.min(day.count / 5, 1) : 0;
+                                                        const bgColor = intensity === 0
+                                                            ? 'bg-green-100 dark:bg-green-800'
+                                                            : intensity < 0.3
+                                                            ? 'bg-green-200 dark:bg-green-900'
+                                                            : intensity < 0.6
+                                                            ? 'bg-green-400 dark:bg-green-700'
+                                                            : 'bg-green-600 dark:bg-green-500';
+
+                                                        calendarCells.push(
+                                                            <div
+                                                                key={`day-${index}`}
+                                                                className={`w-3 h-3 rounded-sm ${bgColor} cursor-pointer hover:ring-1 hover:ring-gray-400`}
+                                                                title={`${day.date}: ${day.count} interactions`}
+                                                            />
+                                                        );
+                                                    });
+
+                                                    return calendarCells;
+                                                })()}
+                                            </div>
+
+                                            {/* Legend */}
+                                            <div className="flex items-center justify-between text-xs text-muted-foreground mt-3">
+                                                <span>Less</span>
+                                                <div className="flex gap-1 items-center">
+                                                    <div className="w-2.5 h-2.5 rounded-sm bg-gray-100 dark:bg-gray-800"></div>
+                                                    <div className="w-2.5 h-2.5 rounded-sm bg-green-200 dark:bg-green-900"></div>
+                                                    <div className="w-2.5 h-2.5 rounded-sm bg-green-400 dark:bg-green-700"></div>
+                                                    <div className="w-2.5 h-2.5 rounded-sm bg-green-600 dark:bg-green-500"></div>
+                                                </div>
+                                                <span>More</span>
+                                            </div>
+                                        </div>
+                                    </CardContent>
                                 </Card>
                             </div>
 
@@ -1660,7 +1765,7 @@ const InteractionsView: React.FC = () => {
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                                {stats.recentEntities.map((entity) => (
+                                                {(stats.recentEntities || []).map((entity) => (
                                                     <TableRow key={entity.id}>
                                                         <TableCell>
                                                             <Badge className={getEntityTypeColor(entity.type)}>
@@ -1671,12 +1776,43 @@ const InteractionsView: React.FC = () => {
                                                             {entity.title || entity.text || 'No content'}
                                                         </TableCell>
                                                         <TableCell className="text-right">
-                                                            <Button variant="outline" size="sm" onClick={() => navigate(`/${entity.type}/${entity.id}`)}>
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => {
+                                                                    let path = '';
+                                                                    if (entity.type === 'idea') {
+                                                                        path = `/ideas/${entity.id}`;
+                                                                    } else if (entity.type === 'discussion') {
+                                                                        path = `/discussion/${entity.id}`;
+                                                                    } else if (entity.type === 'topic') {
+                                                                        // For topics, use parent discussion ID if available
+                                                                        if (entity.parent_id) {
+                                                                            path = `/discussion/${entity.parent_id}/topic/${entity.id}`;
+                                                                        } else {
+                                                                            path = `/discussion/unknown/topic/${entity.id}`;
+                                                                        }
+                                                                    }
+
+                                                                    if (path) {
+                                                                        navigate(path);
+                                                                    } else {
+                                                                        toast.warn("Unable to determine entity view path.");
+                                                                    }
+                                                                }}
+                                                            >
                                                                 View
                                                             </Button>
                                                         </TableCell>
                                                     </TableRow>
                                                 ))}
+                                                {(!stats.recentEntities || stats.recentEntities.length === 0) && (
+                                                    <TableRow>
+                                                        <TableCell colSpan={3} className="text-center text-muted-foreground py-4">
+                                                            No recent entities found
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
                                             </TableBody>
                                         </Table>
                                     </div>
@@ -1693,16 +1829,17 @@ const InteractionsView: React.FC = () => {
                                                 Most Active Discussion
                                             </CardTitle>
                                             <Badge variant="outline" className="text-xs">
-                                                {stats.mostActiveDiscussion.count} interactions
+                                                {stats.mostActiveDiscussion?.count || 0} interactions
                                             </Badge>
                                         </div>
                                     </CardHeader>
                                     <CardContent className="p-4 pt-0">
-                                        <p className="font-medium">{stats.mostActiveDiscussion.title}</p>
+                                        <p className="font-medium">{stats.mostActiveDiscussion?.title || 'Unknown Discussion'}</p>
                                         <div className="mt-4 flex justify-end">
                                             <Button
                                                 size="sm"
-                                                onClick={() => navigate(`/discussion/${stats.mostActiveDiscussion!.id}`)}
+                                                onClick={() => navigate(`/discussion/${stats.mostActiveDiscussion?.id || ''}`)}
+                                                disabled={!stats.mostActiveDiscussion?.id}
                                             >
                                                 Go to Discussion
                                             </Button>

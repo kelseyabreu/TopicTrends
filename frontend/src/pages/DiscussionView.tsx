@@ -792,14 +792,14 @@ function DiscussionViewContent() {
                   {displayStatus}
                 </div>
                 {discussion?.require_verification && (
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="neutral" className="text-xs">
                     Login Required
                   </Badge>
                 )}
               </div>
               <div className="flex gap-2">
                 <DialogClose asChild>
-                  <Button variant="outline" type="button" className="flex-1 sm:flex-none">
+                  <Button variant="neutral" type="button" className="flex-1 sm:flex-none">
                     Cancel
                   </Button>
                 </DialogClose>
@@ -843,7 +843,7 @@ function DiscussionViewContent() {
             {/* Desktop Action Buttons */}
             <div className="hidden md:flex items-center gap-2">
               <Button
-                variant="outline"
+                variant="neutral"
                 size="sm"
                 onClick={() => setShowShareModal(true)}
                 disabled={!discussion?.join_link}
@@ -855,7 +855,7 @@ function DiscussionViewContent() {
               {authStatus === AuthStatus.Authenticated && (
                 <>
                   <Button
-                    variant="outline"
+                    variant="neutral"
                     size="sm"
                     onClick={handleClusterClick}
                     disabled={isClustering}
@@ -865,18 +865,18 @@ function DiscussionViewContent() {
                     ) : (
                       <Zap className="w-4 h-4 mr-2" />
                     )}
-                    Regroup
+                    Regroup All Ideas
                   </Button>
                   <Button
-                    variant="outline"
+                    variant="neutral"
                     size="sm"
                     onClick={() => navigate(`/discussion/${discussionId}/new-ideas`)}
                   >
                     <Waves className="w-4 h-4 mr-2" />
-                    Drifting ({unclusteredCount})
+                    Drifting Ideas ({unclusteredCount})
                   </Button>
                   <Button
-                    variant="outline"
+                    variant="neutral"
                     size="sm"
                     onClick={() => navigate(`/discussion/${discussionId}/analytics`)}
                   >
@@ -979,7 +979,7 @@ function DiscussionViewContent() {
             </div>
             <div className="mobile-menu-content">
               <Button
-                variant="outline"
+                variant="neutral"
                 onClick={() => {
                   setShowShareModal(true);
                   setShowMobileMenu(false);
@@ -994,7 +994,7 @@ function DiscussionViewContent() {
               {authStatus === AuthStatus.Authenticated && (
                 <>
                   <Button
-                    variant="outline"
+                    variant="neutral"
                     onClick={() => {
                       handleClusterClick();
                       setShowMobileMenu(false);
@@ -1010,7 +1010,7 @@ function DiscussionViewContent() {
                     Regroup All Ideas
                   </Button>
                   <Button
-                    variant="outline"
+                    variant="neutral"
                     onClick={() => {
                       navigate(`/discussion/${discussionId}/new-ideas`);
                       setShowMobileMenu(false);
@@ -1021,7 +1021,7 @@ function DiscussionViewContent() {
                     Drifting Ideas ({unclusteredCount})
                   </Button>
                   <Button
-                    variant="outline"
+                    variant="neutral"
                     onClick={() => {
                       navigate(`/discussion/${discussionId}/analytics`);
                       setShowMobileMenu(false);
@@ -1032,7 +1032,7 @@ function DiscussionViewContent() {
                     Analytics
                   </Button>
                   <Button
-                    variant="outline"
+                    variant="neutral"
                     onClick={() => {
                       handleDeleteDiscussion();
                       setShowMobileMenu(false);
@@ -1096,7 +1096,7 @@ function DiscussionViewContent() {
           {/* Filter and Sort */}
           <div className="filter-sort-controls">
             <Button
-              variant="outline"
+              variant="neutral"
               size="sm"
               onClick={() => setShowQuickActions(!showQuickActions)}
               className="filter-button"
@@ -1105,7 +1105,7 @@ function DiscussionViewContent() {
               Filter
             </Button>
             <Button
-              variant="outline"
+              variant="neutral"
               size="sm"
               className="sort-button"
               onClick={() => setSortDir(sortDir === 'desc' ? 'asc' : 'desc')}
@@ -1244,7 +1244,7 @@ function DiscussionViewContent() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Button
-                        variant="outline"
+                        variant="neutral"
                         size="sm"
                         onClick={() => setTopicsPagination(prev => ({ ...prev, pageIndex: 0 }))}
                         disabled={topicsPagination.pageIndex === 0}
@@ -1252,7 +1252,7 @@ function DiscussionViewContent() {
                         First
                       </Button>
                       <Button
-                        variant="outline"
+                        variant="neutral"
                         size="sm"
                         onClick={() => setTopicsPagination(prev => ({ ...prev, pageIndex: prev.pageIndex - 1 }))}
                         disabled={topicsPagination.pageIndex === 0}
@@ -1263,7 +1263,7 @@ function DiscussionViewContent() {
                         Page {topicsPagination.pageIndex + 1} of {topicsPageCount}
                       </span>
                       <Button
-                        variant="outline"
+                        variant="neutral"
                         size="sm"
                         onClick={() => setTopicsPagination(prev => ({ ...prev, pageIndex: prev.pageIndex + 1 }))}
                         disabled={topicsPagination.pageIndex >= topicsPageCount - 1}
@@ -1271,7 +1271,7 @@ function DiscussionViewContent() {
                         Next
                       </Button>
                       <Button
-                        variant="outline"
+                        variant="neutral"
                         size="sm"
                         onClick={() => setTopicsPagination(prev => ({ ...prev, pageIndex: topicsPageCount - 1 }))}
                         disabled={topicsPagination.pageIndex >= topicsPageCount - 1}
@@ -1288,7 +1288,7 @@ function DiscussionViewContent() {
           <div className="error-state">
             <h2>Discussion not found</h2>
             <p>This discussion may have been deleted or the link is incorrect.</p>
-            <Button onClick={() => navigate("/discussions")} variant="outline">
+            <Button onClick={() => navigate("/discussions")} variant="neutral">
               Browse Discussions
             </Button>
           </div>

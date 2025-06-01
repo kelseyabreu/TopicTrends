@@ -1996,7 +1996,7 @@ const AllIdeasView: React.FC = () => {
                                             </TableHeader>
                                             <TableBody>
                                                 {analytics.topDiscussions.map((discussion, index) => (
-                                                    <TableRow key={discussion.id}>
+ c                                                    <TableRow key={discussion.id || `discussion-${index}`}>
                                                         <TableCell>
                                                             <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-xs font-medium">
                                                                 {index + 1}

@@ -1173,9 +1173,25 @@ async def get_ideas_analytics_summary(
         top_keywords = sorted(keyword_counts.items(), key=lambda x: x[1], reverse=True)[:10]
         top_keywords = [{"keyword": k, "count": v} for k, v in top_keywords]
 
-        # Top discussions
-        top_discussions = sorted(discussion_counts.items(), key=lambda x: x[1], reverse=True)[:10]
-        top_discussions = [{"discussion_id": d, "idea_count": c} for d, c in top_discussions]
+        # Top discussions - need to get discussion titles
+        top_discussions_data = sorted(discussion_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+
+        # Get discussion details for the top discussions
+        top_discussion_ids = [d[0] for d in top_discussions_data]
+        discussions_cursor = db.discussions.find(
+            {"_id": {"$in": top_discussion_ids}},
+            {"_id": 1, "title": 1}
+        )
+        discussions_info = await discussions_cursor.to_list(None)
+        discussions_map = {str(d["_id"]): d.get("title", "Untitled Discussion") for d in discussions_info}
+
+        top_discussions = []
+        for discussion_id, count in top_discussions_data:
+            top_discussions.append({
+                "id": discussion_id,  # Use 'id' instead of 'discussion_id' for frontend compatibility
+                "title": discussions_map.get(discussion_id, "Untitled Discussion"),
+                "count": count
+            })
 
         # Ideas over time (last 30 days)
         from datetime import datetime, timedelta
@@ -1236,9 +1252,11 @@ async def get_user_interaction_stats(
     """Get interaction statistics for a specific user (defaults to current user)"""
     try:
         # Use current user if no user_id provided
-        target_user_id = user_id or current_user.get("user_id")
+        # The verify_token_cookie returns the user document with _id field
+        target_user_id = user_id or str(current_user.get("_id")) if current_user else None
 
         if not target_user_id:
+            logger.error(f"No user ID found. current_user keys: {list(current_user.keys()) if current_user else 'None'}")
             raise HTTPException(status_code=400, detail="User ID required")
 
         # Get user's interaction events
@@ -1250,6 +1268,8 @@ async def get_user_interaction_stats(
             return {
                 "user_id": target_user_id,
                 "total_interactions": 0,
+                "totalInteractions": 0,  # Frontend compatibility
+                "avgInteractionsPerDay": 0,  # Frontend compatibility
                 "interaction_breakdown": {},
                 "most_active_discussion": None,
                 "recent_activity": [],
@@ -1257,7 +1277,9 @@ async def get_user_interaction_stats(
                 "actionTypeCounts": {},
                 "entityTypeCounts": {},
                 "activityByDay": [],
-                "hourlyDistribution": {}
+                "hourlyDistribution": {},
+                "streakData": {"currentStreak": 0, "longestStreak": 0},
+                "recentEntities": []
             }
 
         # Process user-specific analytics
@@ -1346,9 +1368,41 @@ async def get_user_interaction_stats(
             interaction_breakdown.get("rate", 0) * 3
         )
 
+        # Calculate daily average
+        days_with_activity = len([d for d in activity_by_day if d["count"] > 0])
+        avg_interactions_per_day = round(total_interactions / max(days_with_activity, 1), 1)
+
+        # Calculate streak data (simplified - could be more sophisticated)
+        streak_data = {
+            "currentStreak": len([d for d in activity_by_day if d["count"] > 0][-7:]),  # Active days in last 7 days
+            "longestStreak": max([d["count"] for d in activity_by_day] + [0])  # Max daily activity
+        }
+
+        # Generate recent entities from recent activity
+        recent_entities = []
+        seen_entities = set()
+        for activity in recent_activity[:10]:  # Get up to 10 recent entities
+            entity_id = activity["entity_id"]
+            if entity_id not in seen_entities:
+                seen_entities.add(entity_id)
+                entity_data = {
+                    "id": entity_id,
+                    "type": activity["entity_type"],
+                    "title": f"{activity['entity_type'].title()} {entity_id[:8]}...",
+                    "text": None
+                }
+
+                # For topics, include parent discussion ID for proper navigation
+                if activity["entity_type"] == "topic" and activity.get("parent_id"):
+                    entity_data["parent_id"] = activity["parent_id"]
+
+                recent_entities.append(entity_data)
+
         return {
             "user_id": target_user_id,
             "total_interactions": total_interactions,
+            "totalInteractions": total_interactions,  # Frontend compatibility
+            "avgInteractionsPerDay": avg_interactions_per_day,  # Frontend compatibility
             "interaction_breakdown": interaction_breakdown,
             "most_active_discussion": most_active_discussion,
             "recent_activity": recent_activity,
@@ -1356,7 +1410,9 @@ async def get_user_interaction_stats(
             "actionTypeCounts": interaction_breakdown,
             "entityTypeCounts": entity_type_counts,
             "activityByDay": activity_by_day,
-            "hourlyDistribution": hourly_distribution
+            "hourlyDistribution": hourly_distribution,
+            "streakData": streak_data,
+            "recentEntities": recent_entities
         }
 
     except Exception as e:
