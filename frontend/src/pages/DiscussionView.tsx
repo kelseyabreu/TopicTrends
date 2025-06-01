@@ -663,28 +663,29 @@ function DiscussionView() {
               {/* Add counts for specific types if needed */}
             </div>
             <div className="discussion-actions">
+              {/* Primary Action Buttons */}
               <Button
                 variant="default"
                 onClick={() => setShowShareModal(true)}
                 disabled={!discussion.join_link}
-                className="shareBtn ml-2">
+                className="shareBtn">
                 Share
               </Button>
               <Button
                 variant="default"
                 onClick={() => setShowNewIdeaModal(true)}
-                disabled={isClustering}
-                className="ml-2">
+                disabled={isClustering}>
                 <Lightbulb className="mr-2 h-4 w-4" />
                 New Idea
               </Button>
-              {authStatus === AuthStatus.Authenticated && ( // Only show if logged in
+
+              {/* Authenticated User Actions */}
+              {authStatus === AuthStatus.Authenticated && (
                 <>
                   <Button
                     variant="default"
                     onClick={handleClusterClick}
-                    disabled={isClustering}
-                    className="ml-2">
+                    disabled={isClustering}>
                     {isClustering ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
@@ -696,40 +697,34 @@ function DiscussionView() {
                     variant="default"
                     onClick={() =>
                       navigate(`/discussion/${discussionId}/new-ideas`)
-                    }
-                    className="ml-2">
+                    }>
                     <Waves className="mr-2 h-4 w-4" />
                     Drifting Ideas ({unclusteredCount})
                   </Button>
                   <Button
                     variant="default"
-                    onClick={() => navigate(`/discussion/${discussionId}/analytics`)}
-                    className="ml-2">
+                    onClick={() => navigate(`/discussion/${discussionId}/analytics`)}>
                     <BarChart3 className="mr-2 h-4 w-4" />
                     Analytics
                   </Button>
                 </>
               )}
+
+              {/* Interaction Buttons */}
               {discussionId && (
-                <>
-                  <span className="flex">
+                <span className="flex">
                   <InteractionButton
                     entityType="discussion"
                     entityId={discussionId}
                     actionType="like"
                     onStateChange={handleEngagementChange}
-                    className="ml-2"
                     activeLabel="Liked"
-                    // Optional: pass initialActive if discussion object has this info
-                    // initialActive={discussion.is_liked_by_user}
                   />
                   <InteractionButton
                     entityType="discussion"
                     entityId={discussionId}
                     actionType="pin"
                     onStateChange={handleEngagementChange}
-                    className="ml-2"
-                    // initialActive={discussion.is_pinned_by_user}
                   />
                   <InteractionButton
                     entityType="discussion"
@@ -743,17 +738,16 @@ function DiscussionView() {
                       />
                     }
                     onStateChange={handleEngagementChange}
-                    className="ml-2"
-                    // initialActive={discussion.is_saved_by_user}
                   />
-                  </span>
-                </>
+                </span>
               )}
+
+              {/* Delete Button */}
               <Button
                 variant="default"
                 onClick={handleDeleteDiscussion}
                 disabled={isDeleting}
-                className="ml-2 deleteBtn ml-auto"
+                className="deleteBtn"
               >
                 {isDeleting ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
