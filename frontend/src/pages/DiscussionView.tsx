@@ -663,62 +663,63 @@ function DiscussionView() {
               {/* Add counts for specific types if needed */}
             </div>
             <div className="discussion-actions">
-              <Button
-                variant="default"
-                onClick={() => setShowShareModal(true)}
-                disabled={!discussion.join_link}
-                className="shareBtn ml-2">
-                Share
-              </Button>
-              <Button
-                variant="default"
-                onClick={() => setShowNewIdeaModal(true)}
-                disabled={isClustering}
-                className="ml-2">
-                <Lightbulb className="mr-2 h-4 w-4" />
-                New Idea
-              </Button>
-              {authStatus === AuthStatus.Authenticated && ( // Only show if logged in
-                <>
+              {/* Primary actions - always visible and most important */}
+              <div className="mobile-primary-actions">
+                <Button
+                  variant="default"
+                  onClick={() => setShowShareModal(true)}
+                  disabled={!discussion.join_link}
+                  className="shareBtn">
+                  Share
+                </Button>
+                <Button
+                  variant="default"
+                  onClick={() => setShowNewIdeaModal(true)}
+                  disabled={isClustering}>
+                  <Lightbulb className="mr-2 h-4 w-4 lucide-icon" />
+                  <span>New Idea</span>
+                </Button>
+              </div>
+
+              {/* Secondary actions - authenticated user features */}
+              {authStatus === AuthStatus.Authenticated && (
+                <div className="mobile-secondary-actions">
                   <Button
                     variant="default"
                     onClick={handleClusterClick}
-                    disabled={isClustering}
-                    className="ml-2">
+                    disabled={isClustering}>
                     {isClustering ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin lucide-icon" />
                     ) : (
-                      <Zap className="mr-2 h-4 w-4" />
+                      <Zap className="mr-2 h-4 w-4 lucide-icon" />
                     )}
-                    Regroup All Ideas
+                    <span>Regroup All Ideas</span>
                   </Button>
                   <Button
                     variant="default"
                     onClick={() =>
                       navigate(`/discussion/${discussionId}/new-ideas`)
-                    }
-                    className="ml-2">
-                    <Waves className="mr-2 h-4 w-4" />
-                    Drifting Ideas ({unclusteredCount})
+                    }>
+                    <Waves className="mr-2 h-4 w-4 lucide-icon" />
+                    <span>Drifting Ideas ({unclusteredCount})</span>
                   </Button>
                   <Button
                     variant="default"
-                    onClick={() => navigate(`/discussion/${discussionId}/analytics`)}
-                    className="ml-2">
-                    <BarChart3 className="mr-2 h-4 w-4" />
-                    Analytics
+                    onClick={() => navigate(`/discussion/${discussionId}/analytics`)}>
+                    <BarChart3 className="mr-2 h-4 w-4 lucide-icon" />
+                    <span>Analytics</span>
                   </Button>
-                </>
+                </div>
               )}
+
+              {/* Interaction actions - compact social features */}
               {discussionId && (
-                <>
-                  <span className="flex">
+                <div className="mobile-interaction-actions">
                   <InteractionButton
                     entityType="discussion"
                     entityId={discussionId}
                     actionType="like"
                     onStateChange={handleEngagementChange}
-                    className="ml-2"
                     activeLabel="Liked"
                     // Optional: pass initialActive if discussion object has this info
                     // initialActive={discussion.is_liked_by_user}
@@ -728,7 +729,6 @@ function DiscussionView() {
                     entityId={discussionId}
                     actionType="pin"
                     onStateChange={handleEngagementChange}
-                    className="ml-2"
                     // initialActive={discussion.is_pinned_by_user}
                   />
                   <InteractionButton
@@ -743,25 +743,124 @@ function DiscussionView() {
                       />
                     }
                     onStateChange={handleEngagementChange}
-                    className="ml-2"
                     // initialActive={discussion.is_saved_by_user}
                   />
-                  </span>
-                </>
+                </div>
               )}
-              <Button
-                variant="default"
-                onClick={handleDeleteDiscussion}
-                disabled={isDeleting}
-                className="ml-2 deleteBtn ml-auto"
-              >
-                {isDeleting ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="mr-2 h-4 w-4" />
+
+              {/* Danger actions - delete button separate */}
+              <div className="mobile-danger-actions">
+                <Button
+                  variant="default"
+                  onClick={handleDeleteDiscussion}
+                  disabled={isDeleting}
+                  className="deleteBtn"
+                >
+                  {isDeleting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin lucide-icon" />
+                  ) : (
+                    <Trash2 className="mr-2 h-4 w-4 lucide-icon" />
+                  )}
+                  <span>Delete</span>
+                </Button>
+              </div>
+
+              {/* Desktop fallback - original structure for larger screens */}
+              <div className="desktop-actions" style={{display: 'none'}}>
+                <Button
+                  variant="default"
+                  onClick={() => setShowShareModal(true)}
+                  disabled={!discussion.join_link}
+                  className="shareBtn ml-2">
+                  Share
+                </Button>
+                <Button
+                  variant="default"
+                  onClick={() => setShowNewIdeaModal(true)}
+                  disabled={isClustering}
+                  className="ml-2">
+                  <Lightbulb className="mr-2 h-4 w-4" />
+                  New Idea
+                </Button>
+                {authStatus === AuthStatus.Authenticated && (
+                  <>
+                    <Button
+                      variant="default"
+                      onClick={handleClusterClick}
+                      disabled={isClustering}
+                      className="ml-2">
+                      {isClustering ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Zap className="mr-2 h-4 w-4" />
+                      )}
+                      Regroup All Ideas
+                    </Button>
+                    <Button
+                      variant="default"
+                      onClick={() =>
+                        navigate(`/discussion/${discussionId}/new-ideas`)
+                      }
+                      className="ml-2">
+                      <Waves className="mr-2 h-4 w-4" />
+                      Drifting Ideas ({unclusteredCount})
+                    </Button>
+                    <Button
+                      variant="default"
+                      onClick={() => navigate(`/discussion/${discussionId}/analytics`)}
+                      className="ml-2">
+                      <BarChart3 className="mr-2 h-4 w-4" />
+                      Analytics
+                    </Button>
+                  </>
                 )}
-                Delete
-              </Button>
+                {discussionId && (
+                  <span className="flex">
+                    <InteractionButton
+                      entityType="discussion"
+                      entityId={discussionId}
+                      actionType="like"
+                      onStateChange={handleEngagementChange}
+                      className="ml-2"
+                      activeLabel="Liked"
+                    />
+                    <InteractionButton
+                      entityType="discussion"
+                      entityId={discussionId}
+                      actionType="pin"
+                      onStateChange={handleEngagementChange}
+                      className="ml-2"
+                    />
+                    <InteractionButton
+                      entityType="discussion"
+                      entityId={discussionId}
+                      actionType="save"
+                      activeIcon={
+                        <Star
+                          size={20}
+                          className="text-yellow-500"
+                          fill="currentColor"
+                        />
+                      }
+                      onStateChange={handleEngagementChange}
+                      className="ml-2"
+                    />
+                  </span>
+                )}
+                <Button
+                  variant="default"
+                  onClick={handleDeleteDiscussion}
+                  disabled={isDeleting}
+                  className="ml-2 deleteBtn ml-auto"
+                >
+                  {isDeleting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="mr-2 h-4 w-4" />
+                  )}
+                  Delete
+                </Button>
+              </div>
             </div>
           </div>
 

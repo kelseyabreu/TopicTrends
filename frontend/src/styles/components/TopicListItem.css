@@ -194,3 +194,164 @@
     background-color: #e0e0e0;
     text-decoration: none;
   }
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .topic-list-item {
+    margin-bottom: 12px;
+    border-width: 2px;
+    box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.7);
+  }
+
+  .topic-list-item:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.7);
+  }
+
+  /* Compact voting section */
+  .topic-vote-section {
+    padding: 8px 6px;
+    min-width: 50px;
+  }
+
+  .vote-button {
+    padding: 2px;
+    margin: 2px 0;
+  }
+
+  .vote-count {
+    font-size: 14px;
+    margin: 2px 0;
+  }
+
+  /* Optimized content section */
+  .topic-content-section {
+    padding: 12px;
+  }
+
+  .topic-title {
+    font-size: 16px;
+    margin: 6px 0;
+    line-height: 1.2;
+  }
+
+  /* Mobile-friendly topic metadata */
+  .topic-meta {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .topic-details, .interactions {
+    width: 100%;
+    flex-basis: auto;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .interactions {
+    justify-content: center;
+    gap: 6px;
+  }
+
+  /* Smaller badges for mobile */
+  .topic-type-badge, .topic-count-badge {
+    font-size: 11px;
+    padding: 3px 6px;
+    border-width: 1px;
+  }
+
+  /* Compact expanded content */
+  .topic-expanded-content {
+    margin-top: 12px;
+    padding-top: 12px;
+  }
+
+  .topic-chart {
+    padding: 12px;
+    margin-bottom: 12px;
+    border-width: 1px;
+  }
+
+  /* Mobile-optimized ideas list */
+  .topic-ideas-list {
+    gap: 8px;
+  }
+
+  .idea-card {
+    padding: 10px;
+    border-width: 1px;
+    box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5);
+  }
+
+  .idea-card-header {
+    margin-bottom: 8px;
+  }
+
+  .idea-interactions {
+    gap: 4px;
+  }
+
+  .idea-text {
+    font-size: 14px;
+    line-height: 1.3;
+    margin-bottom: 6px;
+  }
+
+  .idea-meta {
+    font-size: 11px;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
+  }
+
+  .view-all-button {
+    padding: 6px;
+    font-size: 14px;
+    border-width: 1px;
+  }
+
+  .no-ideas-message {
+    padding: 12px;
+    font-size: 14px;
+  }
+}
+
+/* Extra small mobile devices */
+@media (max-width: 480px) {
+  .topic-list-item {
+    flex-direction: column;
+  }
+
+  .topic-vote-section {
+    flex-direction: row;
+    justify-content: center;
+    padding: 6px;
+    border-right: none;
+    border-bottom: 2px solid black;
+    gap: 12px;
+  }
+
+  .vote-button {
+    margin: 0 4px;
+  }
+
+  .topic-content-section {
+    padding: 10px;
+  }
+
+  .topic-title {
+    font-size: 15px;
+  }
+
+  .topic-meta {
+    align-items: center;
+  }
+
+  .topic-details {
+    justify-content: center;
+  }
+
+  .interactions {
+    justify-content: center;
+  }
+}

@@ -196,52 +196,200 @@
 @media (max-width: 768px) {
   .main-content {
     grid-template-columns: 1fr;
-    padding:0px;
+    padding: 0px;
   }
 
-    .discussion-info {
-        padding: 0px;
-    }
+  .discussion-info {
+    padding: 0px;
+  }
 
-    .topics-section {
-        padding: 0px;
-    }
+  .discussion-info h1 {
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+    line-height: 1.3;
+  }
 
-    .topic-title {
-        font-size: 16px !important;
-    }
+  .prompt {
+    font-size: 16px;
+    margin-bottom: 15px;
+    line-height: 1.4;
+  }
 
-    .discussion-actions {
-        flex-direction: column;
-        gap: 0.75rem;
-    }
+  .topics-section {
+    padding: 0px;
+  }
 
-    .discussion-actions .btn,
-    .discussion-actions button {
-        width: 100%;
-        padding: 0.5rem 0.75rem;
-        font-size: 0.875rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
+  .topic-title {
+    font-size: 16px !important;
+  }
 
-    .discussion-actions > div:last-child {
-        display: flex;
-        gap: 0.5rem;
-        width: 100%;
-    }
+  /* Compact stats section */
+  .stats {
+    gap: 20px;
+    margin-bottom: 20px;
+    justify-content: center;
+  }
 
-    .discussion-actions > div:last-child button {
-        flex: 1;
-        min-width: 0;
-    }
-}
+  .stat-value {
+    font-size: 24px;
+  }
 
-/* Mobile Button Layout Fixes */
-.discussion-actions {
+  .stat-label {
+    font-size: 14px;
+  }
+
+  /* Mobile-optimized breadcrumbs */
+  .bread-crumb-container {
+    padding: 10px;
+  }
+
+  /* Mobile button layout - prioritize primary actions */
+  .discussion-actions {
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  /* Primary action buttons - most important */
+  .mobile-primary-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .mobile-primary-actions button {
+    flex: 1;
+    font-size: 14px;
+    padding: 10px 8px;
+    min-height: 40px;
+  }
+
+  /* Secondary actions - authenticated user features */
+  .mobile-secondary-actions {
     display: flex;
     flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .mobile-secondary-actions button {
+    flex: 1;
+    min-width: calc(50% - 3px);
+    font-size: 13px;
+    padding: 8px 6px;
+    min-height: 36px;
+  }
+
+  /* Interaction buttons - compact row */
+  .mobile-interaction-actions {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+  }
+
+  .mobile-interaction-actions button {
+    flex: 1;
+    max-width: 80px;
+    font-size: 12px;
+    padding: 6px 4px;
+    min-height: 32px;
+  }
+
+  /* Delete button - separate and prominent */
+  .mobile-danger-actions {
+    display: flex;
+  }
+
+  .mobile-danger-actions button {
+    width: 100%;
+    font-size: 14px;
+    padding: 10px;
+    min-height: 40px;
+  }
+
+  /* Hide button text on very small screens, show icons only */
+  @media (max-width: 480px) {
+    .mobile-secondary-actions button .lucide-icon + span,
+    .mobile-interaction-actions button .lucide-icon + span {
+      display: none;
+    }
+
+    .mobile-secondary-actions button,
+    .mobile-interaction-actions button {
+      min-width: 44px;
+      padding: 8px;
+    }
+  }
+
+  /* Fallback for existing structure if not updated */
+  .discussion-actions .btn,
+  .discussion-actions button {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .discussion-actions > div:last-child {
+    display: flex;
     gap: 0.5rem;
-    margin-bottom: 30px;
+    width: 100%;
+  }
+
+  .discussion-actions > div:last-child button {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* Base layout for discussion actions */
+.discussion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 30px;
+}
+
+/* Desktop layout - original structure for larger screens */
+.desktop-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+/* Mobile-specific action containers - hidden on desktop */
+.mobile-primary-actions,
+.mobile-secondary-actions,
+.mobile-interaction-actions,
+.mobile-danger-actions {
+  display: none;
+}
+
+/* Desktop view - show desktop actions, hide mobile containers */
+@media (min-width: 769px) {
+  .desktop-actions {
+    display: flex !important;
+  }
+  
+  .mobile-primary-actions,
+  .mobile-secondary-actions,
+  .mobile-interaction-actions,
+  .mobile-danger-actions {
+    display: none !important;
+  }
+}
+
+/* Mobile view - show mobile containers, hide desktop actions */
+@media (max-width: 768px) {
+  .desktop-actions {
+    display: none !important;
+  }
+  
+  .mobile-primary-actions,
+  .mobile-secondary-actions,
+  .mobile-interaction-actions,
+  .mobile-danger-actions {
+    display: flex;
+  }
 }
