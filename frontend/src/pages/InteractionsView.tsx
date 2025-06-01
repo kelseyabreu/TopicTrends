@@ -8,6 +8,7 @@ import { Interaction } from '../interfaces/interaction';
 import { Discussion } from '../interfaces/discussions';
 import { Idea } from '../interfaces/ideas';
 import { Topic } from '../interfaces/topics';
+import { PaginatedInteractions, convertTanStackToApiParams } from '../interfaces/pagination';
 
 // Import UI components from ShadCN/UI
 import { Button } from '@/components/ui/button';
@@ -126,6 +127,7 @@ import {
     LayoutGrid,
     Coffee,
     FileBarChart,
+    Zap,
 } from 'lucide-react';
 
 // Import Chart components
@@ -148,6 +150,7 @@ interface EntityDetails {
     text?: string;
     type: string;
     id: string;
+    parent_id?: string;  // For topics that need parent discussion ID
 }
 
 interface ActivityByDay {
@@ -184,22 +187,7 @@ interface DateRange {
     endDate: string;
 }
 
-interface PaginatedInteractions {
-    rows: Interaction[];
-    pageCount: number;
-    totalRowCount: number;
-    meta: {
-        currentPage: number;
-        pageSize: number;
-        hasPreviousPage: boolean;
-        hasNextPage: boolean;
-        searchTerm: string | null;
-        filtersApplied: Record<string, any>;
-        sortBy: string | null;
-        sortDirection: string | null;
-        executionTimeMs: number;
-    };
-}
+
 
 // --- Debounce Hook ---
 function useDebounce<T>(value: T, delay: number): T {
@@ -497,10 +485,12 @@ const InteractionsView: React.FC = () => {
                 return (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7">
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Open menu</span>
-                            </Button>
+                            <span>
+                                <Button variant="ghost" size="icon" className="h-7 w-7">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                    <span className="sr-only">Open menu</span>
+                                </Button>
+                            </span>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-[160px]">
                             <DropdownMenuLabel>Options</DropdownMenuLabel>
@@ -623,30 +613,13 @@ const InteractionsView: React.FC = () => {
             lastRefreshTimeRef.current = new Date();
 
             try {
-                // Convert TanStack state to standard query parameters
-                const queryParams: Record<string, any> = {
-                    page: pagination.pageIndex + 1, // Convert 0-based to 1-based
-                    page_size: pagination.pageSize,
-                };
-
-                if (sorting.length > 0) {
-                    queryParams.sort = sorting[0].id;
-                    queryParams.sort_dir = sorting[0].desc ? 'desc' : 'asc';
-                }
-
-                if (debouncedGlobalFilter) {
-                    queryParams.search = debouncedGlobalFilter;
-                }
-
-                columnFilters.forEach(filter => {
-                    if (typeof filter.value === 'object' && filter.value !== null) {
-                        Object.entries(filter.value).forEach(([op, val]) => {
-                            queryParams[`filter.${filter.id}.${op}`] = val;
-                        });
-                    } else {
-                        queryParams[`filter.${filter.id}`] = filter.value;
-                    }
-                });
+                // Convert TanStack state to standard query parameters using utility function
+                const queryParams = convertTanStackToApiParams(
+                    pagination,
+                    sorting,
+                    debouncedGlobalFilter,
+                    columnFilters
+                );
 
                 const response = await api.get<PaginatedInteractions>('/interaction/', {
                     params: queryParams
@@ -680,10 +653,9 @@ const InteractionsView: React.FC = () => {
             setStatsError(null);
 
             try {
-                // Generate fake stats for demonstration
-                // In a real app, you would make an API call to get these stats
-                const mockStats: UserInteractionStats = await generateMockStats();
-                setStats(mockStats);
+                // Fetch real interaction stats from API
+                const response = await api.get('/analytics/user-interaction-stats');
+                setStats(response.data);
             } catch (err: any) {
                 console.error('Error fetching interaction stats:', err);
                 setStatsError('Failed to load interaction statistics.');
@@ -736,113 +708,7 @@ const InteractionsView: React.FC = () => {
         };
     }, [activeTab]);
 
-    // Helper: Mock stats generation (would be replaced with actual API call)
-    const generateMockStats = async (): Promise<UserInteractionStats> => {
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 700));
 
-        const now = new Date();
-        const pastDate = new Date();
-        pastDate.setDate(now.getDate() - 30); // 30 days ago
-
-        // Generate activity by day (last 30 days)
-        const activityByDay: ActivityByDay[] = [];
-        const currentDate = new Date(pastDate);
-        while (currentDate <= now) {
-            // More activity on weekdays, less on weekends, and random distribution
-            const dayOfWeek = currentDate.getDay();
-            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-            const baseCount = isWeekend ? 2 : 5;
-            const count = Math.floor(Math.random() * baseCount) + (isWeekend ? 0 : 3);
-
-            activityByDay.push({
-                date: currentDate.toISOString().split('T')[0],
-                count
-            });
-
-            currentDate.setDate(currentDate.getDate() + 1);
-        }
-
-        // Calculate total interactions and avg per day
-        const totalInteractions = activityByDay.reduce((sum, day) => sum + day.count, 0);
-        const avgInteractionsPerDay = Math.round((totalInteractions / activityByDay.length) * 10) / 10;
-
-        // Generate action type distribution
-        const actionTypes = ['view', 'like', 'unlike', 'pin', 'unpin', 'save', 'unsave'];
-        const actionTypeCounts: { [key: string]: number } = {};
-        actionTypes.forEach(type => {
-            if (type === 'view') {
-                actionTypeCounts[type] = Math.floor(totalInteractions * (type === 'view' ? 0.5 : type === 'like' ? 0.2 : type === 'save' ? 0.15 : type === 'pin' ? 0.1 : 0.05) * (Math.random() * 0.4 + 0.8));
-            }
-        });
-
-        // Generate entity type distribution
-        const entityTypes = ['discussion', 'topic', 'idea'];
-        const entityTypeCounts: { [key: string]: number } = {};
-        entityTypes.forEach(type => {
-            entityTypeCounts[type] = Math.floor(totalInteractions * (type === 'idea' ? 0.5 : type === 'topic' ? 0.3 : 0.2) * (Math.random() * 0.4 + 0.8));
-        });
-
-        // Generate hourly distribution (24-hour format)
-        const hourlyDistribution: { [hour: string]: number } = {};
-        for (let i = 0; i < 24; i++) {
-            // More activity during work hours (9-17)
-            const hourString = i.toString().padStart(2, '0');
-            const workHour = i >= 9 && i <= 17;
-            const eveningHour = i >= 18 && i <= 22;
-            const lateNightHour = i >= 23 || i <= 5;
-
-            let multiplier = 1;
-            if (workHour) multiplier = 5;
-            else if (eveningHour) multiplier = 3;
-            else if (lateNightHour) multiplier = 0.5;
-
-            hourlyDistribution[hourString] = Math.floor(multiplier * (Math.random() * 3 + 1));
-        }
-
-        // Generate streak data
-        const streakData = {
-            currentStreak: Math.floor(Math.random() * 7) + 1,
-            longestStreak: Math.floor(Math.random() * 14) + 7,
-            lastActive: new Date().toISOString()
-        };
-
-        // Mock recent entities
-        const recentEntities: EntityDetails[] = [
-            { id: uuid(), title: "Community Feedback Discussion", type: "discussion" },
-            { id: uuid(), title: "Product Improvement Ideas", type: "discussion" },
-            { id: uuid(), text: "We should add a dark mode option", type: "idea" },
-            { id: uuid(), title: "User Interface Suggestions", type: "topic" },
-            { id: uuid(), text: "The navigation could be more intuitive", type: "idea" }
-        ];
-
-        // Mock most active discussion
-        const mostActiveDiscussion = {
-            id: uuid(),
-            title: "Website Redesign Feedback",
-            count: Math.floor(Math.random() * 50) + 20
-        };
-
-        return {
-            activityByDay,
-            actionTypeCounts,
-            entityTypeCounts,
-            recentEntities,
-            hourlyDistribution,
-            totalInteractions,
-            mostActiveDiscussion,
-            avgInteractionsPerDay,
-            streakData
-        };
-    };
-
-    // Helper: Generate a random UUID (for demo purposes)
-    const uuid = () => {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-            const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
-        });
-    };
 
     // --- Event Handlers ---
 
@@ -1322,7 +1188,7 @@ const InteractionsView: React.FC = () => {
                     <Card>
                         <CardHeader className="border-b p-4">
                             <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
-                                <div className="relative w-full sm:max-w-xs md:max-w-sm">
+                                <div className="relative w-full sm:max-w-md">
                                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <Input
                                         type="search"
@@ -1333,26 +1199,43 @@ const InteractionsView: React.FC = () => {
                                         aria-label="Global search for interactions"
                                     />
                                 </div>
-                                <div className="flex items-center gap-2 self-start sm:self-center">
+                                <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 w-full sm:w-auto">
                                     <Select
                                         value={viewMode}
                                         onValueChange={(value: 'table' | 'grid' | 'calendar') => setViewMode(value)}
                                     >
-                                        <SelectTrigger className="h-9 text-xs">
+                                        <SelectTrigger className="h-9 text-xs w-32">
                                             <SelectValue placeholder="View Mode" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="table">Table View</SelectItem>
-                                            <SelectItem value="grid">Grid View</SelectItem>
-                                            <SelectItem value="calendar">Calendar View</SelectItem>
+                                            <SelectItem value="table">
+                                                <div className="flex items-center">
+                                                    <LayoutGrid className="h-3 w-3 mr-2" />
+                                                    Table
+                                                </div>
+                                            </SelectItem>
+                                            <SelectItem value="grid">
+                                                <div className="flex items-center">
+                                                    <LayoutGrid className="h-3 w-3 mr-2" />
+                                                    Grid
+                                                </div>
+                                            </SelectItem>
+                                            <SelectItem value="calendar">
+                                                <div className="flex items-center">
+                                                    <Calendar className="h-3 w-3 mr-2" />
+                                                    Calendar
+                                                </div>
+                                            </SelectItem>
                                         </SelectContent>
                                     </Select>
 
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                            <Button variant="outline" size="sm" className="h-9 text-xs">
-                                                <Settings2 className="mr-1.5 h-3.5 w-3.5" /> Columns
-                                            </Button>
+                                            <span>
+                                                <Button variant="outline" size="sm" className="h-9 text-xs">
+                                                    <Settings2 className="mr-1.5 h-3.5 w-3.5" /> Columns
+                                                </Button>
+                                            </span>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="w-[180px]">
                                             <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
@@ -1371,7 +1254,7 @@ const InteractionsView: React.FC = () => {
                                     </DropdownMenu>
 
                                     <Button variant="ghost" size="sm" className="h-9 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={handleClearFilters}>
-                                        <XCircle className="mr-1.5 h-3.5 w-3.5" /> Clear All Filters
+                                        <XCircle className="mr-1.5 h-3.5 w-3.5" /> Clear All
                                     </Button>
                                 </div>
                             </div>
@@ -1469,11 +1352,11 @@ const InteractionsView: React.FC = () => {
                                 </>
                             )}
                         </CardContent>
-                        <CardFooter className="border-t p-4 flex justify-between items-center">
-                            <div className="text-xs text-muted-foreground">
+                        <CardFooter className="border-t p-4 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                            <div className="text-xs text-muted-foreground text-center sm:text-left">
                                 Last refreshed: {formatDate(lastRefreshTimeRef.current.toISOString())}
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2">
                                 <Button variant="outline" size="sm" onClick={handleRefresh}>
                                     <RefreshCw className="h-4 w-4 mr-2" />
                                     Refresh
@@ -1488,11 +1371,11 @@ const InteractionsView: React.FC = () => {
 
                     {/* Selection Actions */}
                     {Object.keys(rowSelection).length > 0 && (
-                        <div className="bg-muted/60 p-2 rounded-md flex justify-between items-center">
-                            <div className="text-sm">
+                        <div className="bg-muted/60 p-3 rounded-md flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                            <div className="text-sm text-center sm:text-left">
                                 <span className="font-semibold">{Object.keys(rowSelection).length}</span> {Object.keys(rowSelection).length === 1 ? 'item' : 'items'} selected
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2">
                                 <Button variant="outline" size="sm" onClick={() => setRowSelection({})}>
                                     Clear Selection
                                 </Button>
@@ -1504,151 +1387,144 @@ const InteractionsView: React.FC = () => {
                         </div>
                     )}
 
-                    {/* View Modes */}
-                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-4 lg:gap-8">
-                        {/* Main content */}
-                        <div className={`${showDetailPanel ? 'lg:col-span-3' : 'lg:col-span-4'}`}>
-                            {/* Table/Grid View */}
-                            <Card className="mb-4 interactionsGridCard">
-                                <CardContent className="p-0 card-content">
-                                    {/* Content based on view mode */}
-                                    {viewMode === 'table' && (
-                                        <div className="overflow-x-auto">
-                                            <Table>
-                                                <TableHeader>
-                                                    {table.getHeaderGroups().map((headerGroup) => (
-                                                        <TableRow key={headerGroup.id}>
-                                                            {headerGroup.headers.map((header) => (
-                                                                <TableHead key={header.id} className="px-3 py-2.5 text-xs whitespace-nowrap">
-                                                                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                                                                </TableHead>
-                                                            ))}
-                                                        </TableRow>
+                    {/* Main Content Area */}
+                    <Card className="mb-4">
+                        <CardContent className="p-0">
+                            {viewMode === 'table' && (
+                                <div className="overflow-x-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            {table.getHeaderGroups().map((headerGroup) => (
+                                                <TableRow key={headerGroup.id}>
+                                                    {headerGroup.headers.map((header) => (
+                                                        <TableHead key={header.id} className="px-3 py-2.5 text-xs whitespace-nowrap">
+                                                            {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                                                        </TableHead>
                                                     ))}
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {isLoading && !error && (
-                                                        <TableRow>
-                                                            <TableCell colSpan={columns.length} className="h-24 text-center">
-                                                                <div className="flex justify-center items-center text-sm text-muted-foreground">
-                                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Updating results...
-                                                                </div>
+                                                </TableRow>
+                                            ))}
+                                        </TableHeader>
+                                        <TableBody>
+                                            {isLoading && !error && (
+                                                <TableRow>
+                                                    <TableCell colSpan={columns.length} className="h-24 text-center">
+                                                        <div className="flex justify-center items-center text-sm text-muted-foreground">
+                                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Updating results...
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                            {!isLoading && table.getRowModel().rows?.length > 0 ? (
+                                                table.getRowModel().rows.map((row) => (
+                                                    <TableRow
+                                                        key={row.id}
+                                                        data-state={row.getIsSelected() && "selected"}
+                                                        className={row.getIsSelected() ? "bg-muted/50" : ""}
+                                                    >
+                                                        {row.getVisibleCells().map((cell) => (
+                                                            <TableCell key={cell.id} className="px-3 py-2 align-middle text-xs">
+                                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                                             </TableCell>
-                                                        </TableRow>
-                                                    )}
-                                                    {!isLoading && table.getRowModel().rows?.length > 0 ? (
-                                                        table.getRowModel().rows.map((row) => (
-                                                            <TableRow
-                                                                key={row.id}
-                                                                data-state={row.getIsSelected() && "selected"}
-                                                                className={row.getIsSelected() ? "bg-muted/50" : ""}
-                                                            >
-                                                                {row.getVisibleCells().map((cell) => (
-                                                                    <TableCell key={cell.id} className="px-3 py-2 align-middle text-xs">
-                                                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                                                    </TableCell>
-                                                                ))}
-                                                            </TableRow>
-                                                        ))
-                                                    ) : null}
-                                                    {!isLoading && table.getRowModel().rows?.length === 0 && (
-                                                        <TableRow>
-                                                            <TableCell colSpan={columns.length} className="h-24 text-center text-sm text-muted-foreground">
-                                                                {error && data.length > 0 ? `Error updating: ${error}` : "No interactions found matching your criteria."}
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    )}
-                                                </TableBody>
-                                            </Table>
-                                        </div>
-                                    )}
-
-                                    {viewMode === 'grid' && renderGridView()}
-
-                                    {viewMode === 'calendar' && (
-                                        <div className="p-4">
-                                            <h3 className="text-lg font-medium mb-4">Calendar View</h3>
-                                            <div className="text-center text-muted-foreground mb-4">
-                                                <p>Calendar view coming soon!</p>
-                                                <p className="text-sm">This view will show your interactions organized by date.</p>
-                                            </div>
-                                        </div>
-                                    )}
-                                </CardContent>
-                                <CardFooter className="border-t p-3">
-                                    <div className="flex flex-col sm:flex-row items-center justify-between w-full text-xs text-muted-foreground gap-4">
-                                        <div className="flex-1 text-center sm:text-left">
-                                            {table.getFilteredSelectedRowModel().rows.length > 0 ?
-                                                `${table.getFilteredSelectedRowModel().rows.length} of ` : ''}
-                                            {totalRowCount} row(s)
-                                            {table.getFilteredSelectedRowModel().rows.length > 0 ? ' selected.' : '.'}
-                                        </div>
-                                        <div className="flex items-center gap-x-2 sm:gap-x-4">
-                                            <div className="flex items-center gap-x-1">
-                                                <span className="hidden sm:inline">Rows:</span>
-                                                <Select
-                                                    value={`${pagination.pageSize}`}
-                                                    onValueChange={(value) => table.setPageSize(Number(value))}
-                                                >
-                                                    <SelectTrigger className="h-7 w-[70px] text-xs">
-                                                        <SelectValue placeholder={pagination.pageSize} />
-                                                    </SelectTrigger>
-                                                    <SelectContent side="top">
-                                                        {[10, 20, 50, 100].map((size) => (
-                                                            <SelectItem key={size} value={`${size}`} className="text-xs">{size}</SelectItem>
                                                         ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <span className="whitespace-nowrap">
-                                                Page {pagination.pageIndex + 1} of {pageCount || 1}
-                                            </span>
-                                            <div className="flex items-center gap-x-1">
-                                                <Button variant="outline" size="icon-xs" onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()}><ChevronsLeft className="h-3.5 w-3.5" /></Button>
-                                                <Button variant="outline" size="icon-xs" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}><ChevronLeft className="h-3.5 w-3.5" /></Button>
-                                                <Button variant="outline" size="icon-xs" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}><ChevronRight className="h-3.5 w-3.5" /></Button>
-                                                <Button variant="outline" size="icon-xs" onClick={() => table.setPageIndex(pageCount - 1)} disabled={!table.getCanNextPage()}><ChevronsRight className="h-3.5 w-3.5" /></Button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </CardFooter>
-                            </Card>
+                                                    </TableRow>
+                                                ))
+                                            ) : null}
+                                            {!isLoading && table.getRowModel().rows?.length === 0 && (
+                                                <TableRow>
+                                                    <TableCell colSpan={columns.length} className="h-24 text-center text-sm text-muted-foreground">
+                                                        {error && data.length > 0 ? `Error updating: ${error}` : "No interactions found matching your criteria."}
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            )}
 
-                            {/* Summary Cards */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                                {["view", "like", "pin", "save"].map(action => {
-                                    const count = data.filter(i => i.action_type === action).length;
-                                    return (
-                                        <Card key={action} className="overflow-hidden">
-                                            <CardHeader className="flex flex-row items-center justify-between p-4 pb-2 space-y-0">
-                                                <CardTitle className="text-sm font-medium">
-                                                    {formatActionType(action)}
-                                                </CardTitle>
-                                                {getActionIcon(action, 5)}
-                                            </CardHeader>
-                                            <CardContent className="p-4 pt-0">
-                                                <div className="text-2xl font-bold">{count}</div>
-                                                <p className="text-xs text-muted-foreground">on current page</p>
-                                            </CardContent>
-                                        </Card>
-                                    );
-                                })}
-                            </div>
-                        </div>
+                            {viewMode === 'grid' && renderGridView()}
 
-                        {/* Details panel (shown conditionally) */}
-                        {showDetailPanel && (
-                            <div className="bg-background border rounded-md overflow-hidden">
-                                {isLoadingEntity ? (
-                                    <div className="flex justify-center items-center h-full min-h-[200px]">
-                                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            {viewMode === 'calendar' && (
+                                <div className="p-4">
+                                    <h3 className="text-lg font-medium mb-4">Calendar View</h3>
+                                    <div className="text-center text-muted-foreground mb-4">
+                                        <p>Calendar view coming soon!</p>
+                                        <p className="text-sm">This view will show your interactions organized by date.</p>
                                     </div>
-                                ) : (
-                                    renderEntityDetailsPanel()
-                                )}
+                                </div>
+                            )}
+                        </CardContent>
+                        <CardFooter className="border-t p-3">
+                            <div className="flex flex-col sm:flex-row items-center justify-between w-full text-xs text-muted-foreground gap-4">
+                                <div className="flex-1 text-center sm:text-left">
+                                    {table.getFilteredSelectedRowModel().rows.length > 0 ?
+                                        `${table.getFilteredSelectedRowModel().rows.length} of ` : ''}
+                                    {totalRowCount} row(s)
+                                    {table.getFilteredSelectedRowModel().rows.length > 0 ? ' selected.' : '.'}
+                                </div>
+                                <div className="flex items-center gap-x-2 sm:gap-x-4">
+                                    <div className="flex items-center gap-x-1">
+                                        <span className="hidden sm:inline">Rows:</span>
+                                        <Select
+                                            value={`${pagination.pageSize}`}
+                                            onValueChange={(value) => table.setPageSize(Number(value))}
+                                        >
+                                            <SelectTrigger className="h-7 w-[70px] text-xs">
+                                                <SelectValue placeholder={pagination.pageSize} />
+                                            </SelectTrigger>
+                                            <SelectContent side="top">
+                                                {[10, 20, 50, 100].map((size) => (
+                                                    <SelectItem key={size} value={`${size}`} className="text-xs">{size}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <span className="whitespace-nowrap">
+                                        Page {pagination.pageIndex + 1} of {pageCount || 1}
+                                    </span>
+                                    <div className="flex items-center gap-x-1">
+                                        <Button variant="outline" size="icon-xs" onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()}><ChevronsLeft className="h-3.5 w-3.5" /></Button>
+                                        <Button variant="outline" size="icon-xs" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}><ChevronLeft className="h-3.5 w-3.5" /></Button>
+                                        <Button variant="outline" size="icon-xs" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}><ChevronRight className="h-3.5 w-3.5" /></Button>
+                                        <Button variant="outline" size="icon-xs" onClick={() => table.setPageIndex(pageCount - 1)} disabled={!table.getCanNextPage()}><ChevronsRight className="h-3.5 w-3.5" /></Button>
+                                    </div>
+                                </div>
                             </div>
-                        )}
+                        </CardFooter>
+                    </Card>
+
+                    {/* Summary Statistics */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {["view", "like", "pin", "save"].map(action => {
+                            const count = data.filter(i => i.action_type === action).length;
+                            return (
+                                <Card key={action} className="overflow-hidden">
+                                    <CardHeader className="flex flex-row items-center justify-between p-4 pb-2 space-y-0">
+                                        <CardTitle className="text-sm font-medium">
+                                            {formatActionType(action)}
+                                        </CardTitle>
+                                        {getActionIcon(action, 5)}
+                                    </CardHeader>
+                                    <CardContent className="p-4 pt-0">
+                                        <div className="text-2xl font-bold">{count}</div>
+                                        <p className="text-xs text-muted-foreground">on current page</p>
+                                    </CardContent>
+                                </Card>
+                            );
+                        })}
                     </div>
+
+                    {/* Details panel (shown conditionally) */}
+                    {showDetailPanel && (
+                        <div className="bg-background border rounded-md overflow-hidden mt-4">
+                            {isLoadingEntity ? (
+                                <div className="flex justify-center items-center h-full min-h-[200px]">
+                                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                </div>
+                            ) : (
+                                renderEntityDetailsPanel()
+                            )}
+                        </div>
+                    )}
                 </TabsContent>
 
                 <TabsContent value="analytics" className="mt-6 space-y-6">
@@ -1671,7 +1547,10 @@ const InteractionsView: React.FC = () => {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <Card>
                                     <CardHeader className="p-4 pb-2">
-                                        <CardTitle className="text-base">Total Interactions</CardTitle>
+                                        <CardTitle className="text-base flex items-center">
+                                            <BarChart className="h-4 w-4 mr-2 text-blue-500" />
+                                            Total Interactions
+                                        </CardTitle>
                                     </CardHeader>
                                     <CardContent className="p-4 pt-0">
                                         <div className="flex flex-col">
@@ -1683,7 +1562,10 @@ const InteractionsView: React.FC = () => {
 
                                 <Card>
                                     <CardHeader className="p-4 pb-2">
-                                        <CardTitle className="text-base">Daily Average</CardTitle>
+                                        <CardTitle className="text-base flex items-center">
+                                            <Activity className="h-4 w-4 mr-2 text-green-500" />
+                                            Daily Average
+                                        </CardTitle>
                                     </CardHeader>
                                     <CardContent className="p-4 pt-0">
                                         <div className="flex flex-col">
@@ -1695,16 +1577,19 @@ const InteractionsView: React.FC = () => {
 
                                 <Card>
                                     <CardHeader className="p-4 pb-2">
-                                        <CardTitle className="text-base">Current Streak</CardTitle>
+                                        <CardTitle className="text-base flex items-center">
+                                            <Zap className="h-4 w-4 mr-2 text-amber-500" />
+                                            Current Streak
+                                        </CardTitle>
                                     </CardHeader>
                                     <CardContent className="p-4 pt-0">
                                         <div className="flex flex-col">
                                             <div className="flex items-end gap-2">
-                                                <span className="text-3xl font-bold">{stats.streakData.currentStreak}</span>
+                                                <span className="text-3xl font-bold">{stats.streakData?.currentStreak || 0}</span>
                                                 <span className="text-sm text-muted-foreground mb-1">days</span>
                                             </div>
                                             <span className="text-xs text-muted-foreground">
-                                                Longest: {stats.streakData.longestStreak} days
+                                                Longest: {stats.streakData?.longestStreak || 0} days
                                             </span>
                                         </div>
                                     </CardContent>
@@ -1732,6 +1617,81 @@ const InteractionsView: React.FC = () => {
                                             Activity Calendar
                                         </CardTitle>
                                     </CardHeader>
+                                    <CardContent className="p-4">
+                                        <div className="space-y-3">
+                                            <div className="text-sm text-muted-foreground">
+                                                Activity over the last 30 days
+                                            </div>
+
+                                            {/* Day labels */}
+                                            <div className="grid grid-cols-7 gap-1 text-xs text-muted-foreground text-center">
+                                                <div>Sun</div>
+                                                <div>Mon</div>
+                                                <div>Tue</div>
+                                                <div>Wed</div>
+                                                <div>Thu</div>
+                                                <div>Fri</div>
+                                                <div>Sat</div>
+                                            </div>
+
+                                            {/* Activity grid */}
+                                            <div className="grid grid-cols-7 gap-1">
+                                                {(() => {
+                                                    const last30Days = stats.activityByDay.slice(-30);
+                                                    const today = new Date();
+                                                    const startDate = new Date(today);
+                                                    startDate.setDate(today.getDate() - 29);
+
+                                                    // Get the day of week for the start date (0 = Sunday)
+                                                    const startDayOfWeek = startDate.getDay();
+
+                                                    // Create array with empty cells for proper calendar alignment
+                                                    const calendarCells = [];
+
+                                                    // Add empty cells for days before our start date
+                                                    for (let i = 0; i < startDayOfWeek; i++) {
+                                                        calendarCells.push(
+                                                            <div key={`empty-${i}`} className="w-3 h-3"></div>
+                                                        );
+                                                    }
+
+                                                    // Add activity cells
+                                                    last30Days.forEach((day, index) => {
+                                                        const intensity = day.count > 0 ? Math.min(day.count / 5, 1) : 0;
+                                                        const bgColor = intensity === 0
+                                                            ? 'bg-green-100 dark:bg-green-800'
+                                                            : intensity < 0.3
+                                                            ? 'bg-green-200 dark:bg-green-900'
+                                                            : intensity < 0.6
+                                                            ? 'bg-green-400 dark:bg-green-700'
+                                                            : 'bg-green-600 dark:bg-green-500';
+
+                                                        calendarCells.push(
+                                                            <div
+                                                                key={`day-${index}`}
+                                                                className={`w-3 h-3 rounded-sm ${bgColor} cursor-pointer hover:ring-1 hover:ring-gray-400`}
+                                                                title={`${day.date}: ${day.count} interactions`}
+                                                            />
+                                                        );
+                                                    });
+
+                                                    return calendarCells;
+                                                })()}
+                                            </div>
+
+                                            {/* Legend */}
+                                            <div className="flex items-center justify-between text-xs text-muted-foreground mt-3">
+                                                <span>Less</span>
+                                                <div className="flex gap-1 items-center">
+                                                    <div className="w-2.5 h-2.5 rounded-sm bg-gray-100 dark:bg-gray-800"></div>
+                                                    <div className="w-2.5 h-2.5 rounded-sm bg-green-200 dark:bg-green-900"></div>
+                                                    <div className="w-2.5 h-2.5 rounded-sm bg-green-400 dark:bg-green-700"></div>
+                                                    <div className="w-2.5 h-2.5 rounded-sm bg-green-600 dark:bg-green-500"></div>
+                                                </div>
+                                                <span>More</span>
+                                            </div>
+                                        </div>
+                                    </CardContent>
                                 </Card>
                             </div>
 
@@ -1798,7 +1758,7 @@ const InteractionsView: React.FC = () => {
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                                {stats.recentEntities.map((entity) => (
+                                                {(stats.recentEntities || []).map((entity) => (
                                                     <TableRow key={entity.id}>
                                                         <TableCell>
                                                             <Badge className={getEntityTypeColor(entity.type)}>
@@ -1809,12 +1769,43 @@ const InteractionsView: React.FC = () => {
                                                             {entity.title || entity.text || 'No content'}
                                                         </TableCell>
                                                         <TableCell className="text-right">
-                                                            <Button variant="outline" size="sm" onClick={() => navigate(`/${entity.type}/${entity.id}`)}>
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => {
+                                                                    let path = '';
+                                                                    if (entity.type === 'idea') {
+                                                                        path = `/ideas/${entity.id}`;
+                                                                    } else if (entity.type === 'discussion') {
+                                                                        path = `/discussion/${entity.id}`;
+                                                                    } else if (entity.type === 'topic') {
+                                                                        // For topics, use parent discussion ID if available
+                                                                        if (entity.parent_id) {
+                                                                            path = `/discussion/${entity.parent_id}/topic/${entity.id}`;
+                                                                        } else {
+                                                                            path = `/discussion/unknown/topic/${entity.id}`;
+                                                                        }
+                                                                    }
+
+                                                                    if (path) {
+                                                                        navigate(path);
+                                                                    } else {
+                                                                        toast.warn("Unable to determine entity view path.");
+                                                                    }
+                                                                }}
+                                                            >
                                                                 View
                                                             </Button>
                                                         </TableCell>
                                                     </TableRow>
                                                 ))}
+                                                {(!stats.recentEntities || stats.recentEntities.length === 0) && (
+                                                    <TableRow>
+                                                        <TableCell colSpan={3} className="text-center text-muted-foreground py-4">
+                                                            No recent entities found
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
                                             </TableBody>
                                         </Table>
                                     </div>
@@ -1831,16 +1822,17 @@ const InteractionsView: React.FC = () => {
                                                 Most Active Discussion
                                             </CardTitle>
                                             <Badge variant="outline" className="text-xs">
-                                                {stats.mostActiveDiscussion.count} interactions
+                                                {stats.mostActiveDiscussion?.count || 0} interactions
                                             </Badge>
                                         </div>
                                     </CardHeader>
                                     <CardContent className="p-4 pt-0">
-                                        <p className="font-medium">{stats.mostActiveDiscussion.title}</p>
+                                        <p className="font-medium">{stats.mostActiveDiscussion?.title || 'Unknown Discussion'}</p>
                                         <div className="mt-4 flex justify-end">
                                             <Button
                                                 size="sm"
-                                                onClick={() => navigate(`/discussion/${stats.mostActiveDiscussion!.id}`)}
+                                                onClick={() => navigate(`/discussion/${stats.mostActiveDiscussion?.id || ''}`)}
+                                                disabled={!stats.mostActiveDiscussion?.id}
                                             >
                                                 Go to Discussion
                                             </Button>

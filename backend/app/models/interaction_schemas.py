@@ -13,13 +13,14 @@ class InteractionEvent(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     user_id: Optional[str] = None
     anonymous_id: Optional[str] = None
-    participation_token: Optional[str] = None 
+    participation_token: Optional[str] = None
     entity_id: str
     entity_type: Literal["discussion", "topic", "idea"]
-    action_type: Literal["like", "unlike", "pin", "unpin","save","unsave", "view"]
+    action_type: Literal["like", "unlike", "pin", "unpin","save","unsave", "view", "rate"]
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     client_info: Optional[InteractionEventClientInfo] = None
-    parent_id: Optional[str] = None 
+    parent_id: Optional[str] = None
+    rating_value: Optional[int] = Field(None, ge=0, le=10)
 
 # --- Entity Metrics ---
 class HourlyMetric(BaseModel):
@@ -42,6 +43,10 @@ class Metrics(BaseModel):
     like_count: int = 0
     pin_count: int = 0
     save_count: int = 0
+    rating_count: int = 0
+    rating_sum: int = 0  
+    average_rating: Optional[float] = None
+    rating_distribution: Dict[str, int] = Field(default_factory=lambda: {str(i): 0 for i in range(11)})
     last_activity_at: Optional[datetime] = None
 
 class TimeWindowMetricsContainer(BaseModel):
@@ -81,6 +86,7 @@ class UserState(BaseModel):
     view_count: int = 0
     first_viewed_at: Optional[datetime] = None
     last_viewed_at: Optional[datetime] = None
+    user_rating: Optional[int] = Field(None, ge=0, le=10)
 
 class InteractionStateResponse(BaseModel):
     metrics: Optional[Metrics] = None

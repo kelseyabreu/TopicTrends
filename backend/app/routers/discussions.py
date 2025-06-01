@@ -24,8 +24,14 @@ from app.core.limiter import limiter
 # Clustering function
 from app.services.genkit.cluster import cluster_ideas_into_topics
 
+# Query executor for standardized pagination
+from app.services.query_executor import create_discussion_query_executor
+
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["discussions"])
+
+# Create discussion query executor for standardized pagination
+discussion_query_executor = create_discussion_query_executor()
 
 
 # Helper functions
@@ -132,28 +138,31 @@ async def get_discussion_details(
     return Discussion(**discussion)
 
 
-@router.get("/discussions", response_model=List[Discussion])
+@router.get("/discussions", response_model=None)
 @limiter.limit(settings.DISCUSSION_READ_RATE_LIMIT)
 async def get_discussions(
-    request: Request, 
-    limit: int = 20, 
-    skip: int = 0
+    request: Request,
+    # The params_dependency handles all query parameter parsing and validation
+    # This includes pagination, sorting, filtering, etc.
 ):
-    """Get all discussions (paginated)"""
-    db = await get_db()
-    cursor = db.discussions.find().sort("created_at", -1).skip(skip).limit(limit)
-    discussions = await cursor.to_list(length=limit)
+    """
+    Get discussions with advanced filtering, sorting, and pagination.
 
-    response_list = []
-    for discussion in discussions:
-        discussion["id"] = str(discussion["_id"])
-        discussion.setdefault("idea_count", 0)
-        discussion.setdefault("topic_count", 0)
-        discussion.setdefault("join_link", "")
-        discussion.setdefault("qr_code", "")
-        discussion.setdefault("last_activity", discussion.get("created_at"))
-        response_list.append(Discussion(**discussion))
-    return response_list
+    This endpoint supports:
+    - Pagination with page and page_size
+    - Sorting with sort and sort_dir
+    - Filtering with multiple operators (eq, ne, gt, lt, in, etc.)
+    - Text search across relevant fields
+    - Field projection to limit returned data
+
+    Example queries:
+    - `/api/discussions?page=1&page_size=20&sort=created_at&sort_dir=desc`
+    - `/api/discussions?filter.title.regex=feedback&filter.require_verification=true`
+    - `/api/discussions?search=community&sort=last_activity&sort_dir=desc`
+    """
+    params = await discussion_query_executor.query_service.get_query_parameters_dependency()(request)
+    result = await discussion_query_executor.execute(params=params)
+    return result.to_tanstack_response()
 
 
 @router.delete("/discussions/{discussion_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(verify_csrf_dependency)])

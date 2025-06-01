@@ -1,4 +1,5 @@
 import { Idea } from "./ideas";
+
 export interface Topic {
     id: string;
     representative_idea_id: string;
@@ -7,11 +8,4 @@ export interface Topic {
     ideas: Idea[];
 }
 
-export interface TopicResponse {
-    data: Topic[];
-}
-
-export interface TopicsResponse {
-    topics: Topic[];
-    unclustered_count: number;
-}
+// Legacy interfaces removed - now using standardized PaginatedTopics from pagination.ts

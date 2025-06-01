@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 import { AuthStatus } from '../enums/AuthStatus';
 import api from '../utils/api';
+import { PaginatedIdeas, PaginatedDiscussions, convertTanStackToApiParams } from '../interfaces/pagination';
 import "../styles/AllIdeasView.css";
 
 // Import UI components
@@ -193,22 +194,7 @@ interface Discussion {
     qr_code?: string;
 }
 
-interface PaginatedIdeas {
-    rows: Idea[];
-    pageCount: number;
-    totalRowCount: number;
-    meta: {
-        currentPage: number;
-        pageSize: number;
-        hasPreviousPage: boolean;
-        hasNextPage: boolean;
-        searchTerm: string | null;
-        filtersApplied: Record<string, any>;
-        sortBy: string | null;
-        sortDirection: string | null;
-        executionTimeMs: number;
-    };
-}
+// PaginatedIdeas interface now imported from pagination.ts
 
 interface IdeaAnalytics {
     totalIdeas: number;
@@ -853,29 +839,13 @@ const AllIdeasView: React.FC = () => {
             lastRefreshTimeRef.current = new Date();
 
             try {
-                const queryParams: Record<string, any> = {
-                    page: pagination.pageIndex + 1,
-                    page_size: pagination.pageSize,
-                };
-
-                if (sorting.length > 0) {
-                    queryParams.sort = sorting[0].id;
-                    queryParams.sort_dir = sorting[0].desc ? 'desc' : 'asc';
-                }
-
-                if (debouncedGlobalFilter) {
-                    queryParams.search = debouncedGlobalFilter;
-                }
-
-                columnFilters.forEach(filter => {
-                    if (typeof filter.value === 'object' && filter.value !== null) {
-                        Object.entries(filter.value).forEach(([op, val]) => {
-                            queryParams[`filter.${filter.id}.${op}`] = val;
-                        });
-                    } else {
-                        queryParams[`filter.${filter.id}`] = filter.value;
-                    }
-                });
+                // Convert TanStack state to standard query parameters using utility function
+                const queryParams = convertTanStackToApiParams(
+                    pagination,
+                    sorting,
+                    debouncedGlobalFilter,
+                    columnFilters
+                );
 
                 // Add keyword and related topics filters
                 if (selectedKeywords.length > 0) {
@@ -913,10 +883,10 @@ const AllIdeasView: React.FC = () => {
 
         const fetchDiscussions = async () => {
             try {
-                const response = await api.get<Discussion[]>('/discussions', {
-                    params: { limit: 1000 } // Get all discussions for reference
+                const response = await api.get<PaginatedDiscussions>('/discussions', {
+                    params: { page_size: 200 } // Get all discussions for reference using standardized pagination
                 });
-                setDiscussions(response.data);
+                setDiscussions(response.data.rows);
             } catch (err) {
                 console.error('Error fetching discussions:', err);
             }
@@ -936,9 +906,9 @@ const AllIdeasView: React.FC = () => {
             setAnalyticsError(null);
 
             try {
-                // Generate mock analytics - in real app this would be an API call
-                const mockAnalytics = await generateMockAnalytics();
-                setAnalytics(mockAnalytics);
+                // Fetch real analytics from API
+                const response = await api.get('/analytics/ideas-summary');
+                setAnalytics(response.data);
             } catch (err: any) {
                 console.error('Error fetching analytics:', err);
                 setAnalyticsError('Failed to load analytics.');
@@ -950,63 +920,7 @@ const AllIdeasView: React.FC = () => {
         fetchAnalytics();
     }, [authStatus, activeTab]);
 
-    // Mock analytics generation
-    const generateMockAnalytics = async (): Promise<IdeaAnalytics> => {
-        await new Promise(resolve => setTimeout(resolve, 800));
 
-        return {
-            totalIdeas: totalRowCount,
-            verifiedIdeas: Math.floor(totalRowCount * 0.65),
-            verificationRate: 65,
-            averageOnTopicScore: 0.73,
-            sentimentDistribution: {
-                positive: Math.floor(totalRowCount * 0.45),
-                neutral: Math.floor(totalRowCount * 0.35),
-                negative: Math.floor(totalRowCount * 0.2),
-            },
-            intentDistribution: {
-                suggestion: Math.floor(totalRowCount * 0.35),
-                question: Math.floor(totalRowCount * 0.25),
-                idea: Math.floor(totalRowCount * 0.2),
-                complaint: Math.floor(totalRowCount * 0.1),
-                praise: Math.floor(totalRowCount * 0.1),
-            },
-            specificityDistribution: {
-                high: Math.floor(totalRowCount * 0.3),
-                medium: Math.floor(totalRowCount * 0.5),
-                low: Math.floor(totalRowCount * 0.2),
-            },
-            languageDistribution: {
-                en: Math.floor(totalRowCount * 0.7),
-                es: Math.floor(totalRowCount * 0.15),
-                fr: Math.floor(totalRowCount * 0.08),
-                de: Math.floor(totalRowCount * 0.04),
-                other: Math.floor(totalRowCount * 0.03),
-            },
-            topKeywords: [
-                { keyword: 'improvement', count: 45 },
-                { keyword: 'feature', count: 38 },
-                { keyword: 'user experience', count: 32 },
-                { keyword: 'bug', count: 28 },
-                { keyword: 'suggestion', count: 25 },
-            ],
-            topDiscussions: discussions.slice(0, 5).map(d => ({
-                id: d.id,
-                title: d.title,
-                count: Math.floor(Math.random() * 50) + 10,
-            })),
-            ideasOverTime: Array.from({ length: 30 }, (_, i) => {
-                const date = new Date();
-                date.setDate(date.getDate() - (29 - i));
-                return {
-                    date: date.toISOString().split('T')[0],
-                    count: Math.floor(Math.random() * 20) + 5,
-                };
-            }),
-            topicCoverage: 78,
-            averageKeywordsPerIdea: 3.2,
-        };
-    };
 
     // Event handlers
     const handleCopyIdeaId = (ideaId: string) => {
@@ -2082,7 +1996,7 @@ const AllIdeasView: React.FC = () => {
                                             </TableHeader>
                                             <TableBody>
                                                 {analytics.topDiscussions.map((discussion, index) => (
-                                                    <TableRow key={discussion.id}>
+                                                    <TableRow key={discussion.id || `discussion-${index}`}>
                                                         <TableCell>
                                                             <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-xs font-medium">
                                                                 {index + 1}

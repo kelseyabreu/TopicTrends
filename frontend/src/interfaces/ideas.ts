@@ -13,6 +13,10 @@ export interface Idea {
     sentiment:string;
     specificity:string;
     intent: string;
+    // Rating system fields
+    average_rating?: number;
+    rating_count: number;
+    rating_distribution?: Record<string, number>;
 }
 export interface IdeaStats {
     intentCounts: Record<string, number>;

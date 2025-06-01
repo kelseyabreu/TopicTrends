@@ -9,11 +9,37 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "../context/AuthContext";
 import { AuthStatus } from "../enums/AuthStatus";
-import { Lightbulb, Loader2, Trash2, Waves, Zap, Star, BarChart3 } from "lucide-react"; // Import Zap icon or similar for grouping
-import { Discussion } from "../interfaces/discussions"; // Import Discussion type
-import { Topic, TopicsResponse } from "../interfaces/topics"; // Import Topic type
-import { Idea } from "../interfaces/ideas"; // Import Idea type
-import TopicListItem from "../components/TopicListItem"; // Import our custom TopicListItem component
+import { InteractionStateProvider, useInteractionState } from "../context/InteractionStateContext";
+import {
+  Lightbulb,
+  Loader2,
+  Trash2,
+  Waves,
+  Zap,
+  Star,
+  BarChart3,
+  Plus,
+  Share2,
+  Menu,
+  X,
+  ChevronDown,
+  ChevronUp,
+  Heart,
+  Bookmark,
+  Pin,
+  Users,
+  MessageCircle,
+  TrendingUp,
+  Filter,
+  SortDesc,
+  SortAsc,
+  MessageSquareText
+} from "lucide-react";
+import { Discussion } from "../interfaces/discussions";
+import { Topic } from "../interfaces/topics";
+import { Idea } from "../interfaces/ideas";
+import { PaginatedTopics, convertTanStackToApiParams } from "../interfaces/pagination";
+import TopicListItem from "../components/TopicListItem";
 import InteractionButton, {
   InteractionActionType,
 } from "../components/InteractionButton";
@@ -38,10 +64,12 @@ import {
 const getParticipationTokenKey = (discussionId: string | undefined): string =>
   `TopicTrends_participation_token_${discussionId || "unknown"}`;
 
-function DiscussionView() {
+// Inner component that uses the interaction state context
+function DiscussionViewContent() {
   const { discussionId } = useParams<{ discussionId: string }>();
   const navigate = useNavigate();
   const { user, authStatus, checkAuthStatus } = useAuth();
+  const { loadBulkStates } = useInteractionState();
 
   const [discussion, setDiscussion] = useState<Discussion | null>(null);
   const [idea, setIdea] = useState("");
@@ -53,10 +81,47 @@ function DiscussionView() {
   const [participationToken, setParticipationToken] = useState<string | null>(
     null
   );
+
+  // New mobile-first UI state
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showQuickActions, setShowQuickActions] = useState(false);
+  const [sortBy, setSortBy] = useState<'newest' | 'popular' | 'trending'>('popular');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [filterBy, setFilterBy] = useState<'all' | 'ripple' | 'wave' | 'breaker' | 'tsunami'>('all');
+
+  // Topics pagination and sorting state (separate from main data fetching)
+  const [topicsPagination, setTopicsPagination] = useState({
+    pageIndex: 0, // TanStack uses 0-based indexing
+    pageSize: 20,
+  });
+  const [topicsPageCount, setTopicsPageCount] = useState(1);
+  const [totalTopicsCount, setTotalTopicsCount] = useState(0);
+  const [isTopicsLoading, setIsTopicsLoading] = useState(false);
+  const [isBulkStatesLoading, setIsBulkStatesLoading] = useState(false);
+  const [bulkStatesLoaded, setBulkStatesLoaded] = useState(false);
+
+  // Track which topics have had their bulk states loaded to prevent duplicate calls
+  const loadedTopicsRef = useRef<string>('');
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showNewIdeaModal, setShowNewIdeaModal] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const [isClustering, setIsClustering] = useState(false);
+
+  // Utility functions for filtering (sorting is now handled by the server)
+
+  const filteredTopics = topics
+    .filter(topic => {
+      if (filterBy === 'all') return true;
+      const count = topic.count;
+      switch (filterBy) {
+        case 'ripple': return count <= 10;
+        case 'wave': return count > 10 && count <= 25;
+        case 'breaker': return count > 25 && count <= 50;
+        case 'tsunami': return count > 50;
+        default: return true;
+      }
+    });
 
   const ensureParticipationToken = useCallback(async () => {
     if (!discussionId || authStatus !== AuthStatus.Unauthenticated) {
@@ -152,47 +217,163 @@ function DiscussionView() {
     [discussionId]
   );
 
-  // --- Fetch initial discussion data --- // Also used for refreshing topics after socket update
+  // --- Discussion Data Fetching Function (without topics) ---
   const fetchDiscussionData = useCallback(async () => {
     if (!discussionId) return;
-    console.log(
-      `[DiscussionView Effect ${discussionId}] Fetching discussion data...`
-    );
-    try {
-      const [discussionResponse, topicsResponse] = await Promise.all([
-        api.get<Discussion>(`/discussions/${discussionId}`),
-        api.get<TopicsResponse>(`/discussions/${discussionId}/topics`),
-      ]);
+    console.log(`[DiscussionView] Fetching discussion data for ${discussionId}...`);
 
-      // isMounted check is handled by the useEffect cleanup, no need here if useCallback is used correctly
+    try {
+      const discussionResponse = await api.get<Discussion>(`/discussions/${discussionId}`);
       setDiscussion(discussionResponse.data);
-      const fetchedTopics = Array.isArray(topicsResponse.data.topics)
-        ? topicsResponse.data.topics
-        : [];
-      const sortedTopics = [...fetchedTopics].sort((a, b) => b.count - a.count);
-      setTopics(sortedTopics);
-      setUnclusteredCount(topicsResponse.data.unclustered_count || 0);
-      console.log(
-        `[DiscussionView Effect ${discussionId}] Data fetched successfully.`
-      );
+      console.log(`[DiscussionView] Discussion data fetched successfully.`);
     } catch (error) {
-      // Catch any error type
-      console.error(
-        `[DiscussionView Effect ${discussionId}] Error fetching discussion data:`,
-        error
-      );
-      // isMounted check is handled by the useEffect cleanup
+      console.error(`[DiscussionView] Error fetching discussion data:`, error);
       if (error.response?.status === 404) {
         toast.error("Discussion not found. It might have been deleted.");
-        navigate("/"); // Navigate away if discussion doesn't exist
+        navigate("/");
       } else {
         toast.error(error.message || "Failed to load discussion data.");
       }
     } finally {
-      // isMounted check is handled by the useEffect cleanup
       setIsLoading(false);
     }
-  }, [discussionId, navigate]); // Add navigate to dependencies
+  }, [discussionId, navigate]);
+
+  // --- Topics Data Fetching Function (separate from discussion) ---
+  const fetchTopics = useCallback(async () => {
+    if (!discussionId) return;
+
+    setIsTopicsLoading(true);
+    console.log(`[DiscussionView] Fetching topics with sort: ${sortBy}, direction: ${sortDir}, page: ${topicsPagination.pageIndex + 1}...`);
+
+    try {
+      // Map frontend sort values to backend field names
+      const sortField = sortBy === 'newest' ? 'id' : sortBy === 'popular' ? 'count' : 'count';
+
+      // Convert TanStack pagination state to API parameters using standardized utility
+      const queryParams = convertTanStackToApiParams(
+        topicsPagination,
+        [{ id: sortField, desc: sortDir === 'desc' }],
+        undefined, // no global filter for topics
+        [] // no column filters for topics
+      );
+
+      const topicsResponse = await api.get<PaginatedTopics>(`/discussions/${discussionId}/topics`, {
+        params: queryParams
+      });
+
+      // Use standardized paginated response format
+      const responseData = topicsResponse.data;
+      const fetchedTopics = responseData.rows;
+
+      setTopics(fetchedTopics);
+      setTopicsPageCount(responseData.pageCount);
+      setTotalTopicsCount(responseData.totalRowCount);
+      setUnclusteredCount(responseData.unclustered_count || 0);
+
+      console.log(`[DiscussionView] Topics fetched successfully: ${fetchedTopics.length} topics`);
+    } catch (error) {
+      console.error(`[DiscussionView] Error fetching topics:`, error);
+      toast.error(error.message || "Failed to load topics.");
+    } finally {
+      setIsTopicsLoading(false);
+    }
+  }, [discussionId, sortBy, sortDir, topicsPagination]); // Remove loadBulkStates to prevent infinite loop
+
+  // --- Topics Fetching Effect (separate from main effect) ---
+  useEffect(() => {
+    if (discussionId && authStatus !== AuthStatus.Loading) {
+      // Reset the loaded topics ref when discussion changes
+      loadedTopicsRef.current = '';
+      fetchTopics();
+    }
+  }, [fetchTopics, discussionId, authStatus]);
+
+  // --- Professional Bulk State Loading (stable callback to prevent loops) ---
+  const loadVisibleStates = useCallback(async (visibleTopics: Topic[]) => {
+    if (!discussionId || visibleTopics.length === 0) return;
+
+    try {
+      // Build comprehensive entities list for currently visible topics
+      const entities = [
+        // Discussion state (always load)
+        { type: 'discussion' as const, id: discussionId },
+        // Topic states (only visible topics)
+        ...visibleTopics.map(topic => ({ type: 'topic' as const, id: topic.id })),
+        // Idea states (only from visible topics)
+        ...visibleTopics.flatMap(topic =>
+          topic.ideas.map(idea => ({ type: 'idea' as const, id: idea.id }))
+        )
+      ];
+
+      // Remove duplicates (in case of any)
+      const uniqueEntities = entities.filter((entity, index, self) =>
+        index === self.findIndex(e => e.type === entity.type && e.id === entity.id)
+      );
+
+      if (uniqueEntities.length > 0) {
+        setIsBulkStatesLoading(true);
+        setBulkStatesLoaded(false);
+
+        console.log(`[DiscussionView] Loading bulk states for ${uniqueEntities.length} entities:`, {
+          discussion: uniqueEntities.filter(e => e.type === 'discussion').length,
+          topics: uniqueEntities.filter(e => e.type === 'topic').length,
+          ideas: uniqueEntities.filter(e => e.type === 'idea').length,
+          visibleTopics: visibleTopics.length
+        });
+
+        await loadBulkStates(uniqueEntities);
+
+        setBulkStatesLoaded(true);
+        setIsBulkStatesLoading(false);
+        console.log(`[DiscussionView] ✅ Bulk states loaded successfully for ${uniqueEntities.length} entities`);
+      }
+    } catch (error) {
+      console.error('[DiscussionView] ❌ Error loading bulk states:', error);
+      setBulkStatesLoaded(false);
+      setIsBulkStatesLoading(false);
+      // Don't show error to user as this is not critical for functionality
+      // Individual components will fall back to their own API calls
+    }
+  }, [discussionId, loadBulkStates]); // Stable dependencies
+
+  // --- Smart Bulk State Loading Effect (respects filtering and pagination) ---
+  useEffect(() => {
+    // Only load states for currently visible/filtered topics
+    if (topics.length > 0) {
+      // Apply the same filtering logic as the UI to get actually visible topics
+      const visibleTopics = topics.filter(topic => {
+        if (filterBy === 'all') return true;
+        const count = topic.count;
+        switch (filterBy) {
+          case 'ripple': return count <= 10;
+          case 'wave': return count > 10 && count <= 25;
+          case 'breaker': return count > 25 && count <= 50;
+          case 'tsunami': return count > 50;
+          default: return true;
+        }
+      });
+
+      // Create a unique key for the current visible topics to prevent duplicate loading
+      const topicsKey = visibleTopics.map(t => t.id).sort().join(',');
+
+      // Only load states if we haven't already loaded them for this exact set of topics
+      if (visibleTopics.length > 0 && loadedTopicsRef.current !== topicsKey) {
+        console.log(`[DiscussionView] 🔄 Starting bulk state loading for ${visibleTopics.length} topics...`);
+        setBulkStatesLoaded(false); // Mark as not loaded yet
+        loadedTopicsRef.current = topicsKey;
+        loadVisibleStates(visibleTopics);
+      } else if (visibleTopics.length > 0) {
+        // Same topics, states already loaded
+        console.log(`[DiscussionView] ✅ Bulk states already loaded for current topics`);
+        setBulkStatesLoaded(true);
+      }
+    } else {
+      // No topics, reset state
+      setBulkStatesLoaded(false);
+      loadedTopicsRef.current = '';
+    }
+  }, [topics, filterBy, loadVisibleStates]); // Run when topics or filter changes
 
   // --- Combined Effect for Data Fetching, Socket Connection, PT Management, and Real-time Idea Updates ---
   useEffect(() => {
@@ -277,14 +458,14 @@ function DiscussionView() {
       }
     };
 
-    // Refactored handleTopicsUpdated to trigger data fetch
+    // Refactored handleTopicsUpdated to trigger topics fetch only
     const handleTopicsUpdated = (data: { discussion_id: string }) => {
       if (data.discussion_id === discussionId && isMounted) {
         console.log(
-          `[Socket ${discussionId}] Received topics_updated event. Fetching latest data...`
+          `[Socket ${discussionId}] Received topics_updated event. Fetching latest topics...`
         );
-        // Trigger a fetch of the latest discussion data, which includes topics
-        fetchDiscussionData();
+        // Trigger a fetch of only the topics data (not the entire discussion)
+        fetchTopics();
       } else if (isMounted) {
         console.log(
           `[Socket ${discussionId}] Ignored 'topics_updated' for different discussion (${data.discussion_id})`
@@ -403,7 +584,8 @@ function DiscussionView() {
     authStatus,
     ensureParticipationToken,
     participationToken,
-    fetchDiscussionData, // Add fetchDiscussionData to dependencies
+    fetchDiscussionData,
+    // Note: fetchTopics is NOT included here to prevent page refreshes when sorting/pagination changes
   ]);
 
   // --- Idea Submission Handler (remains mostly the same, no clustering call) ---
@@ -557,284 +739,649 @@ function DiscussionView() {
       authStatus !== AuthStatus.Authenticated);
 
   return (
-    <div className="discussion-view-container">
+    <div className="modern-discussion-container">
       {/* New Idea Modal */}
       <Dialog open={showNewIdeaModal} onOpenChange={setShowNewIdeaModal}>
-        <DialogContent onKeyDown={handleDialogKeyDown}>
+        <DialogContent onKeyDown={handleDialogKeyDown} className="modern-modal">
           <DialogHeader>
-            <DialogTitle>
-              <Lightbulb className="inline" /> New Idea
+            <DialogTitle className="flex items-center gap-2">
+              <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
+                <Lightbulb className="w-5 h-5 text-white" />
+              </div>
+              Share Your Idea
             </DialogTitle>
             <DialogDescription>
-              Share your thoughts on this discussion.
+              Add your thoughts to this discussion and help shape the conversation.
             </DialogDescription>
           </DialogHeader>
-          <form id="new-idea-form" onSubmit={handleSubmit}>
+          <form id="new-idea-form" onSubmit={handleSubmit} className="space-y-4">
             <div className="form-group">
-              <label htmlFor="idea-input">Your Idea</label>
               <Textarea
                 id="idea-input"
                 value={idea}
                 onChange={(e) => setIdea(e.target.value)}
                 placeholder={
-                  discussion.require_verification &&
+                  discussion?.require_verification &&
                   authStatus !== AuthStatus.Authenticated
                     ? "Login required to submit ideas"
-                    : "Share your idea here..."
+                    : "What's your take on this topic? Share your perspective..."
                 }
                 required
                 disabled={submitDisabled || isSubmitting}
                 maxLength={500}
+                className="min-h-[120px] resize-none border-2 focus:border-blue-500 transition-colors"
               />
-              <small className={idea.length > 500 ? "text-red-500" : ""}>
-                {idea.length}/500 chars • Press Ctrl+Enter to submit
-              </small>
+              <div className="flex justify-between items-center mt-2">
+                <small className={`text-sm ${idea.length > 500 ? "text-red-500" : "text-gray-500"}`}>
+                  {idea.length}/500 characters
+                </small>
+                <small className="text-gray-400 text-xs">
+                  Ctrl+Enter to submit
+                </small>
+              </div>
             </div>
-            <DialogFooter className="mt-4">
-              <div className="user-info-dialog">
-                <span
-                  className={`status-badge ${
+            <DialogFooter className="flex-col sm:flex-row gap-3">
+              <div className="flex items-center gap-2 text-sm">
+                <div
+                  className={`px-3 py-1 rounded-full text-xs font-medium ${
                     authStatus === AuthStatus.Authenticated
-                      ? "verified-badge"
-                      : "anonymous-badge"
+                      ? "bg-green-100 text-green-800"
+                      : "bg-gray-100 text-gray-800"
                   }`}
                 >
                   {displayStatus}
-                </span>
-                {discussion.require_verification && (
-                  <Badge variant="default" className="ml-2">
+                </div>
+                {discussion?.require_verification && (
+                  <Badge variant="neutral" className="text-xs">
                     Login Required
                   </Badge>
                 )}
               </div>
-              <DialogClose asChild>
-                <Button variant="default" type="button">
-                  Cancel
+              <div className="flex gap-2">
+                <DialogClose asChild>
+                  <Button variant="neutral" type="button" className="flex-1 sm:flex-none">
+                    Cancel
+                  </Button>
+                </DialogClose>
+                <Button
+                  type="submit"
+                  disabled={submitDisabled}
+                  className={`flex-1 sm:flex-none bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 ${
+                    isSubmitting ? "animate-pulse" : ""
+                  }`}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Submit Idea
+                    </>
+                  )}
                 </Button>
-              </DialogClose>
-              <Button
-                type="submit"
-                disabled={submitDisabled}
-                className={isSubmitting ? "animate-pulse" : ""}
-              >
-                {isSubmitting ? "Submitting..." : "Submit Idea"}
-              </Button>
+              </div>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
-      <div className="bread-crumb-container">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/">Home</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/discussions">Discussions</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>{discussion.title}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      </div>
-      {discussion ? (
-        <>
-          {/* Discussion Info Header */}
-          <div className="discussion-info">
-            {/* ... (title, prompt, stats, share button) ... */}
-            <h1>{discussion.title}</h1>
-            <p className="prompt">{discussion.prompt}</p>
-            <div className="stats">
-              {/* Recalculate stats based on current topics state */}
-              <div className="stat">
-                <span className="stat-value">
-                  {topics.reduce((sum, t) => sum + t.count, 0) +
-                    unclusteredCount}
-                </span>
-                <span className="stat-label">Ideas</span>
-              </div>
-              <div className="stat">
-                <span className="stat-value">{topics.length || 0}</span>
-                <span className="stat-label">Currents</span>
-              </div>
-              {/* Add counts for specific types if needed */}
-            </div>
-            <div className="discussion-actions">
-              {/* Primary Action Buttons */}
+      {/* Modern Mobile Header */}
+      <div className="modern-header">
+        <div className="header-top">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/discussions")}
+            className="text-gray-600 hover:text-gray-900"
+          >
+            <ChevronDown className="w-4 h-4 mr-1 rotate-90" />
+            Back
+          </Button>
+          <div className="flex items-center gap-2">
+            {/* Desktop Action Buttons */}
+            <div className="hidden md:flex items-center gap-2">
               <Button
-                variant="default"
+                variant="neutral"
+                size="sm"
                 onClick={() => setShowShareModal(true)}
-                disabled={!discussion.join_link}
-                className="shareBtn">
+                disabled={!discussion?.join_link}
+              >
+                <Share2 className="w-4 h-4 mr-2" />
                 Share
               </Button>
-              <Button
-                variant="default"
-                onClick={() => setShowNewIdeaModal(true)}
-                disabled={isClustering}>
-                <Lightbulb className="mr-2 h-4 w-4" />
-                New Idea
-              </Button>
 
-              {/* Authenticated User Actions */}
               {authStatus === AuthStatus.Authenticated && (
                 <>
                   <Button
-                    variant="default"
+                    variant="neutral"
+                    size="sm"
                     onClick={handleClusterClick}
-                    disabled={isClustering}>
+                    disabled={isClustering}
+                  >
                     {isClustering ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     ) : (
-                      <Zap className="mr-2 h-4 w-4" />
+                      <Zap className="w-4 h-4 mr-2" />
                     )}
                     Regroup All Ideas
                   </Button>
                   <Button
-                    variant="default"
-                    onClick={() =>
-                      navigate(`/discussion/${discussionId}/new-ideas`)
-                    }>
-                    <Waves className="mr-2 h-4 w-4" />
+                    variant="neutral"
+                    size="sm"
+                    onClick={() => navigate(`/discussion/${discussionId}/new-ideas`)}
+                  >
+                    <Waves className="w-4 h-4 mr-2" />
                     Drifting Ideas ({unclusteredCount})
                   </Button>
                   <Button
-                    variant="default"
-                    onClick={() => navigate(`/discussion/${discussionId}/analytics`)}>
-                    <BarChart3 className="mr-2 h-4 w-4" />
+                    variant="neutral"
+                    size="sm"
+                    onClick={() => navigate(`/discussion/${discussionId}/analytics`)}
+                  >
+                    <BarChart3 className="w-4 h-4 mr-2" />
                     Analytics
                   </Button>
                 </>
               )}
-
-              {/* Interaction Buttons */}
-              {discussionId && (
-                <span className="flex">
-                  <InteractionButton
-                    entityType="discussion"
-                    entityId={discussionId}
-                    actionType="like"
-                    onStateChange={handleEngagementChange}
-                    activeLabel="Liked"
-                  />
-                  <InteractionButton
-                    entityType="discussion"
-                    entityId={discussionId}
-                    actionType="pin"
-                    onStateChange={handleEngagementChange}
-                  />
-                  <InteractionButton
-                    entityType="discussion"
-                    entityId={discussionId}
-                    actionType="save"
-                    activeIcon={
-                      <Star
-                        size={20}
-                        className="text-yellow-500"
-                        fill="currentColor"
-                      />
-                    }
-                    onStateChange={handleEngagementChange}
-                  />
-                </span>
-              )}
-
-              {/* Delete Button */}
-              <Button
-                variant="default"
-                onClick={handleDeleteDiscussion}
-                disabled={isDeleting}
-                className="deleteBtn"
-              >
-                {isDeleting ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="mr-2 h-4 w-4" />
-                )}
-                Delete
-              </Button>
             </div>
-          </div>
 
-          {/* Main Content Area */}
-          <div className="main-content">
-            {/* Topics Section */}
-            <div className="topics-section">
-              {topics.length === 0 ? (
-                <div className="no-topics">
-                  <p>No currents flowing yet. Share an idea!</p>
-                </div>
-              ) : (
-                <div className="topics-list">
-                  {/* Render topics using our custom TopicListItem component */}
-                  {topics.map((topic) => (
-                    <TopicListItem
-                      key={topic.id}
-                      topic={topic}
-                      discussionId={discussionId || ""}
-                      onVote={(topicId, direction) => {
-                        // Handle voting - in a real app, this would call an API
-                        console.log(`Vote ${direction} for topic ${topicId}`);
-                        toast.info(`Voted ${direction} for topic`);
-                      }}
-                      limitIdeas={true}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Share Modal (remains the same) */}
-          {showShareModal && discussion && (
-            // ... modal JSX ...
-            <div
-              className="modal-overlay"
-              onClick={() => setShowShareModal(false)}
+            {/* Mobile Menu Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              className="md:hidden"
             >
-              <div className="share-modal" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                  <h2>Share This Discussion</h2>
-                  <button
-                    className="close-button"
-                    onClick={() => setShowShareModal(false)}
-                  >
-                    ×
-                  </button>
+              <Menu className="w-5 h-5" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Compact Breadcrumbs */}
+        <div className="breadcrumb-container">
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/discussions" className="text-sm text-gray-500 hover:text-gray-700">
+                  Discussions
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage className="text-sm font-medium text-gray-900">
+                  {discussion?.title || 'Loading...'}
+                </BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
+
+        {discussion && (
+          <div className={`header-content ${isHeaderCollapsed ? 'collapsed' : ''}`}>
+            <div className="discussion-title-section">
+              <h1 className="discussion-title">{discussion.title}</h1>
+              <p className="discussion-prompt">{discussion.prompt}</p>
+            </div>
+
+            {/* Modern Stats Cards */}
+            <div className="stats-grid">
+              <div className="stat-card">
+                <div className="stat-icon">
+                  <Lightbulb className="w-5 h-5 text-yellow-500" />
                 </div>
-                <div className="modal-content">
-                  <p>Share link:</p>
-                  <div className="share-link">
-                    <input
-                      type="text"
-                      value={discussion.join_link || ""}
-                      readOnly
-                    />
-                    <Button onClick={copyShareLink}>Copy</Button>
+                <div className="stat-content">
+                  <div className="stat-value">
+                    {topics.reduce((sum, t) => sum + t.count, 0) + unclusteredCount}
                   </div>
-                  {discussion.qr_code && (
-                    <div className="qr-code">
-                      <h3>Or scan QR code:</h3>
-                      <img src={discussion.qr_code} alt="QR Code" />
-                    </div>
-                  )}
+                  <div className="stat-label">Ideas</div>
+                </div>
+              </div>
+
+              <div className="stat-card">
+                <div className="stat-icon">
+                  <MessageSquareText className="w-5 h-5 text-green-500" />
+                </div>
+                <div className="stat-content">
+                  <div className="stat-value">{topics.length || 0}</div>
+                  <div className="stat-label">Topics</div>
+                </div>
+              </div>
+
+              <div className="stat-card">
+                <div className="stat-icon">
+                  <Waves className="w-5 h-5 text-blue-500" />
+                </div>
+                <div className="stat-content">
+                  <div className="stat-value">{unclusteredCount}</div>
+                  <div className="stat-label">Drifting</div>
                 </div>
               </div>
             </div>
-          )}
-        </>
-      ) : (
-        // Error state if discussion failed to load
-        <div className="discussion-view-container error">
-          <h2>Error Loading Discussion</h2>
-          <p>Could not load details. Link incorrect or discussion deleted?</p>
-          <Button onClick={() => navigate("/")}>Go Home</Button>
+          </div>
+        )}
+      </div>
+
+      {/* Mobile Menu Overlay */}
+      {showMobileMenu && (
+        <div className="mobile-menu-overlay" onClick={() => setShowMobileMenu(false)}>
+          <div className="mobile-menu" onClick={(e) => e.stopPropagation()}>
+            <div className="mobile-menu-header">
+              <h3>Actions</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowMobileMenu(false)}
+              >
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+            <div className="mobile-menu-content">
+              <Button
+                variant="neutral"
+                onClick={() => {
+                  setShowShareModal(true);
+                  setShowMobileMenu(false);
+                }}
+                disabled={!discussion?.join_link}
+                className="w-full justify-start"
+              >
+                <Share2 className="w-4 h-4 mr-3" />
+                Share Discussion
+              </Button>
+
+              {authStatus === AuthStatus.Authenticated && (
+                <>
+                  <Button
+                    variant="neutral"
+                    onClick={() => {
+                      handleClusterClick();
+                      setShowMobileMenu(false);
+                    }}
+                    disabled={isClustering}
+                    className="w-full justify-start"
+                  >
+                    {isClustering ? (
+                      <Loader2 className="w-4 h-4 mr-3 animate-spin" />
+                    ) : (
+                      <Zap className="w-4 h-4 mr-3" />
+                    )}
+                    Regroup All Ideas
+                  </Button>
+                  <Button
+                    variant="neutral"
+                    onClick={() => {
+                      navigate(`/discussion/${discussionId}/new-ideas`);
+                      setShowMobileMenu(false);
+                    }}
+                    className="w-full justify-start"
+                  >
+                    <Waves className="w-4 h-4 mr-3" />
+                    Drifting Ideas ({unclusteredCount})
+                  </Button>
+                  <Button
+                    variant="neutral"
+                    onClick={() => {
+                      navigate(`/discussion/${discussionId}/analytics`);
+                      setShowMobileMenu(false);
+                    }}
+                    className="w-full justify-start"
+                  >
+                    <BarChart3 className="w-4 h-4 mr-3" />
+                    Analytics
+                  </Button>
+                  <Button
+                    variant="neutral"
+                    onClick={() => {
+                      handleDeleteDiscussion();
+                      setShowMobileMenu(false);
+                    }}
+                    disabled={isDeleting}
+                    className="w-full justify-start text-red-600 hover:text-red-700"
+                  >
+                    {isDeleting ? (
+                      <Loader2 className="w-4 h-4 mr-3 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4 mr-3" />
+                    )}
+                    Delete Discussion
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       )}
+
+      {/* Quick Actions Bar */}
+      <div className="quick-actions-bar">
+        <div className="quick-actions-content">
+          {/* Interaction Buttons */}
+          {discussionId && (
+            <div className="interaction-buttons">
+              <InteractionButton
+                entityType="discussion"
+                entityId={discussionId}
+                actionType="like"
+                onStateChange={handleEngagementChange}
+                activeIcon={<Heart className="w-4 h-4" fill="currentColor" />}
+                inactiveIcon={<Heart className="w-4 h-4" />}
+                showLabel={false}
+                disableInitialFetch={true} // Use bulk-loaded states
+              />
+              <InteractionButton
+                entityType="discussion"
+                entityId={discussionId}
+                actionType="pin"
+                onStateChange={handleEngagementChange}
+                activeIcon={<Pin className="w-4 h-4" fill="currentColor" />}
+                inactiveIcon={<Pin className="w-4 h-4" />}
+                showLabel={false}
+                disableInitialFetch={true} // Use bulk-loaded states
+              />
+              <InteractionButton
+                entityType="discussion"
+                entityId={discussionId}
+                actionType="save"
+                onStateChange={handleEngagementChange}
+                activeIcon={<Bookmark className="w-4 h-4" fill="currentColor" />}
+                inactiveIcon={<Bookmark className="w-4 h-4" />}
+                showLabel={false}
+                disableInitialFetch={true} // Use bulk-loaded states
+              />
+            </div>
+          )}
+
+          {/* Filter and Sort */}
+          <div className="filter-sort-controls">
+            <Button
+              variant="neutral"
+              size="sm"
+              onClick={() => setShowQuickActions(!showQuickActions)}
+              className="filter-button"
+            >
+              <Filter className="w-4 h-4 mr-1" />
+              Filter
+            </Button>
+            <Button
+              variant="neutral"
+              size="sm"
+              className="sort-button"
+              onClick={() => setSortDir(sortDir === 'desc' ? 'asc' : 'desc')}
+              title={`Currently sorting ${sortBy} ${sortDir === 'desc' ? 'descending' : 'ascending'}. Click to toggle.`}
+            >
+              {sortDir === 'desc' ? (
+                <SortDesc className="w-4 h-4 mr-1" />
+              ) : (
+                <SortAsc className="w-4 h-4 mr-1" />
+              )}
+              {sortBy}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter/Sort Quick Actions Panel */}
+      {showQuickActions && (
+        <div className="quick-actions-panel">
+          <div className="panel-content">
+            <div className="panel-section">
+              <h4>Sort by</h4>
+              <div className="button-group">
+                {(['popular', 'newest', 'trending'] as const).map((sort) => (
+                  <Button
+                    key={sort}
+                    variant={sortBy === sort ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSortBy(sort)}
+                    className="capitalize"
+                  >
+                    {sort}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="panel-section">
+              <h4>Sort direction</h4>
+              <div className="button-group">
+                {(['desc', 'asc'] as const).map((dir) => (
+                  <Button
+                    key={dir}
+                    variant={sortDir === dir ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSortDir(dir)}
+                    className="capitalize flex items-center gap-1"
+                  >
+                    {dir === 'desc' ? (
+                      <SortDesc className="w-3 h-3" />
+                    ) : (
+                      <SortAsc className="w-3 h-3" />
+                    )}
+                    {dir === 'desc' ? 'Descending' : 'Ascending'}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="panel-section">
+              <h4>Filter by type</h4>
+              <div className="button-group">
+                {(['all', 'ripple', 'wave', 'breaker', 'tsunami'] as const).map((filter) => (
+                  <Button
+                    key={filter}
+                    variant={filterBy === filter ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setFilterBy(filter)}
+                    className="capitalize"
+                  >
+                    {filter}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modern Topics List */}
+      <div className="modern-content">
+        {discussion ? (
+          <>
+            {filteredTopics.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-state-icon">
+                  <Waves className="w-16 h-16 text-gray-300" />
+                </div>
+                <h3 className="empty-state-title">No currents flowing yet</h3>
+                <p className="empty-state-description">
+                  Be the first to share an idea and start the conversation!
+                </p>
+                <Button
+                  onClick={() => setShowNewIdeaModal(true)}
+                  className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Share Your Idea
+                </Button>
+              </div>
+            ) : (
+              <>
+                {/* Topics Loading State */}
+                {(isTopicsLoading || isBulkStatesLoading) && (
+                  <div className="flex justify-center items-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+                    <span className="ml-2 text-gray-600">
+                      {isTopicsLoading ? "Loading topics..." : "Loading interaction states..."}
+                    </span>
+                  </div>
+                )}
+
+                {/* Topics List - Only render when bulk states are ready */}
+                {!isTopicsLoading && !isBulkStatesLoading && (
+                  <div className="modern-topics-list">
+                    {filteredTopics.map((topic) => (
+                      <TopicListItem
+                        key={topic.id}
+                        topic={topic}
+                        discussionId={discussionId || ""}
+                        limitIdeas={true}
+                        participationToken={participationToken}
+                        disableInitialFetch={true} // Always disable since we're loading bulk states first
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* Pagination Controls */}
+                {topicsPageCount > 1 && (
+                  <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-white">
+                    <div className="flex items-center text-sm text-gray-700">
+                      <span>
+                        Showing {topicsPagination.pageIndex * topicsPagination.pageSize + 1} to{' '}
+                        {Math.min((topicsPagination.pageIndex + 1) * topicsPagination.pageSize, totalTopicsCount)} of{' '}
+                        {totalTopicsCount} topics
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="neutral"
+                        size="sm"
+                        onClick={() => setTopicsPagination(prev => ({ ...prev, pageIndex: 0 }))}
+                        disabled={topicsPagination.pageIndex === 0}
+                      >
+                        First
+                      </Button>
+                      <Button
+                        variant="neutral"
+                        size="sm"
+                        onClick={() => setTopicsPagination(prev => ({ ...prev, pageIndex: prev.pageIndex - 1 }))}
+                        disabled={topicsPagination.pageIndex === 0}
+                      >
+                        Previous
+                      </Button>
+                      <span className="text-sm text-gray-700">
+                        Page {topicsPagination.pageIndex + 1} of {topicsPageCount}
+                      </span>
+                      <Button
+                        variant="neutral"
+                        size="sm"
+                        onClick={() => setTopicsPagination(prev => ({ ...prev, pageIndex: prev.pageIndex + 1 }))}
+                        disabled={topicsPagination.pageIndex >= topicsPageCount - 1}
+                      >
+                        Next
+                      </Button>
+                      <Button
+                        variant="neutral"
+                        size="sm"
+                        onClick={() => setTopicsPagination(prev => ({ ...prev, pageIndex: topicsPageCount - 1 }))}
+                        disabled={topicsPagination.pageIndex >= topicsPageCount - 1}
+                      >
+                        Last
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        ) : (
+          <div className="error-state">
+            <h2>Discussion not found</h2>
+            <p>This discussion may have been deleted or the link is incorrect.</p>
+            <Button onClick={() => navigate("/discussions")} variant="neutral">
+              Browse Discussions
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Floating Action Button */}
+      <div className="fab-container">
+        <Button
+          onClick={() => setShowNewIdeaModal(true)}
+          disabled={isClustering}
+          className="fab bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 shadow-lg hover:shadow-xl"
+        >
+          <Plus className="w-6 h-6" />
+        </Button>
+      </div>
+
+      {/* Modern Share Modal */}
+      <Dialog open={showShareModal} onOpenChange={setShowShareModal}>
+        <DialogContent className="modern-modal">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="p-2 bg-gradient-to-r from-green-500 to-blue-600 rounded-lg">
+                <Share2 className="w-5 h-5 text-white" />
+              </div>
+              Share Discussion
+            </DialogTitle>
+            <DialogDescription>
+              Invite others to join this discussion and share their ideas.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                Discussion Link
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={discussion?.join_link || ""}
+                  readOnly
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm"
+                />
+                <Button onClick={copyShareLink} size="sm">
+                  Copy
+                </Button>
+              </div>
+            </div>
+            {discussion?.qr_code && (
+              <div className="text-center">
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  QR Code
+                </label>
+                <div className="inline-block p-4 bg-white border border-gray-200 rounded-lg">
+                  <img
+                    src={discussion.qr_code}
+                    alt="QR Code for discussion"
+                    className="w-32 h-32"
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Scan with your phone to join
+                </p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+// Main wrapper component that provides the interaction state context
+function DiscussionView() {
+  const { discussionId } = useParams<{ discussionId: string }>();
+  const [participationToken, setParticipationToken] = useState<string | null>(null);
+  const { authStatus } = useAuth();
+
+  // Get participation token for the provider
+  useEffect(() => {
+    if (authStatus === AuthStatus.Unauthenticated && discussionId) {
+      const storageKey = getParticipationTokenKey(discussionId);
+      const token = sessionStorage.getItem(storageKey);
+      setParticipationToken(token);
+    } else {
+      setParticipationToken(null);
+    }
+  }, [authStatus, discussionId]);
+
+  return (
+    <InteractionStateProvider participationToken={participationToken}>
+      <DiscussionViewContent />
+    </InteractionStateProvider>
   );
 }
 

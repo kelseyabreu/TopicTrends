@@ -1,5 +1,5 @@
 .navMenuDropdownWidth {
-    width: 370px;
+    width: 315px;
 }
 
 .logo {
@@ -101,6 +101,10 @@
     .header {
       padding: 10px 15px; 
   }
+
+  .container {
+      padding: 0 15px;
+  }
   
   .logo {
       font-size: 18px; 
@@ -114,7 +118,6 @@
     right: 0;
     opacity: 1;
     transition: all 0.5s ease;
-    z-index: 1;
   }
   
   .links a {
@@ -140,6 +143,10 @@
         padding: 5px 10px; 
     }
 
+    .container {
+        padding: 0 10px;
+    }
+
     .logo {
         font-size: 18px; 
     }
@@ -153,11 +160,11 @@
     .header [data-slot="navigation-menu-trigger"] {
         height: 28px;
         padding: 4px 8px;
-        font-size: 13px;
+        font-size: 11px;
     }
 
     .header [data-slot="navigation-menu-link"] {
         padding: 6px;
-        font-size: 13px;
+        font-size: 11px;
     }
 }
