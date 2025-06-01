@@ -113,13 +113,39 @@ interface ROIDashboardData {
 interface ROIDashboardProps {
   discussionId: string;
   className?: string;
+  // 🚀 NEW: Accept consolidated data from parent to eliminate duplicate API calls
+  roiData?: any | null;
+  loading?: boolean;
+  error?: string | null;
 }
 
-const ROIDashboard: React.FC<ROIDashboardProps> = ({ discussionId, className = "" }) => {
-  const [roiData, setRoiData] = useState<ROIDashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+const ROIDashboard: React.FC<ROIDashboardProps> = ({
+  discussionId,
+  className = "",
+  roiData: propRoiData,
+  loading: propLoading = false,
+  error: propError = null
+}) => {
+  const [internalRoiData, setInternalRoiData] = useState<ROIDashboardData | null>(null);
+  const [internalLoading, setInternalLoading] = useState(true);
   const [metricsLoading, setMetricsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [internalError, setInternalError] = useState<string | null>(null);
+
+  // 🚀 SMART DATA HANDLING: Use props if available, otherwise fetch internally
+  const roiData = propRoiData || internalRoiData;
+  const loading = propRoiData ? propLoading : internalLoading;
+  const error = propError || internalError;
+
+  // 🚀 SAFE ROI SUMMARY: Extract ROI summary with proper null checks
+  const roiSummary = roiData?.roi_metrics ? {
+    total_cost_savings: roiData.roi_metrics.cost_savings?.total_cost_savings || 0,
+    time_saved_hours: roiData.roi_metrics.time_savings?.time_saved_hours || 0,
+    time_saved_percentage: roiData.roi_metrics.time_savings?.time_saved_percentage || 0,
+    total_participants: roiData.roi_metrics.efficiency?.total_participants || 0,
+    total_ideas: roiData.roi_metrics.efficiency?.total_ideas || 0,
+    processing_speed_multiplier: roiData.roi_metrics.efficiency?.processing_speed_multiplier || 0,
+    volume_advantage: roiData.roi_metrics.business_impact?.volume_advantage || "AI scales better"
+  } : null;
   const [timeWindow, setTimeWindow] = useState('all');
   const [hourlyRate, setHourlyRate] = useState(30);
   const [hourlyRateInput, setHourlyRateInput] = useState('30'); // For input display
@@ -153,41 +179,49 @@ const ROIDashboard: React.FC<ROIDashboardProps> = ({ discussionId, className = "
   }, [hourlyRateInput, hourlyRate]);
 
   useEffect(() => {
-    // Create a unique key for current parameters to prevent duplicate calls
-    const currentParams = `${discussionId}-${timeWindow}-${hourlyRate}-${usageFrequency}`;
+    // 🚀 OPTIMIZED: Only fetch data if not provided via props
+    if (!propRoiData) {
+      // Create a unique key for current parameters to prevent duplicate calls
+      const currentParams = `${discussionId}-${timeWindow}-${hourlyRate}-${usageFrequency}`;
 
-    // Only fetch if parameters have actually changed
-    if (currentParams !== lastFetchParams) {
-      setLastFetchParams(currentParams);
-      fetchROIData();
+      // Only fetch if parameters have actually changed
+      if (currentParams !== lastFetchParams) {
+        setLastFetchParams(currentParams);
+        fetchROIData();
+      }
+    } else {
+      // If props are provided, set internal loading to false
+      setInternalLoading(false);
     }
-  }, [discussionId, timeWindow, hourlyRate, usageFrequency, lastFetchParams]);
+  }, [discussionId, timeWindow, hourlyRate, usageFrequency, lastFetchParams, propRoiData]);
 
   const fetchROIData = async () => {
     // Use different loading states based on whether this is initial load or update
-    if (!roiData) {
-      setLoading(true);
+    if (!internalRoiData) {
+      setInternalLoading(true);
     } else {
       setMetricsLoading(true);
     }
-    setError(null);
+    setInternalError(null);
 
     try {
-      const response = await api.get(`/analytics/roi`, {
+      // 🚀 UNIFIED ENDPOINT: Use /summary with include_roi=true (fallback when no props)
+      const response = await api.get(`/analytics/summary`, {
         params: {
           discussion_id: discussionId,
           time_window: timeWindow,
+          include_roi: true,
           hourly_rate: hourlyRate,
           usage_frequency: usageFrequency
         }
       });
-      setRoiData(response.data);
+      setInternalRoiData(response.data);
     } catch (err: any) {
       console.error('Error fetching ROI data:', err);
-      setError('Failed to load ROI metrics');
+      setInternalError('Failed to load ROI metrics');
       toast.error('Failed to load ROI data');
     } finally {
-      setLoading(false);
+      setInternalLoading(false);
       setMetricsLoading(false);
     }
   };
@@ -219,10 +253,11 @@ const ROIDashboard: React.FC<ROIDashboardProps> = ({ discussionId, className = "
     );
   }
 
-  if (error || !roiData || !roiData.roi_metrics) {
+  // 🚀 ENHANCED ERROR HANDLING: Better checks for different data structures
+  if (error) {
     return (
       <div className={`${className} text-center py-8`}>
-        <p className="text-red-500 mb-4">{error || 'No ROI data available'}</p>
+        <p className="text-red-500 mb-4">{error}</p>
         <Button onClick={fetchROIData} variant="outline">
           <RefreshCw className="h-4 w-4 mr-2" />
           Try Again
@@ -231,16 +266,34 @@ const ROIDashboard: React.FC<ROIDashboardProps> = ({ discussionId, className = "
     );
   }
 
-  const { roi_metrics: metrics, analytics_summary } = roiData;
+  if (!roiData) {
+    return (
+      <div className={`${className} text-center py-8`}>
+        <p className="text-gray-500 mb-4">No ROI data available</p>
+        <Button onClick={fetchROIData} variant="outline">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Load ROI Data
+        </Button>
+      </div>
+    );
+  }
 
-  // Safety check for metrics
+  // 🚀 FLEXIBLE DATA ACCESS: Handle different data structures
+  const metrics = roiData.roi_metrics || roiData;
+  const analytics_summary = roiData.analytics_summary;
+
+  // Safety check for metrics structure
   if (!metrics || !metrics.cost_savings || !metrics.time_savings || !metrics.efficiency) {
     return (
       <div className={`${className} text-center py-8`}>
-        <p className="text-red-500 mb-4">Invalid ROI data structure</p>
+        <p className="text-orange-500 mb-4">ROI data is loading or incomplete...</p>
+        <div className="text-sm text-gray-600 mb-4">
+          <p>Expected: cost_savings, time_savings, efficiency</p>
+          <p>Received: {Object.keys(metrics || {}).join(', ') || 'No data'}</p>
+        </div>
         <Button onClick={fetchROIData} variant="outline">
           <RefreshCw className="h-4 w-4 mr-2" />
-          Try Again
+          Retry
         </Button>
       </div>
     );
@@ -250,15 +303,15 @@ const ROIDashboard: React.FC<ROIDashboardProps> = ({ discussionId, className = "
     <div className={className}>
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Target className="h-6 w-6 text-green-600" />
-            <h2 className="text-2xl font-bold">ROI Dashboard</h2>
-            <Badge variant="default" className="bg-green-100 text-green-800">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
+          <div className="flex items-center gap-2 min-w-0">
+            <Target className="h-5 w-5 lg:h-6 lg:w-6 text-green-600 shrink-0" />
+            <h2 className="text-xl lg:text-2xl font-bold truncate">ROI Dashboard</h2>
+            <Badge variant="default" className="bg-green-100 text-green-800 shrink-0">
               Live Metrics
             </Badge>
           </div>
-          <div className="flex gap-4 flex-wrap">
+          <div className="flex flex-wrap gap-2 sm:gap-4">
             <div className="flex flex-col gap-1">
               <Label htmlFor="hourly-rate" className="text-xs">
                 Hourly Rate
@@ -270,7 +323,7 @@ const ROIDashboard: React.FC<ROIDashboardProps> = ({ discussionId, className = "
                   type="number"
                   value={hourlyRateInput}
                   onChange={(e) => setHourlyRateInput(e.target.value)}
-                  className={`w-20 h-8 ${hourlyRatePending ? 'border-orange-300 bg-orange-50' : ''}`}
+                  className={`w-16 sm:w-20 h-8 ${hourlyRatePending ? 'border-orange-300 bg-orange-50' : ''}`}
                   min="1"
                   max="500"
                   placeholder="30"
@@ -278,10 +331,10 @@ const ROIDashboard: React.FC<ROIDashboardProps> = ({ discussionId, className = "
               </div>
             </div>
 
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 min-w-[120px]">
               <Label htmlFor="usage-frequency" className="text-xs">Usage Frequency</Label>
               <Select value={usageFrequency} onValueChange={setUsageFrequency}>
-                <SelectTrigger className="w-32 h-8">
+                <SelectTrigger className="w-[120px] h-8">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -293,10 +346,10 @@ const ROIDashboard: React.FC<ROIDashboardProps> = ({ discussionId, className = "
               </Select>
             </div>
 
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 min-w-[100px]">
               <Label htmlFor="time-window" className="text-xs">Time Window</Label>
               <Select value={timeWindow} onValueChange={setTimeWindow}>
-                <SelectTrigger className="w-32 h-8">
+                <SelectTrigger className="w-[100px] h-8">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -316,16 +369,17 @@ const ROIDashboard: React.FC<ROIDashboardProps> = ({ discussionId, className = "
                 onClick={() => setShowCalculations(!showCalculations)}
                 variant="outline"
                 size="sm"
-                className="h-8"
+                className="h-8 px-3"
               >
                 <Calculator className="h-3 w-3 mr-1" />
                 {showCalculations ? 'Hide' : 'Show'}
               </Button>
             </div>
+
           </div>
         </div>
-        <p className="text-gray-600">
-          Business value analysis for "{roiData.discussion_title}"
+        <p className="text-gray-600 text-sm lg:text-base truncate">
+          Business value analysis for "{roiData.discussion_title || 'Discussion'}"
         </p>
       </div>
 
@@ -744,6 +798,8 @@ const ROIDashboard: React.FC<ROIDashboardProps> = ({ discussionId, className = "
           </div>
         </CardContent>
       </Card>
+
+
     </div>
   );
 };

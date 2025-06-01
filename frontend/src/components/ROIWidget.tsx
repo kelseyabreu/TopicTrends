@@ -19,6 +19,10 @@ interface ROIWidgetProps {
   className?: string;
   hourlyRate?: number;
   usageFrequency?: string;
+  // NEW: Accept ROI data as props to eliminate duplicate API calls
+  roiData?: ROISummary | null;
+  loading?: boolean;
+  error?: string | null;
 }
 
 interface ROISummary {
@@ -36,24 +40,42 @@ const ROIWidget: React.FC<ROIWidgetProps> = ({
   discussionTitle = "Discussion",
   className = "",
   hourlyRate = 30,
-  usageFrequency = "monthly"
+  usageFrequency = "monthly",
+  // NEW: Props for consolidated data
+  roiData: propRoiData = null,
+  loading: propLoading = false,
+  error: propError = null
 }) => {
-  const [roiData, setRoiData] = useState<ROISummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [internalRoiData, setInternalRoiData] = useState<ROISummary | null>(null);
+  const [internalLoading, setInternalLoading] = useState(true);
+  const [internalError, setInternalError] = useState<string | null>(null);
+
+  // Use props if available, otherwise use internal state
+  const roiData = propRoiData || internalRoiData;
+  const loading = propRoiData ? propLoading : internalLoading;
+  const error = propError || internalError;
 
   useEffect(() => {
-    fetchROIData();
-  }, [discussionId, hourlyRate, usageFrequency]);
+    // 🚀 OPTIMIZED: Only fetch data if not provided via props (legacy support)
+    if (!propRoiData) {
+      console.warn('ROIWidget: No data provided via props, falling back to API call. Consider using ROIDashboard for consolidated data.');
+      fetchROIData();
+    } else {
+      // If props are provided, don't fetch and set internal loading to false
+      setInternalLoading(false);
+    }
+  }, [discussionId, hourlyRate, usageFrequency, propRoiData]);
 
   const fetchROIData = async () => {
-    setLoading(true);
-    setError(null);
+    setInternalLoading(true);
+    setInternalError(null);
     try {
-      const response = await api.get(`/analytics/roi`, {
+      // 🚀 UNIFIED ENDPOINT: Use /summary with include_roi=true (fallback)
+      const response = await api.get(`/analytics/summary`, {
         params: {
           discussion_id: discussionId,
           time_window: 'all',
+          include_roi: true,
           hourly_rate: hourlyRate,
           usage_frequency: usageFrequency
         }
@@ -66,7 +88,7 @@ const ROIWidget: React.FC<ROIWidgetProps> = ({
       }
 
       // Extract summary data
-      setRoiData({
+      setInternalRoiData({
         total_cost_savings: data.roi_metrics.cost_savings.total_cost_savings || 0,
         time_saved_hours: data.roi_metrics.time_savings.time_saved_hours || 0,
         time_saved_percentage: data.roi_metrics.time_savings.time_saved_percentage || 0,
@@ -77,9 +99,9 @@ const ROIWidget: React.FC<ROIWidgetProps> = ({
       });
     } catch (err: any) {
       console.error('Error fetching ROI data:', err);
-      setError('Failed to load ROI data');
+      setInternalError('Failed to load ROI data');
     } finally {
-      setLoading(false);
+      setInternalLoading(false);
     }
   };
 

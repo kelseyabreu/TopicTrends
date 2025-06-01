@@ -19,7 +19,7 @@ import {
     CardTitle,
     CardDescription
 } from '../components/ui/card';
-import ROIWidget from '../components/ROIWidget';
+
 
 import {
     Loader2,
@@ -179,25 +179,7 @@ const UserDashboard: React.FC = () => {
                 </Card>
             </div>
 
-            {/* ROI Widgets for Recent Discussions */}
-            {discussions.length > 0 && (
-                <div className="roi-section">
-                    <div className="section-header">
-                        <h2>ROI Insights</h2>
-                        <p className="text-gray-600">Business value from your recent discussions</p>
-                    </div>
-                    <div className="roi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
-                        {discussions.slice(0, 3).map(discussion => (
-                            <ROIWidget
-                                key={discussion.id}
-                                discussionId={discussion.id}
-                                discussionTitle={discussion.title}
-                                className="roi-widget"
-                            />
-                        ))}
-                    </div>
-                </div>
-            )}
+
 
             {/* Engagement Analytics Section */}
             {engagement && (
@@ -319,12 +301,6 @@ const UserDashboard: React.FC = () => {
                                             className="w-full"
                                         >
                                             View Discussion
-                                        </Button>
-                                        <Button
-                                            onClick={() => navigate(`/discussion/${discussion.id}/analytics`)}
-                                            className="w-full bg-green-600 hover:bg-green-700 text-white"
-                                        >
-                                            View ROI Analytics
                                         </Button>
                                     </div>
                                 </CardContent>

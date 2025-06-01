@@ -42,6 +42,7 @@ function DiscussionAnalytics() {
   const [timeWindow, setTimeWindow] = useState('24h');
   const [analyticsData, setAnalyticsData] = useState(null);
   const [discussion, setDiscussion] = useState(null);
+  const [activeTab, setActiveTab] = useState('roi'); // 🚀 DEFAULT TO ROI TAB
 
   useEffect(() => {
     if (!discussionId) {
@@ -51,6 +52,8 @@ function DiscussionAnalytics() {
     fetchAnalytics();
     fetchDiscussion();
   }, [discussionId, timeWindow]);
+
+
 
   const fetchDiscussion = async () => {
     try {
@@ -64,10 +67,14 @@ function DiscussionAnalytics() {
     const fetchAnalytics = async () => {
         setLoading(true);
         try {
+            // 🚀 UNIFIED ENDPOINT: Analytics + ROI in single call (ROI is default tab)
             const response = await api.get(`/analytics/summary`, {
                 params: {
                     discussion_id: discussionId,
-                    time_window: timeWindow
+                    time_window: timeWindow,
+                    include_roi: true,  // Include ROI since it's the default tab
+                    hourly_rate: 30,
+                    usage_frequency: 'monthly'
                 }
             });
             setAnalyticsData(response.data);
@@ -78,6 +85,8 @@ function DiscussionAnalytics() {
             setLoading(false);
         }
     };
+
+
 
 
 
@@ -157,17 +166,17 @@ function DiscussionAnalytics() {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
+    <div className="container mx-auto p-3 sm:p-6 max-w-7xl">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
-            <p className="text-gray-600 mt-1">{discussion?.title || 'Discussion Analytics'}</p>
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-2xl lg:text-3xl font-bold truncate">Analytics Dashboard</h1>
+            <p className="text-gray-600 mt-1 text-sm lg:text-base truncate">{discussion?.title || 'Discussion Analytics'}</p>
           </div>
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 shrink-0">
             <Select value={timeWindow} onValueChange={setTimeWindow}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-full sm:w-40 lg:w-48">
                 <SelectValue placeholder="Time Window" />
               </SelectTrigger>
               <SelectContent>
@@ -179,7 +188,11 @@ function DiscussionAnalytics() {
                 <SelectItem value="all">All Time</SelectItem>
               </SelectContent>
             </Select>
-            <Button onClick={() => navigate(`/discussion/${discussionId}`)}>
+
+            <Button
+              onClick={() => navigate(`/discussion/${discussionId}`)}
+              className="w-full sm:w-auto whitespace-nowrap"
+            >
               Back to Discussion
             </Button>
           </div>
@@ -242,25 +255,38 @@ function DiscussionAnalytics() {
       </div>
 
       {/* Main Content Tabs */}
-      <Tabs defaultValue="roi" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="roi">
-            <Target className="h-4 w-4 mr-2" />
-            ROI
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        {/* 🚀 ANALYTICS + ROI TABS */}
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 h-auto min-h-[48px] p-1">
+          <TabsTrigger value="roi" className="text-xs sm:text-sm flex items-center justify-center gap-1 h-10 sm:h-auto">
+            <Target className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">ROI</span>
           </TabsTrigger>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="participation">Participation</TabsTrigger>
-          <TabsTrigger value="engagement">Engagement</TabsTrigger>
-          <TabsTrigger value="trending">Trending</TabsTrigger>
-          <TabsTrigger value="advanced">
-            <Brain className="h-4 w-4 mr-2" />
-            Advanced
+          <TabsTrigger value="overview" className="text-xs sm:text-sm h-10 sm:h-auto">Overview</TabsTrigger>
+          <TabsTrigger value="participation" className="text-xs sm:text-sm h-10 sm:h-auto">
+            <span className="hidden sm:inline">Participation</span>
+            <span className="sm:hidden">Parts</span>
+          </TabsTrigger>
+          <TabsTrigger value="engagement" className="text-xs sm:text-sm h-10 sm:h-auto">
+            <span className="hidden sm:inline">Engagement</span>
+            <span className="sm:hidden">Engage</span>
+          </TabsTrigger>
+          <TabsTrigger value="trending" className="text-xs sm:text-sm h-10 sm:h-auto">Trending</TabsTrigger>
+          <TabsTrigger value="advanced" className="text-xs sm:text-sm flex items-center justify-center gap-1 h-10 sm:h-auto">
+            <Brain className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Advanced</span>
+            <span className="sm:hidden">Adv</span>
           </TabsTrigger>
         </TabsList>
 
-        {/* ROI Tab */}
+        {/* ROI Tab - 🚀 FULL ROI DASHBOARD: Uses consolidated data from single API call */}
         <TabsContent value="roi" className="space-y-4">
-          <ROIDashboard discussionId={discussionId!} />
+          <ROIDashboard
+            discussionId={discussionId!}
+            roiData={analyticsData || null}
+            loading={loading}
+            error={null}
+          />
         </TabsContent>
 
         {/* Overview Tab */}
@@ -271,24 +297,35 @@ function DiscussionAnalytics() {
                 <CardTitle>Idea Submission Timeline</CardTitle>
                 <CardDescription>Ideas submitted over time</CardDescription>
               </CardHeader>
-              <CardContent>
-                <ChartContainer config={chartConfig} className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={hourlyChartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="hour" />
-                      <YAxis />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Area
-                        type="monotone"
-                        dataKey="ideas"
-                        stroke="#3498db"
-                        fill="#3498db"
-                        fillOpacity={0.3}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
+              <CardContent className="p-3 sm:p-6">
+                <div className="w-full overflow-hidden">
+                  <ChartContainer config={chartConfig} className="h-[250px] sm:h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={hourlyChartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="hour"
+                          fontSize={12}
+                          tick={{ fontSize: 10 }}
+                          interval="preserveStartEnd"
+                        />
+                        <YAxis
+                          fontSize={12}
+                          tick={{ fontSize: 10 }}
+                          width={30}
+                        />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Area
+                          type="monotone"
+                          dataKey="ideas"
+                          stroke="#3498db"
+                          fill="#3498db"
+                          fillOpacity={0.3}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </div>
               </CardContent>
             </Card>
 
@@ -297,27 +334,29 @@ function DiscussionAnalytics() {
                 <CardTitle>Topic Distribution</CardTitle>
                 <CardDescription>Ideas grouped by topic</CardDescription>
               </CardHeader>
-              <CardContent>
-                <ChartContainer config={chartConfig} className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={topicDistributionData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {topicDistributionData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <ChartTooltip content={<CustomTooltip />} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
+              <CardContent className="p-3 sm:p-6">
+                <div className="w-full overflow-hidden">
+                  <ChartContainer config={chartConfig} className="h-[250px] sm:h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                        <Pie
+                          data={topicDistributionData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          outerRadius="70%"
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {topicDistributionData.map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <ChartTooltip content={<CustomTooltip />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -405,18 +444,32 @@ function DiscussionAnalytics() {
                 <CardTitle>Interaction Metrics</CardTitle>
                 <CardDescription>User engagement with ideas</CardDescription>
               </CardHeader>
-              <CardContent>
-                <ChartContainer config={chartConfig} className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={interactionData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar dataKey="value" fill="#3498db" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
+              <CardContent className="p-3 sm:p-6">
+                <div className="w-full overflow-hidden">
+                  <ChartContainer config={chartConfig} className="h-[250px] sm:h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={interactionData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="name"
+                          fontSize={12}
+                          tick={{ fontSize: 10 }}
+                          interval={0}
+                          angle={-45}
+                          textAnchor="end"
+                          height={60}
+                        />
+                        <YAxis
+                          fontSize={12}
+                          tick={{ fontSize: 10 }}
+                          width={30}
+                        />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Bar dataKey="value" fill="#3498db" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </div>
               </CardContent>
             </Card>
 

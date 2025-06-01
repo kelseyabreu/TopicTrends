@@ -21,22 +21,28 @@ logger = logging.getLogger(__name__)
 async def get_analytics_summary(
     discussion_id: str,
     time_window: str = "24h",  # 1h, 24h, 7d, 30d, 1y, all
+    include_roi: bool = False,  # NEW: Include ROI calculations
+    hourly_rate: float = 30.0,  # NEW: For ROI calculations
+    usage_frequency: str = "monthly",  # NEW: For ROI projections
     db = Depends(get_db),
     current_user: dict = Depends(verify_token_cookie)
 ):
     """
     🎯 UNIFIED ANALYTICS ENDPOINT
-    
-    Get comprehensive analytics summary with optimized database queries.
-    Includes ALL analytics (participation, topics, realtime, interactions, 
-    trending, content preferences, idea performance, contributor diversity) 
-    in a single optimized endpoint.
-   
+
+    Get comprehensive analytics summary with optional ROI calculations.
+    Eliminates need for separate /roi endpoint by including ROI as optional flag.
+    Uses single optimized database query set for maximum efficiency.
+
     Args:
         discussion_id: Discussion to analyze
-        
+        time_window: Time range for analysis
+        include_roi: If True, includes ROI metrics in response
+        hourly_rate: Used for ROI calculations (ignored if include_roi=False)
+        usage_frequency: Used for ROI projections (ignored if include_roi=False)
+
     Returns:
-        Complete analytics data structure with all metrics
+        Complete analytics data structure with optional ROI metrics
     """
     try:
         # Verify discussion exists
@@ -59,7 +65,9 @@ async def get_analytics_summary(
         ideas = await ideas_cursor.to_list(None)
         
         if not ideas:
-            return _empty_analytics_response()
+            return _empty_analytics_response(
+                discussion_id, time_window, include_roi, hourly_rate, usage_frequency
+            )
         
         idea_ids = [idea["_id"] for idea in ideas]
         
@@ -83,7 +91,10 @@ async def get_analytics_summary(
             ideas, interactions, topics, time_window
         )
         
-        return {
+        # Build base response
+        response = {
+            "discussion_id": discussion_id,
+            "time_window": time_window,
             **analytics_data,
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "optimization_stats": {
@@ -94,6 +105,21 @@ async def get_analytics_summary(
                 "architecture": "Unified KISS/DRY/SOLID"
             }
         }
+
+        # === ADD ROI METRICS IF REQUESTED ===
+        if include_roi:
+            roi_metrics = await _calculate_roi_from_raw_data(
+                ideas, interactions, topics, discussion["created_at"], hourly_rate, usage_frequency
+            )
+            response["roi_metrics"] = roi_metrics
+            response["analytics_summary"] = {
+                "total_ideas": analytics_data.get("participation", {}).get("total_ideas", 0),
+                "total_participants": analytics_data.get("participation", {}).get("unique_participants", 0),
+                "total_topics": analytics_data.get("topics", {}).get("total_topics", 0),
+                "health_score": analytics_data.get("executive_summary", {}).get("overall_health_score", 0)
+            }
+
+        return response
         
     except Exception as e:
         logger.error(f"Error getting analytics summary: {e}", exc_info=True)
@@ -101,9 +127,17 @@ async def get_analytics_summary(
 
 # === HELPER FUNCTIONS FOR UNIFIED ANALYTICS ===
 
-def _empty_analytics_response():
+def _empty_analytics_response(
+    discussion_id: str = "",
+    time_window: str = "24h",
+    include_roi: bool = False,
+    hourly_rate: float = 30.0,
+    usage_frequency: str = "monthly"
+):
     """Return empty analytics response for discussions with no ideas"""
-    return {
+    response = {
+        "discussion_id": discussion_id,
+        "time_window": time_window,
         "participation": {
             "total_ideas": 0,
             "unique_participants": 0,
@@ -206,8 +240,92 @@ def _empty_analytics_response():
                 "engagement_health": 0
             },
             "health_explanations": {}
-        }
+        },
+        "generated_at": datetime.now(timezone.utc).isoformat()
     }
+
+    # Add ROI metrics if requested
+    if include_roi:
+        response["roi_metrics"] = {
+            "discussion_duration_hours": 0.1,
+            "calculation_transparency": {
+                "manual_processing": {
+                    "base_time_per_idea_seconds": 25,
+                    "topic_creation_time_seconds": 40,
+                    "complexity_factor": 1.0,
+                    "complexity_description": "No ideas to process",
+                    "total_manual_time_seconds": 0,
+                    "formula": "0 ideas × 25s × 1.0 = 0s"
+                },
+                "ai_processing": {
+                    "ai_processing_per_idea_seconds": 0.1,
+                    "review_time_per_idea_seconds": 0.6,
+                    "ai_complexity_factor": 1.0,
+                    "total_ai_time_seconds": 0,
+                    "formula": "0 ideas × 0.7s = 0s"
+                },
+                "cost_calculation": {
+                    "hourly_rate": hourly_rate,
+                    "time_saved_hours": 0,
+                    "formula": f"0 hours × ${hourly_rate}/hour = $0"
+                },
+                "projections": {
+                    "usage_frequency": usage_frequency,
+                    "frequency_description": "No usage data available",
+                    "monthly_multiplier": 0,
+                    "annual_multiplier": 0
+                }
+            },
+            "efficiency": {
+                "total_ideas": 0,
+                "total_topics": 0,
+                "total_participants": 0,
+                "ideas_per_active_period": 0,
+                "participant_engagement_density": 0,
+                "clustering_efficiency": 0,
+                "ideas_per_participant": 0,
+                "processing_speed_multiplier": 1
+            },
+            "time_savings": {
+                "traditional_time_hours": 0,
+                "ai_time_hours": 0,
+                "time_saved_hours": 0,
+                "time_saved_percentage": 0,
+                "time_saved_minutes": 0,
+                "traditional_time_seconds": 0,
+                "ai_time_seconds": 0,
+                "time_saved_seconds": 0
+            },
+            "cost_savings": {
+                "hourly_rate": hourly_rate,
+                "total_cost_savings": 0,
+                "cost_per_idea": 0,
+                "cost_per_participant": 0,
+                "monthly_savings_projection": 0,
+                "annual_savings_projection": 0
+            },
+            "engagement": {
+                "total_interactions": 0,
+                "engagement_rate": 0,
+                "participation_rate": 0,
+                "interaction_velocity": 0
+            },
+            "business_impact": {
+                "decision_speed": "No data available",
+                "scale_efficiency": "No processing completed",
+                "cost_efficiency": "No cost comparison available",
+                "engagement_multiplier": "No engagement data",
+                "volume_advantage": "AI scales better with volume"
+            }
+        }
+        response["analytics_summary"] = {
+            "total_ideas": 0,
+            "total_participants": 0,
+            "total_topics": 0,
+            "health_score": 0
+        }
+
+    return response
 
 async def _process_unified_analytics(ideas, interactions, topics, time_window="24h"):
     """
@@ -1329,63 +1447,229 @@ def calculate_roi_metrics(analytics_data: dict, discussion_created_at: datetime,
         }
     }
 
-@router.get("/roi")
-async def get_roi_dashboard(
-    discussion_id: str,
-    time_window: str = "all",
-    hourly_rate: float = 30.0,  # Default $30/hour, user configurable
-    usage_frequency: str = "monthly",  # monthly, weekly, quarterly, yearly
-    db = Depends(get_db),
-    current_user: dict = Depends(verify_token_cookie)
-):
+async def _calculate_roi_from_raw_data(
+    ideas: list,
+    interactions: list,
+    topics: list,
+    discussion_created_at: datetime,
+    hourly_rate: float,
+    usage_frequency: str
+) -> dict:
     """
-    Get ROI-focused dashboard that shows business value in 30 seconds.
-    Leverages existing analytics infrastructure for consistency.
+    🚀 OPTIMIZED ROI CALCULATION
+
+    Calculate ROI metrics directly from raw data without duplicate processing.
+    This replaces the calculate_roi_metrics function that required pre-processed analytics.
     """
-    try:
-        # Get discussion details for duration calculation
-        discussion = await db.discussions.find_one({"_id": discussion_id})
-        if not discussion:
-            raise HTTPException(status_code=404, detail="Discussion not found")
+    # This is essentially the same logic as calculate_roi_metrics but works directly with raw data
+    # to avoid the duplicate analytics processing
 
-        # Get comprehensive analytics data (reuse existing endpoint logic)
-        try:
-            analytics_response = await get_analytics_summary(discussion_id, time_window, db, current_user)
-            analytics_data = analytics_response if isinstance(analytics_response, dict) else {}
-        except Exception as analytics_error:
-            logger.error(f"Error getting analytics data: {analytics_error}", exc_info=True)
-            analytics_data = {}
+    # Handle discussion_created_at timezone issues
+    if discussion_created_at.tzinfo is None:
+        discussion_created_at = discussion_created_at.replace(tzinfo=timezone.utc)
 
-        # Calculate ROI metrics from analytics data
-        try:
-            roi_metrics = calculate_roi_metrics(analytics_data, discussion["created_at"], hourly_rate, usage_frequency)
-        except Exception as roi_error:
-            logger.error(f"Error in calculate_roi_metrics: {roi_error}", exc_info=True)
-            roi_metrics = {}
+    # Calculate discussion duration from last activity
+    now = datetime.now(timezone.utc)
+    last_activity_time = discussion_created_at
 
-        # Ensure we have valid data structures
-        if not analytics_data:
-            analytics_data = {}
+    # Find the latest timestamp from ideas or interactions
+    for idea in ideas:
+        if idea.get("timestamp"):
+            idea_time = idea["timestamp"]
+            if idea_time.tzinfo is None:
+                idea_time = idea_time.replace(tzinfo=timezone.utc)
+            if idea_time > last_activity_time:
+                last_activity_time = idea_time
 
-        if not roi_metrics:
-            roi_metrics = {}
+    for interaction in interactions:
+        if interaction.get("timestamp"):
+            interaction_time = interaction["timestamp"]
+            if interaction_time.tzinfo is None:
+                interaction_time = interaction_time.replace(tzinfo=timezone.utc)
+            if interaction_time > last_activity_time:
+                last_activity_time = interaction_time
 
-        return {
-            "discussion_id": discussion_id,
-            "discussion_title": discussion.get("title", ""),
-            "time_window": time_window,
-            "roi_metrics": roi_metrics,
-            "analytics_summary": {
-                "total_ideas": analytics_data.get("participation", {}).get("total_ideas", 0),
-                "total_participants": analytics_data.get("participation", {}).get("unique_participants", 0),
-                "total_topics": analytics_data.get("topics", {}).get("total_topics", 0),
-                "health_score": analytics_data.get("executive_summary", {}).get("overall_health_score", 0)
+    discussion_duration = last_activity_time - discussion_created_at
+    duration_seconds = discussion_duration.total_seconds()
+    duration_hours = max(duration_seconds / 3600, 0.1)  # Minimum 0.1 hours
+
+    # Extract core metrics from raw data
+    total_ideas = len(ideas)
+    total_topics = len(topics)
+
+    # Count unique participants
+    unique_users = set()
+    for idea in ideas:
+        user_id = idea.get("user_id")
+        anon_id = idea.get("anonymous_user_id")
+        if user_id:
+            unique_users.add(user_id)
+        elif anon_id:
+            unique_users.add(f"anon_{anon_id}")
+
+    total_participants = len(unique_users)
+
+    # Count total interactions
+    total_interactions = len(interactions)
+
+    # Calculate efficiency metrics
+    ideas_per_active_period = round(total_ideas / duration_hours, 1) if duration_hours > 0 else 0
+    participant_engagement_density = round(total_participants / duration_hours, 1) if duration_hours > 0 else 0
+    clustering_efficiency = round(total_topics / max(total_ideas, 1), 3) if total_ideas > 0 else 0
+    ideas_per_participant = round(total_ideas / max(total_participants, 1), 1) if total_participants > 0 else 0
+
+    # === TRANSPARENT TIME CALCULATION ===
+
+    # Manual Processing Time Components (user-validated):
+    base_time_per_idea_seconds = 25  # Reading and understanding each idea
+    topic_creation_time_seconds = 40  # Naming and organizing each topic
+
+    # Logarithmic complexity scaling based on idea count
+    import math
+    if total_ideas <= 25:
+        complexity_factor = 1.0 + math.log(max(total_ideas, 1) / 10) * 0.1  # Very gradual increase
+        complexity_description = f"Easy processing (≤25 ideas): {complexity_factor:.1f}x - manageable mentally"
+    elif total_ideas <= 50:
+        complexity_factor = 1.2 + math.log(total_ideas / 25) * 0.2
+        complexity_description = f"Moderate complexity (26-50 ideas): {complexity_factor:.1f}x - need to reread, compare, reorganize"
+    elif total_ideas <= 100:
+        complexity_factor = 1.5 + math.log(total_ideas / 50) * 0.3
+        complexity_description = f"High complexity (51-100 ideas): {complexity_factor:.1f}x - multiple passes, confusion, overwhelm"
+    else:
+        complexity_factor = 2.0 + math.log(total_ideas / 100) * 0.5
+        complexity_description = f"Very high complexity (100+ ideas): {complexity_factor:.1f}x - overwhelming, requires systematic approach"
+
+    # AI Processing (minimal logarithmic scaling)
+    ai_processing_per_idea_seconds = 0.1  # AI processing time per idea
+    review_time_per_idea_seconds = 0.6   # Human review time per AI result
+    ai_complexity_factor = 1.0 + math.log(max(total_ideas, 1) / 50) * 0.02  # Minimal scaling
+
+    # Calculate total times
+    manual_idea_time = total_ideas * base_time_per_idea_seconds * complexity_factor
+    manual_topic_time = total_topics * topic_creation_time_seconds
+    total_manual_time_seconds = manual_idea_time + manual_topic_time
+
+    ai_processing_time = total_ideas * ai_processing_per_idea_seconds * ai_complexity_factor
+    ai_review_time = total_ideas * review_time_per_idea_seconds
+    total_ai_time_seconds = ai_processing_time + ai_review_time
+
+    # Convert to hours and minutes
+    traditional_time_hours = total_manual_time_seconds / 3600
+    ai_time_hours = total_ai_time_seconds / 3600
+    time_saved_hours = traditional_time_hours - ai_time_hours
+    time_saved_minutes = time_saved_hours * 60
+    time_saved_percentage = round((time_saved_hours / traditional_time_hours) * 100, 1) if traditional_time_hours > 0 else 0
+
+    # Cost calculations
+    total_cost_savings = time_saved_hours * hourly_rate
+    cost_per_idea = total_cost_savings / max(total_ideas, 1)
+    cost_per_participant = total_cost_savings / max(total_participants, 1)
+
+    # Usage frequency projections
+    frequency_multipliers = {
+        "weekly": {"monthly": 4, "annual": 52, "description": "4 discussions/month, 52/year"},
+        "monthly": {"monthly": 1, "annual": 12, "description": "1 discussion/month, 12/year"},
+        "quarterly": {"monthly": 0.33, "annual": 4, "description": "1 discussion/quarter, 4/year"},
+        "yearly": {"monthly": 0.08, "annual": 1, "description": "1 discussion/year"}
+    }
+
+    multiplier_data = frequency_multipliers.get(usage_frequency, frequency_multipliers["monthly"])
+    monthly_savings_projection = total_cost_savings * multiplier_data["monthly"]
+    annual_savings_projection = total_cost_savings * multiplier_data["annual"]
+    frequency_description = multiplier_data["description"]
+
+    # Calculate engagement ROI
+    engagement_rate = round(total_interactions / max(total_ideas, 1), 2) if total_ideas > 0 else 0
+    participation_rate = round(total_participants / max(total_ideas, 1), 2) if total_ideas > 0 else 0
+
+    # Calculate productivity metrics
+    traditional_time_minutes = traditional_time_hours * 60
+    ai_time_minutes = ai_time_hours * 60
+    processing_speed_multiplier = min(round(traditional_time_minutes / max(ai_time_minutes, 0.01), 0), 10000)
+
+    # Interaction velocity (interactions per active period)
+    interaction_velocity = round(total_interactions / duration_hours, 1) if duration_hours > 0 else 0
+
+    # Business impact messaging
+    decision_speed = f"AI: {total_ai_time_seconds:.1f}s vs Manual: {total_manual_time_seconds:.1f}s ({traditional_time_hours:.1f}h)"
+    scale_efficiency = f"{processing_speed_multiplier}x faster processing speed"
+    cost_efficiency = f"${cost_per_idea:.2f} per idea (AI) vs ${cost_per_idea + (traditional_time_hours * hourly_rate / max(total_ideas, 1)):.2f} per idea (manual)"
+    engagement_multiplier = f"{engagement_rate} interactions per idea"
+    volume_advantage = f"AI advantage grows from {round(complexity_factor / ai_complexity_factor, 1)}x to {round((3.0 + math.log(1000 / 100) * 0.8) / (1.0 + math.log(1000 / 50) * 0.02), 1)}x as discussions scale"
+
+    return {
+        "discussion_duration_hours": round(duration_hours, 1),
+        "calculation_transparency": {
+            "manual_processing": {
+                "base_time_per_idea_seconds": base_time_per_idea_seconds,
+                "topic_creation_time_seconds": topic_creation_time_seconds,
+                "complexity_factor": round(complexity_factor, 3),
+                "complexity_description": complexity_description,
+                "total_manual_time_seconds": round(total_manual_time_seconds, 1),
+                "formula": f"({total_ideas} ideas × {base_time_per_idea_seconds}s × {complexity_factor:.3f}) + ({total_topics} topics × {topic_creation_time_seconds}s) = {total_manual_time_seconds:.1f}s"
             },
-            "generated_at": datetime.now(timezone.utc).isoformat()
+            "ai_processing": {
+                "ai_processing_per_idea_seconds": ai_processing_per_idea_seconds,
+                "review_time_per_idea_seconds": review_time_per_idea_seconds,
+                "ai_complexity_factor": round(ai_complexity_factor, 3),
+                "total_ai_time_seconds": round(total_ai_time_seconds, 1),
+                "formula": f"({total_ideas} × {ai_processing_per_idea_seconds}s × {ai_complexity_factor:.3f}) + ({total_ideas} × {review_time_per_idea_seconds}s review) = {total_ai_time_seconds:.1f}s"
+            },
+            "cost_calculation": {
+                "hourly_rate": hourly_rate,
+                "time_saved_hours": round(time_saved_hours, 3),
+                "formula": f"{time_saved_hours:.3f} hours × ${hourly_rate}/hour = ${total_cost_savings:.2f}"
+            },
+            "projections": {
+                "usage_frequency": usage_frequency,
+                "frequency_description": frequency_description,
+                "monthly_multiplier": multiplier_data["monthly"],
+                "annual_multiplier": multiplier_data["annual"]
+            }
+        },
+        "efficiency": {
+            "total_ideas": total_ideas,
+            "total_topics": total_topics,
+            "total_participants": total_participants,
+            "ideas_per_active_period": ideas_per_active_period,
+            "participant_engagement_density": participant_engagement_density,
+            "clustering_efficiency": clustering_efficiency,
+            "ideas_per_participant": ideas_per_participant,
+            "processing_speed_multiplier": processing_speed_multiplier
+        },
+        "time_savings": {
+            "traditional_time_hours": round(traditional_time_hours, 3),
+            "ai_time_hours": round(ai_time_hours, 3),
+            "time_saved_hours": round(time_saved_hours, 3),
+            "time_saved_percentage": time_saved_percentage,
+            "time_saved_minutes": round(time_saved_minutes, 1),
+            "traditional_time_seconds": round(total_manual_time_seconds, 1),
+            "ai_time_seconds": round(total_ai_time_seconds, 1),
+            "time_saved_seconds": round(total_manual_time_seconds - total_ai_time_seconds, 1)
+        },
+        "cost_savings": {
+            "hourly_rate": hourly_rate,
+            "total_cost_savings": round(total_cost_savings, 2),
+            "cost_per_idea": round(cost_per_idea, 2),
+            "cost_per_participant": round(cost_per_participant, 2),
+            "monthly_savings_projection": round(monthly_savings_projection, 2),
+            "annual_savings_projection": round(annual_savings_projection, 2)
+        },
+        "engagement": {
+            "total_interactions": total_interactions,
+            "engagement_rate": engagement_rate,
+            "participation_rate": participation_rate,
+            "interaction_velocity": interaction_velocity
+        },
+        "business_impact": {
+            "decision_speed": decision_speed,
+            "scale_efficiency": scale_efficiency,
+            "cost_efficiency": cost_efficiency,
+            "engagement_multiplier": engagement_multiplier,
+            "volume_advantage": volume_advantage
         }
-    except Exception as e:
-        logger.error(f"Error getting ROI dashboard: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get ROI dashboard: {str(e)}")
+    }
+
 
 @router.get("/ideas-summary")
 async def get_ideas_analytics_summary(
