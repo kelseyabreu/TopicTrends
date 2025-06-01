@@ -13,7 +13,6 @@
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   position: sticky;
   top: 0;
-  z-index: 40;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
@@ -146,7 +145,6 @@
   bottom: 0;
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(8px);
-  z-index: 50;
   display: flex;
   align-items: flex-end;
   animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -195,7 +193,6 @@
   padding: 1rem 1.5rem;
   position: sticky;
   bottom: 0;
-  z-index: 30;
   box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.05);
 }
 
@@ -379,7 +376,6 @@
   position: fixed;
   bottom: 2rem;
   right: 2rem;
-  z-index: 45;
 }
 
 .fab {
@@ -479,6 +475,7 @@
   .button-group {
     flex-wrap: nowrap;
   }
+
 }
 
 /* Medium devices (tablets, 768px and up) */
@@ -571,6 +568,9 @@
     padding: 0.75rem;
   }
 
+  .sort-button{
+    padding:0;
+  } 
   .breadcrumb-container {
     padding: 0.5rem 0.75rem;
   }

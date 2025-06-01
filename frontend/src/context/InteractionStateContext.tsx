@@ -101,14 +101,19 @@ export const InteractionStateProvider: React.FC<InteractionStateProviderProps> =
     }
   };
 
-  const updateState = (entityKey: string, newState: Partial<InteractionState>) => {
-    setStates(prevStates => ({
-      ...prevStates,
-      [entityKey]: {
-        ...prevStates[entityKey],
-        ...newState
-      }
-    }));
+  const updateState = (entityKey: string, newState: Partial<InteractionState> | ((prevState: InteractionState) => Partial<InteractionState>)) => {
+    setStates(prevStates => {
+      const currentEntityState = prevStates[entityKey] || { can_like: false, can_pin: false, can_save: false };
+      const stateUpdate = typeof newState === 'function' ? newState(currentEntityState as InteractionState) : newState;
+
+      return {
+        ...prevStates,
+        [entityKey]: {
+          ...currentEntityState,
+          ...stateUpdate
+        } as InteractionState
+      };
+    });
   };
 
   const getState = (entityType: string, entityId: string): InteractionState | null => {

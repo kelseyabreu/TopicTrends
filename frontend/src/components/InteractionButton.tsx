@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Heart, Pin, Bookmark, Loader2 } from 'lucide-react';
 import api from '../utils/api';
-import { useEntityState } from '../context/InteractionStateContext';
+import { useEntityState, useInteractionState } from '../context/InteractionStateContext';
 
 // --- TypeScript Interfaces for API Responses ---
 export interface InteractionUserState {
@@ -86,6 +86,7 @@ const InteractionButton: React.FC<InteractionButtonProps> = ({
     disableInitialFetch = false,
 }) => {
     const { state, updateState, refreshState } = useEntityState(entityType, entityId);
+    const { getState } = useInteractionState(); // Get fresh state function
 
     const [isActive, setIsActive] = useState<boolean>(initialActive);
     const [canInteract, setCanInteract] = useState<boolean>(false);
@@ -96,21 +97,24 @@ const InteractionButton: React.FC<InteractionButtonProps> = ({
     const requestInFlightRef = useRef(false);
     const errorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+    // Note: Removed memoized values to prevent circular dependency issues in useEffect
+
     const onStateChangeRef = useRef(onStateChange);
     useEffect(() => {
         onStateChangeRef.current = onStateChange;
     }, [onStateChange]);
 
     useEffect(() => {
-        if (disableInitialFetch || !entityId || !entityType) {
+        if (!entityId || !entityType) {
             setIsActive(initialActive);
-            setCanInteract(true); // Assume can interact if initial fetch is disabled
+            setCanInteract(true);
             setIsLoadingInitial(false);
             return;
         }
 
-        // Try to use context data first
+        // ALWAYS try to use context data first (from bulk loading)
         if (state) {
+            // Calculate the values directly to avoid circular dependencies
             let serverActive = initialActive;
             let serverCanInteract = false;
 
@@ -125,10 +129,26 @@ const InteractionButton: React.FC<InteractionButtonProps> = ({
                 serverCanInteract = state?.can_save ?? false;
             }
 
+            console.log(`[InteractionButton] ${entityType}:${entityId} ${actionType} - Using context state:`, {
+                serverActive,
+                serverCanInteract,
+                userState: state?.user_state,
+                canFlags: { can_like: state?.can_like, can_pin: state?.can_pin, can_save: state?.can_save }
+            });
+
             setIsActive(serverActive);
             setCanInteract(serverCanInteract);
             setIsLoadingInitial(false);
             onStateChangeRef.current?.(serverActive, actionType);
+            return;
+        }
+
+        // If disableInitialFetch is true and no context data, use defaults
+        if (disableInitialFetch) {
+            console.log(`[InteractionButton] ${entityType}:${entityId} ${actionType} - No context state, using defaults (disableInitialFetch=true)`);
+            setIsActive(initialActive);
+            setCanInteract(true); // Assume can interact if initial fetch is disabled
+            setIsLoadingInitial(false);
             return;
         }
 
@@ -215,16 +235,29 @@ const InteractionButton: React.FC<InteractionButtonProps> = ({
         setIsActive(newActiveState);
         onStateChangeRef.current?.(newActiveState, actionType);
 
-        // Update context optimistically
-        const stateUpdate: any = { user_state: { ...state?.user_state } };
-        if (actionType === 'like') {
-            stateUpdate.user_state.liked = newActiveState;
-        } else if (actionType === 'pin') {
-            stateUpdate.user_state.pinned = newActiveState;
-        } else if (actionType === 'save') {
-            stateUpdate.user_state.saved = newActiveState;
-        }
-        updateState(stateUpdate);
+        // Update context optimistically - Use functional update to avoid race conditions
+        updateState((prevState) => {
+            const currentUserState = prevState?.user_state || {};
+            const updatedUserState = {
+                ...currentUserState,  // Preserve all existing user state
+                // Only update the specific field for this action type
+                ...(actionType === 'like' && { liked: newActiveState }),
+                ...(actionType === 'pin' && { pinned: newActiveState }),
+                ...(actionType === 'save' && { saved: newActiveState })
+            };
+
+            console.log(`[InteractionButton] ${entityType}:${entityId} ${actionType} - Optimistic update:`, {
+                actionType,
+                newActiveState,
+                previousUserState: currentUserState,
+                updatedUserState: updatedUserState
+            });
+
+            return {
+                ...prevState,
+                user_state: updatedUserState
+            };
+        });
 
         try {
             await interactionAPI.recordInteraction(entityType, entityId, apiAction);
@@ -232,16 +265,29 @@ const InteractionButton: React.FC<InteractionButtonProps> = ({
             setIsActive(prevActiveState);
             onStateChangeRef.current?.(prevActiveState, actionType);
 
-            // Revert context state on error
-            const revertUpdate: any = { user_state: { ...state?.user_state } };
-            if (actionType === 'like') {
-                revertUpdate.user_state.liked = prevActiveState;
-            } else if (actionType === 'pin') {
-                revertUpdate.user_state.pinned = prevActiveState;
-            } else if (actionType === 'save') {
-                revertUpdate.user_state.saved = prevActiveState;
-            }
-            updateState(revertUpdate);
+            // Revert context state on error - Use functional update to avoid race conditions
+            updateState((prevState) => {
+                const currentUserState = prevState?.user_state || {};
+                const revertedUserState = {
+                    ...currentUserState,  // Preserve all existing user state
+                    // Only revert the specific field for this action type
+                    ...(actionType === 'like' && { liked: prevActiveState }),
+                    ...(actionType === 'pin' && { pinned: prevActiveState }),
+                    ...(actionType === 'save' && { saved: prevActiveState })
+                };
+
+                console.log(`[InteractionButton] ${entityType}:${entityId} ${actionType} - Error revert:`, {
+                    actionType,
+                    prevActiveState,
+                    previousUserState: currentUserState,
+                    revertedUserState: revertedUserState
+                });
+
+                return {
+                    ...prevState,
+                    user_state: revertedUserState
+                };
+            });
 
             const errorMessage = err?.detail || err?.message || `Failed to ${apiAction}.`;
             setError(errorMessage);

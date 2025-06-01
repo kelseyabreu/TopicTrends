@@ -32,10 +32,11 @@ import {
   TrendingUp,
   Filter,
   SortDesc,
+  SortAsc,
   MessageSquareText
 } from "lucide-react";
 import { Discussion } from "../interfaces/discussions";
-import { Topic, TopicsResponse } from "../interfaces/topics";
+import { Topic, TopicsResponse, PaginatedTopicsResponse } from "../interfaces/topics";
 import { Idea } from "../interfaces/ideas";
 import TopicListItem from "../components/TopicListItem";
 import InteractionButton, {
@@ -84,16 +85,31 @@ function DiscussionViewContent() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [sortBy, setSortBy] = useState<'newest' | 'popular' | 'trending'>('popular');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [filterBy, setFilterBy] = useState<'all' | 'ripple' | 'wave' | 'breaker' | 'tsunami'>('all');
+
+  // Topics pagination and sorting state (separate from main data fetching)
+  const [topicsPagination, setTopicsPagination] = useState({
+    pageIndex: 0, // TanStack uses 0-based indexing
+    pageSize: 20,
+  });
+  const [topicsPageCount, setTopicsPageCount] = useState(1);
+  const [totalTopicsCount, setTotalTopicsCount] = useState(0);
+  const [isTopicsLoading, setIsTopicsLoading] = useState(false);
+  const [isBulkStatesLoading, setIsBulkStatesLoading] = useState(false);
+  const [bulkStatesLoaded, setBulkStatesLoaded] = useState(false);
+
+  // Track which topics have had their bulk states loaded to prevent duplicate calls
+  const loadedTopicsRef = useRef<string>('');
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showNewIdeaModal, setShowNewIdeaModal] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const [isClustering, setIsClustering] = useState(false);
 
-  // Utility functions for filtering and sorting
+  // Utility functions for filtering (sorting is now handled by the server)
 
-  const filteredAndSortedTopics = topics
+  const filteredTopics = topics
     .filter(topic => {
       if (filterBy === 'all') return true;
       const count = topic.count;
@@ -103,14 +119,6 @@ function DiscussionViewContent() {
         case 'breaker': return count > 25 && count <= 50;
         case 'tsunami': return count > 50;
         default: return true;
-      }
-    })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case 'newest': return 0; // Would need timestamp data
-        case 'popular': return b.count - a.count;
-        case 'trending': return b.count - a.count; // Would need trending calculation
-        default: return 0;
       }
     });
 
@@ -208,65 +216,172 @@ function DiscussionViewContent() {
     [discussionId]
   );
 
-  // --- Fetch initial discussion data --- // Also used for refreshing topics after socket update
+  // --- Discussion Data Fetching Function (without topics) ---
   const fetchDiscussionData = useCallback(async () => {
     if (!discussionId) return;
-    console.log(
-      `[DiscussionView Effect ${discussionId}] Fetching discussion data...`
-    );
+    console.log(`[DiscussionView] Fetching discussion data for ${discussionId}...`);
+
     try {
-      const [discussionResponse, topicsResponse] = await Promise.all([
-        api.get<Discussion>(`/discussions/${discussionId}`),
-        api.get<TopicsResponse>(`/discussions/${discussionId}/topics`),
-      ]);
-
-      // isMounted check is handled by the useEffect cleanup, no need here if useCallback is used correctly
+      const discussionResponse = await api.get<Discussion>(`/discussions/${discussionId}`);
       setDiscussion(discussionResponse.data);
-      const fetchedTopics = Array.isArray(topicsResponse.data.topics)
-        ? topicsResponse.data.topics
-        : [];
-      const sortedTopics = [...fetchedTopics].sort((a, b) => b.count - a.count);
-      setTopics(sortedTopics);
-      setUnclusteredCount(topicsResponse.data.unclustered_count || 0);
-
-      // Load bulk interaction states for all entities
-      const entities = [
-        // Discussion state
-        { type: 'discussion' as const, id: discussionId },
-        // Topic states
-        ...sortedTopics.map(topic => ({ type: 'topic' as const, id: topic.id })),
-        // Idea states from all topics
-        ...sortedTopics.flatMap(topic =>
-          topic.ideas.map(idea => ({ type: 'idea' as const, id: idea.id }))
-        )
-      ];
-
-      if (entities.length > 1) { // More than just the discussion
-        console.log(`[DiscussionView] Loading bulk states for ${entities.length} entities...`);
-        await loadBulkStates(entities);
-      }
-
-      console.log(
-        `[DiscussionView Effect ${discussionId}] Data fetched successfully.`
-      );
+      console.log(`[DiscussionView] Discussion data fetched successfully.`);
     } catch (error) {
-      // Catch any error type
-      console.error(
-        `[DiscussionView Effect ${discussionId}] Error fetching discussion data:`,
-        error
-      );
-      // isMounted check is handled by the useEffect cleanup
+      console.error(`[DiscussionView] Error fetching discussion data:`, error);
       if (error.response?.status === 404) {
         toast.error("Discussion not found. It might have been deleted.");
-        navigate("/"); // Navigate away if discussion doesn't exist
+        navigate("/");
       } else {
         toast.error(error.message || "Failed to load discussion data.");
       }
     } finally {
-      // isMounted check is handled by the useEffect cleanup
       setIsLoading(false);
     }
-  }, [discussionId, navigate]); // Add navigate to dependencies
+  }, [discussionId, navigate]);
+
+  // --- Topics Data Fetching Function (separate from discussion) ---
+  const fetchTopics = useCallback(async () => {
+    if (!discussionId) return;
+
+    setIsTopicsLoading(true);
+    console.log(`[DiscussionView] Fetching topics with sort: ${sortBy}, direction: ${sortDir}, page: ${topicsPagination.pageIndex + 1}...`);
+
+    try {
+      // Map frontend sort values to backend field names
+      const sortField = sortBy === 'newest' ? 'id' : sortBy === 'popular' ? 'count' : 'count';
+
+      const topicsResponse = await api.get<PaginatedTopicsResponse | TopicsResponse>(`/discussions/${discussionId}/topics`, {
+        params: {
+          page: topicsPagination.pageIndex + 1, // Convert 0-based to 1-based
+          page_size: topicsPagination.pageSize,
+          sort: sortField,
+          sort_dir: sortDir
+        }
+      });
+
+      // Handle both legacy and paginated response formats
+      let fetchedTopics: Topic[] = [];
+      const responseData = topicsResponse.data as any;
+
+      if (responseData.data) {
+        // Paginated response format
+        fetchedTopics = Array.isArray(responseData.data) ? responseData.data : [];
+        if (responseData.meta) {
+          setTopicsPageCount(responseData.meta.total_pages);
+          setTotalTopicsCount(responseData.meta.total);
+        }
+      } else if (responseData.topics) {
+        // Legacy response format (no pagination requested)
+        fetchedTopics = Array.isArray(responseData.topics) ? responseData.topics : [];
+        setTopicsPageCount(1);
+        setTotalTopicsCount(fetchedTopics.length);
+      }
+
+      setTopics(fetchedTopics);
+      setUnclusteredCount(responseData.unclustered_count || 0);
+
+      console.log(`[DiscussionView] Topics fetched successfully: ${fetchedTopics.length} topics`);
+    } catch (error) {
+      console.error(`[DiscussionView] Error fetching topics:`, error);
+      toast.error(error.message || "Failed to load topics.");
+    } finally {
+      setIsTopicsLoading(false);
+    }
+  }, [discussionId, sortBy, sortDir, topicsPagination]); // Remove loadBulkStates to prevent infinite loop
+
+  // --- Topics Fetching Effect (separate from main effect) ---
+  useEffect(() => {
+    if (discussionId && authStatus !== AuthStatus.Loading) {
+      // Reset the loaded topics ref when discussion changes
+      loadedTopicsRef.current = '';
+      fetchTopics();
+    }
+  }, [fetchTopics, discussionId, authStatus]);
+
+  // --- Professional Bulk State Loading (stable callback to prevent loops) ---
+  const loadVisibleStates = useCallback(async (visibleTopics: Topic[]) => {
+    if (!discussionId || visibleTopics.length === 0) return;
+
+    try {
+      // Build comprehensive entities list for currently visible topics
+      const entities = [
+        // Discussion state (always load)
+        { type: 'discussion' as const, id: discussionId },
+        // Topic states (only visible topics)
+        ...visibleTopics.map(topic => ({ type: 'topic' as const, id: topic.id })),
+        // Idea states (only from visible topics)
+        ...visibleTopics.flatMap(topic =>
+          topic.ideas.map(idea => ({ type: 'idea' as const, id: idea.id }))
+        )
+      ];
+
+      // Remove duplicates (in case of any)
+      const uniqueEntities = entities.filter((entity, index, self) =>
+        index === self.findIndex(e => e.type === entity.type && e.id === entity.id)
+      );
+
+      if (uniqueEntities.length > 0) {
+        setIsBulkStatesLoading(true);
+        setBulkStatesLoaded(false);
+
+        console.log(`[DiscussionView] Loading bulk states for ${uniqueEntities.length} entities:`, {
+          discussion: uniqueEntities.filter(e => e.type === 'discussion').length,
+          topics: uniqueEntities.filter(e => e.type === 'topic').length,
+          ideas: uniqueEntities.filter(e => e.type === 'idea').length,
+          visibleTopics: visibleTopics.length
+        });
+
+        await loadBulkStates(uniqueEntities);
+
+        setBulkStatesLoaded(true);
+        setIsBulkStatesLoading(false);
+        console.log(`[DiscussionView] ✅ Bulk states loaded successfully for ${uniqueEntities.length} entities`);
+      }
+    } catch (error) {
+      console.error('[DiscussionView] ❌ Error loading bulk states:', error);
+      setBulkStatesLoaded(false);
+      setIsBulkStatesLoading(false);
+      // Don't show error to user as this is not critical for functionality
+      // Individual components will fall back to their own API calls
+    }
+  }, [discussionId, loadBulkStates]); // Stable dependencies
+
+  // --- Smart Bulk State Loading Effect (respects filtering and pagination) ---
+  useEffect(() => {
+    // Only load states for currently visible/filtered topics
+    if (topics.length > 0) {
+      // Apply the same filtering logic as the UI to get actually visible topics
+      const visibleTopics = topics.filter(topic => {
+        if (filterBy === 'all') return true;
+        const count = topic.count;
+        switch (filterBy) {
+          case 'ripple': return count <= 10;
+          case 'wave': return count > 10 && count <= 25;
+          case 'breaker': return count > 25 && count <= 50;
+          case 'tsunami': return count > 50;
+          default: return true;
+        }
+      });
+
+      // Create a unique key for the current visible topics to prevent duplicate loading
+      const topicsKey = visibleTopics.map(t => t.id).sort().join(',');
+
+      // Only load states if we haven't already loaded them for this exact set of topics
+      if (visibleTopics.length > 0 && loadedTopicsRef.current !== topicsKey) {
+        console.log(`[DiscussionView] 🔄 Starting bulk state loading for ${visibleTopics.length} topics...`);
+        setBulkStatesLoaded(false); // Mark as not loaded yet
+        loadedTopicsRef.current = topicsKey;
+        loadVisibleStates(visibleTopics);
+      } else if (visibleTopics.length > 0) {
+        // Same topics, states already loaded
+        console.log(`[DiscussionView] ✅ Bulk states already loaded for current topics`);
+        setBulkStatesLoaded(true);
+      }
+    } else {
+      // No topics, reset state
+      setBulkStatesLoaded(false);
+      loadedTopicsRef.current = '';
+    }
+  }, [topics, filterBy, loadVisibleStates]); // Run when topics or filter changes
 
   // --- Combined Effect for Data Fetching, Socket Connection, PT Management, and Real-time Idea Updates ---
   useEffect(() => {
@@ -351,14 +466,14 @@ function DiscussionViewContent() {
       }
     };
 
-    // Refactored handleTopicsUpdated to trigger data fetch
+    // Refactored handleTopicsUpdated to trigger topics fetch only
     const handleTopicsUpdated = (data: { discussion_id: string }) => {
       if (data.discussion_id === discussionId && isMounted) {
         console.log(
-          `[Socket ${discussionId}] Received topics_updated event. Fetching latest data...`
+          `[Socket ${discussionId}] Received topics_updated event. Fetching latest topics...`
         );
-        // Trigger a fetch of the latest discussion data, which includes topics
-        fetchDiscussionData();
+        // Trigger a fetch of only the topics data (not the entire discussion)
+        fetchTopics();
       } else if (isMounted) {
         console.log(
           `[Socket ${discussionId}] Ignored 'topics_updated' for different discussion (${data.discussion_id})`
@@ -477,7 +592,8 @@ function DiscussionViewContent() {
     authStatus,
     ensureParticipationToken,
     participationToken,
-    fetchDiscussionData, // Add fetchDiscussionData to dependencies
+    fetchDiscussionData,
+    // Note: fetchTopics is NOT included here to prevent page refreshes when sorting/pagination changes
   ]);
 
   // --- Idea Submission Handler (remains mostly the same, no clustering call) ---
@@ -960,6 +1076,7 @@ function DiscussionViewContent() {
                 activeIcon={<Heart className="w-4 h-4" fill="currentColor" />}
                 inactiveIcon={<Heart className="w-4 h-4" />}
                 showLabel={false}
+                disableInitialFetch={true} // Use bulk-loaded states
               />
               <InteractionButton
                 entityType="discussion"
@@ -969,6 +1086,7 @@ function DiscussionViewContent() {
                 activeIcon={<Pin className="w-4 h-4" fill="currentColor" />}
                 inactiveIcon={<Pin className="w-4 h-4" />}
                 showLabel={false}
+                disableInitialFetch={true} // Use bulk-loaded states
               />
               <InteractionButton
                 entityType="discussion"
@@ -978,6 +1096,7 @@ function DiscussionViewContent() {
                 activeIcon={<Bookmark className="w-4 h-4" fill="currentColor" />}
                 inactiveIcon={<Bookmark className="w-4 h-4" />}
                 showLabel={false}
+                disableInitialFetch={true} // Use bulk-loaded states
               />
             </div>
           )}
@@ -997,8 +1116,14 @@ function DiscussionViewContent() {
               variant="outline"
               size="sm"
               className="sort-button"
+              onClick={() => setSortDir(sortDir === 'desc' ? 'asc' : 'desc')}
+              title={`Currently sorting ${sortBy} ${sortDir === 'desc' ? 'descending' : 'ascending'}. Click to toggle.`}
             >
-              <SortDesc className="w-4 h-4 mr-1" />
+              {sortDir === 'desc' ? (
+                <SortDesc className="w-4 h-4 mr-1" />
+              ) : (
+                <SortAsc className="w-4 h-4 mr-1" />
+              )}
               {sortBy}
             </Button>
           </div>
@@ -1021,6 +1146,27 @@ function DiscussionViewContent() {
                     className="capitalize"
                   >
                     {sort}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="panel-section">
+              <h4>Sort direction</h4>
+              <div className="button-group">
+                {(['desc', 'asc'] as const).map((dir) => (
+                  <Button
+                    key={dir}
+                    variant={sortDir === dir ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSortDir(dir)}
+                    className="capitalize flex items-center gap-1"
+                  >
+                    {dir === 'desc' ? (
+                      <SortDesc className="w-3 h-3" />
+                    ) : (
+                      <SortAsc className="w-3 h-3" />
+                    )}
+                    {dir === 'desc' ? 'Descending' : 'Ascending'}
                   </Button>
                 ))}
               </div>
@@ -1049,7 +1195,7 @@ function DiscussionViewContent() {
       <div className="modern-content">
         {discussion ? (
           <>
-            {filteredAndSortedTopics.length === 0 ? (
+            {filteredTopics.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-state-icon">
                   <Waves className="w-16 h-16 text-gray-300" />
@@ -1067,17 +1213,83 @@ function DiscussionViewContent() {
                 </Button>
               </div>
             ) : (
-              <div className="modern-topics-list">
-                {filteredAndSortedTopics.map((topic, index) => (
-                  <TopicListItem
-                    key={topic.id}
-                    topic={topic}
-                    discussionId={discussionId || ""}
-                    limitIdeas={true}
-                    participationToken={participationToken}
-                  />
-                ))}
-              </div>
+              <>
+                {/* Topics Loading State */}
+                {(isTopicsLoading || isBulkStatesLoading) && (
+                  <div className="flex justify-center items-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+                    <span className="ml-2 text-gray-600">
+                      {isTopicsLoading ? "Loading topics..." : "Loading interaction states..."}
+                    </span>
+                  </div>
+                )}
+
+                {/* Topics List - Only render when bulk states are ready */}
+                {!isTopicsLoading && !isBulkStatesLoading && (
+                  <div className="modern-topics-list">
+                    {filteredTopics.map((topic) => (
+                      <TopicListItem
+                        key={topic.id}
+                        topic={topic}
+                        discussionId={discussionId || ""}
+                        limitIdeas={true}
+                        participationToken={participationToken}
+                        disableInitialFetch={true} // Always disable since we're loading bulk states first
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* Pagination Controls */}
+                {topicsPageCount > 1 && (
+                  <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-white">
+                    <div className="flex items-center text-sm text-gray-700">
+                      <span>
+                        Showing {topicsPagination.pageIndex * topicsPagination.pageSize + 1} to{' '}
+                        {Math.min((topicsPagination.pageIndex + 1) * topicsPagination.pageSize, totalTopicsCount)} of{' '}
+                        {totalTopicsCount} topics
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setTopicsPagination(prev => ({ ...prev, pageIndex: 0 }))}
+                        disabled={topicsPagination.pageIndex === 0}
+                      >
+                        First
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setTopicsPagination(prev => ({ ...prev, pageIndex: prev.pageIndex - 1 }))}
+                        disabled={topicsPagination.pageIndex === 0}
+                      >
+                        Previous
+                      </Button>
+                      <span className="text-sm text-gray-700">
+                        Page {topicsPagination.pageIndex + 1} of {topicsPageCount}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setTopicsPagination(prev => ({ ...prev, pageIndex: prev.pageIndex + 1 }))}
+                        disabled={topicsPagination.pageIndex >= topicsPageCount - 1}
+                      >
+                        Next
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setTopicsPagination(prev => ({ ...prev, pageIndex: topicsPageCount - 1 }))}
+                        disabled={topicsPagination.pageIndex >= topicsPageCount - 1}
+                      >
+                        Last
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </>
         ) : (

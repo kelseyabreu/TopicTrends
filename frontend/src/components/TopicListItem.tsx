@@ -32,6 +32,7 @@ interface TopicListItemProps {
   discussionId: string;
   limitIdeas?: boolean;
   participationToken?: string | null;
+  disableInitialFetch?: boolean;
 }
 
 const TopicListItem: React.FC<TopicListItemProps> = ({
@@ -39,6 +40,7 @@ const TopicListItem: React.FC<TopicListItemProps> = ({
   discussionId,
   limitIdeas = true,
   participationToken = null,
+  disableInitialFetch = false,
 }) => {
   const [expanded, setExpanded] = useState(false);
 
@@ -125,6 +127,7 @@ const TopicListItem: React.FC<TopicListItemProps> = ({
                 inactiveIcon={<Heart className="w-4 h-4" />}
                 showLabel={false}
                 className="modern-interaction-btn"
+                disableInitialFetch={disableInitialFetch}
               />
               <InteractionButton
                 entityType="topic"
@@ -134,6 +137,7 @@ const TopicListItem: React.FC<TopicListItemProps> = ({
                 inactiveIcon={<Pin className="w-4 h-4" />}
                 showLabel={false}
                 className="modern-interaction-btn"
+                disableInitialFetch={disableInitialFetch}
               />
               <InteractionButton
                 entityType="topic"
@@ -143,6 +147,7 @@ const TopicListItem: React.FC<TopicListItemProps> = ({
                 inactiveIcon={<Bookmark className="w-4 h-4" />}
                 showLabel={false}
                 className="modern-interaction-btn"
+                disableInitialFetch={disableInitialFetch}
               />
             </div>
 
@@ -228,6 +233,7 @@ const TopicListItem: React.FC<TopicListItemProps> = ({
                             inactiveIcon={<Bookmark className="w-3 h-3" />}
                             showLabel={false}
                             className="mini-interaction-btn"
+                            disableInitialFetch={disableInitialFetch}
                           />
                         </div>
                       </div>
