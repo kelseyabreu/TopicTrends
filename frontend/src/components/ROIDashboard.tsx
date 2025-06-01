@@ -113,10 +113,11 @@ interface ROIDashboardData {
 interface ROIDashboardProps {
   discussionId: string;
   className?: string;
-  // 🚀 NEW: Accept consolidated data from parent to eliminate duplicate API calls
+  // 🚀 SMART PROPS: Accept consolidated data and sync parameters
   roiData?: any | null;
   loading?: boolean;
   error?: string | null;
+  timeWindow?: string;  // For parameter synchronization
 }
 
 const ROIDashboard: React.FC<ROIDashboardProps> = ({
@@ -124,17 +125,31 @@ const ROIDashboard: React.FC<ROIDashboardProps> = ({
   className = "",
   roiData: propRoiData,
   loading: propLoading = false,
-  error: propError = null
+  error: propError = null,
+  timeWindow: propTimeWindow
 }) => {
   const [internalRoiData, setInternalRoiData] = useState<ROIDashboardData | null>(null);
   const [internalLoading, setInternalLoading] = useState(true);
   const [metricsLoading, setMetricsLoading] = useState(false);
   const [internalError, setInternalError] = useState<string | null>(null);
 
-  // 🚀 SMART DATA HANDLING: Use props if available, otherwise fetch internally
-  const roiData = propRoiData || internalRoiData;
-  const loading = propRoiData ? propLoading : internalLoading;
-  const error = propError || internalError;
+  // 🚀 SMART STATE: Initialize state variables first
+  const [timeWindow, setTimeWindow] = useState(propTimeWindow || 'all');
+  const [hourlyRate, setHourlyRate] = useState(30);
+  const [hourlyRateInput, setHourlyRateInput] = useState('30'); // For input display
+  const [hourlyRatePending, setHourlyRatePending] = useState(false); // Show pending state
+  const [usageFrequency, setUsageFrequency] = useState('monthly');
+  const [showCalculations, setShowCalculations] = useState(false);
+  const [lastFetchParams, setLastFetchParams] = useState<string>(''); // Prevent duplicate calls
+
+  // 🚀 SMART DATA HANDLING: Use props if available and parameters match, otherwise fetch internally
+  const shouldUseProps = propRoiData &&
+    propRoiData.time_window === timeWindow &&
+    propRoiData.roi_metrics?.calculation_transparency?.cost_calculation?.hourly_rate === hourlyRate;
+
+  const roiData = shouldUseProps ? propRoiData : internalRoiData;
+  const loading = shouldUseProps ? propLoading : internalLoading;
+  const error = shouldUseProps ? propError : internalError;
 
   // 🚀 SAFE ROI SUMMARY: Extract ROI summary with proper null checks
   const roiSummary = roiData?.roi_metrics ? {
@@ -146,13 +161,13 @@ const ROIDashboard: React.FC<ROIDashboardProps> = ({
     processing_speed_multiplier: roiData.roi_metrics.efficiency?.processing_speed_multiplier || 0,
     volume_advantage: roiData.roi_metrics.business_impact?.volume_advantage || "AI scales better"
   } : null;
-  const [timeWindow, setTimeWindow] = useState('all');
-  const [hourlyRate, setHourlyRate] = useState(30);
-  const [hourlyRateInput, setHourlyRateInput] = useState('30'); // For input display
-  const [hourlyRatePending, setHourlyRatePending] = useState(false); // Show pending state
-  const [usageFrequency, setUsageFrequency] = useState('monthly');
-  const [showCalculations, setShowCalculations] = useState(false);
-  const [lastFetchParams, setLastFetchParams] = useState<string>(''); // Prevent duplicate calls
+
+  // 🚀 SYNC EFFECT: Keep timeWindow in sync with parent
+  useEffect(() => {
+    if (propTimeWindow && propTimeWindow !== timeWindow) {
+      setTimeWindow(propTimeWindow);
+    }
+  }, [propTimeWindow, timeWindow]);
 
   // Debounced effect for hourly rate input
   useEffect(() => {
@@ -179,21 +194,21 @@ const ROIDashboard: React.FC<ROIDashboardProps> = ({
   }, [hourlyRateInput, hourlyRate]);
 
   useEffect(() => {
-    // 🚀 OPTIMIZED: Only fetch data if not provided via props
-    if (!propRoiData) {
-      // Create a unique key for current parameters to prevent duplicate calls
-      const currentParams = `${discussionId}-${timeWindow}-${hourlyRate}-${usageFrequency}`;
+    // 🚀 PROFESSIONAL HYBRID APPROACH: Fetch when parameters don't match props
+    const currentParams = `${discussionId}-${timeWindow}-${hourlyRate}-${usageFrequency}`;
 
-      // Only fetch if parameters have actually changed
-      if (currentParams !== lastFetchParams) {
-        setLastFetchParams(currentParams);
-        fetchROIData();
-      }
-    } else {
-      // If props are provided, set internal loading to false
+    // Fetch if: no props, parameters changed, or props don't match current parameters
+    const shouldFetch = !shouldUseProps && currentParams !== lastFetchParams;
+
+    if (shouldFetch) {
+      setLastFetchParams(currentParams);
+      fetchROIData();
+    } else if (shouldUseProps) {
+      // Using props - ensure internal loading is false
       setInternalLoading(false);
+      setInternalError(null);
     }
-  }, [discussionId, timeWindow, hourlyRate, usageFrequency, lastFetchParams, propRoiData]);
+  }, [discussionId, timeWindow, hourlyRate, usageFrequency, lastFetchParams, shouldUseProps]);
 
   const fetchROIData = async () => {
     // Use different loading states based on whether this is initial load or update

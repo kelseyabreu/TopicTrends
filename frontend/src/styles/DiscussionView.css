@@ -459,6 +459,10 @@
   font-size: 1.125rem;
 }
 
+.sort-button{
+  text-transform: capitalize;
+}
+
 /* Responsive Design - Mobile First */
 
 /* Small devices (landscape phones, 576px and up) */

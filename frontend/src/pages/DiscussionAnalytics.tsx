@@ -279,13 +279,14 @@ function DiscussionAnalytics() {
           </TabsTrigger>
         </TabsList>
 
-        {/* ROI Tab - 🚀 FULL ROI DASHBOARD: Uses consolidated data from single API call */}
+        {/* ROI Tab - 🚀 SMART ROI DASHBOARD: Uses props when parameters match, fetches when they don't */}
         <TabsContent value="roi" className="space-y-4">
           <ROIDashboard
             discussionId={discussionId!}
             roiData={analyticsData || null}
             loading={loading}
             error={null}
+            timeWindow={timeWindow}
           />
         </TabsContent>
 
