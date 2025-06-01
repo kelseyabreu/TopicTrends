@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 import { AuthStatus } from '../enums/AuthStatus';
 import api from '../utils/api';
+import { PaginatedIdeas, PaginatedDiscussions, convertTanStackToApiParams } from '../interfaces/pagination';
 import "../styles/AllIdeasView.css";
 
 // Import UI components
@@ -193,22 +194,7 @@ interface Discussion {
     qr_code?: string;
 }
 
-interface PaginatedIdeas {
-    rows: Idea[];
-    pageCount: number;
-    totalRowCount: number;
-    meta: {
-        currentPage: number;
-        pageSize: number;
-        hasPreviousPage: boolean;
-        hasNextPage: boolean;
-        searchTerm: string | null;
-        filtersApplied: Record<string, any>;
-        sortBy: string | null;
-        sortDirection: string | null;
-        executionTimeMs: number;
-    };
-}
+// PaginatedIdeas interface now imported from pagination.ts
 
 interface IdeaAnalytics {
     totalIdeas: number;
@@ -853,29 +839,13 @@ const AllIdeasView: React.FC = () => {
             lastRefreshTimeRef.current = new Date();
 
             try {
-                const queryParams: Record<string, any> = {
-                    page: pagination.pageIndex + 1,
-                    page_size: pagination.pageSize,
-                };
-
-                if (sorting.length > 0) {
-                    queryParams.sort = sorting[0].id;
-                    queryParams.sort_dir = sorting[0].desc ? 'desc' : 'asc';
-                }
-
-                if (debouncedGlobalFilter) {
-                    queryParams.search = debouncedGlobalFilter;
-                }
-
-                columnFilters.forEach(filter => {
-                    if (typeof filter.value === 'object' && filter.value !== null) {
-                        Object.entries(filter.value).forEach(([op, val]) => {
-                            queryParams[`filter.${filter.id}.${op}`] = val;
-                        });
-                    } else {
-                        queryParams[`filter.${filter.id}`] = filter.value;
-                    }
-                });
+                // Convert TanStack state to standard query parameters using utility function
+                const queryParams = convertTanStackToApiParams(
+                    pagination,
+                    sorting,
+                    debouncedGlobalFilter,
+                    columnFilters
+                );
 
                 // Add keyword and related topics filters
                 if (selectedKeywords.length > 0) {
@@ -913,10 +883,10 @@ const AllIdeasView: React.FC = () => {
 
         const fetchDiscussions = async () => {
             try {
-                const response = await api.get<Discussion[]>('/discussions', {
-                    params: { limit: 1000 } // Get all discussions for reference
+                const response = await api.get<PaginatedDiscussions>('/discussions', {
+                    params: { page_size: 1000 } // Get all discussions for reference using standardized pagination
                 });
-                setDiscussions(response.data);
+                setDiscussions(response.data.rows);
             } catch (err) {
                 console.error('Error fetching discussions:', err);
             }

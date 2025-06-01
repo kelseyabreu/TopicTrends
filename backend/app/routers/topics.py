@@ -100,51 +100,53 @@ async def get_discussion_topics(
     if sort_field == "count":
         results.sort(key=lambda t: t.count, reverse=(sort_dir == "desc"))
 
-    # Apply pagination if requested
+    # Get unclustered count (needed for both paginated and legacy responses)
+    unclustered_count = await db.ideas.count_documents({
+        "discussion_id": discussion_id,
+        "topic_id": None
+    })
+
+    # Use standardized pagination response
     total_topics = len(results)
     page = params.page if params.page else 1
-    page_size = params.page_size if params.page_size else total_topics  # Default to all topics
+    page_size = params.page_size if params.page_size else total_topics
 
-    # Check if pagination is requested
-    is_paginated = 'page' in request.query_params or 'page_size' in request.query_params
+    # Apply pagination
+    start_idx = (page - 1) * page_size
+    end_idx = start_idx + page_size
+    paginated_results = results[start_idx:end_idx]
 
-    if is_paginated:
-        # Apply pagination
-        start_idx = (page - 1) * page_size
-        end_idx = start_idx + page_size
-        paginated_results = results[start_idx:end_idx]
+    # Create standardized paginated response
+    from app.models.query_models import PaginatedResponse, PaginationMetadata, QueryMetadata
 
-        # Calculate pagination metadata
-        total_pages = (total_topics + page_size - 1) // page_size
+    pagination_metadata = PaginationMetadata(
+        page=page,
+        page_size=page_size,
+        total_items=total_topics,
+        total_pages=(total_topics + page_size - 1) // page_size,
+        has_previous=page > 1,
+        has_next=page < (total_topics + page_size - 1) // page_size
+    )
 
-        # Get unclustered count
-        unclustered_count = await db.ideas.count_documents({
-            "discussion_id": discussion_id,
-            "topic_id": None
-        })
+    query_metadata = QueryMetadata(
+        search_term_used=params.search,
+        filters_applied={},
+        sort_by=params.sort,
+        sort_direction=params.sort_dir,
+        execution_time_ms=0  # Could be calculated if needed
+    )
 
-        # Return paginated format
-        return {
-            "data": paginated_results,
-            "meta": {
-                "total": total_topics,
-                "page": page,
-                "page_size": page_size,
-                "total_pages": total_pages
-            },
-            "unclustered_count": unclustered_count
-        }
-    else:
-        # Return legacy format for backward compatibility
-        unclustered_count = await db.ideas.count_documents({
-            "discussion_id": discussion_id,
-            "topic_id": None
-        })
+    paginated_response = PaginatedResponse[Topic](
+        items=paginated_results,
+        pagination=pagination_metadata,
+        query_metadata=query_metadata
+    )
 
-        return {
-            "topics": results,
-            "unclustered_count": unclustered_count
-        }
+    # Convert to TanStack format and add unclustered_count
+    response_dict = paginated_response.to_tanstack_response()
+    response_dict["unclustered_count"] = unclustered_count
+
+    return response_dict
 
 
 @router.post("/topics", response_model=List[dict]) 

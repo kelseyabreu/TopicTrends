@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../utils/api";
 import { Discussion } from "../interfaces/discussions";
+import { PaginatedDiscussions } from "../interfaces/pagination";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,10 +20,15 @@ function AllDiscussionsView() {
     useEffect(() => {
       const fetchDiscussions = async () => {
         try {
-          const response = await api.get('/discussions');
-          console.log(response.data);
-          setDiscussions(response.data);
-          setFilteredDiscussions(response.data);
+          const response = await api.get<PaginatedDiscussions>('/discussions', {
+            params: { page_size: 200 } // Get all discussions for the overview page
+          });
+          console.log('Discussions response:', response.data);
+
+          // Use standardized paginated format
+          const discussionsData = response.data.rows;
+          setDiscussions(discussionsData);
+          setFilteredDiscussions(discussionsData);
         } catch (error) {
           console.error('Error fetching discussions:', error);
           setError('Failed to load discussions. Please try again later.');
@@ -30,7 +36,7 @@ function AllDiscussionsView() {
           setIsLoading(false);
         }
       };
-  
+
       fetchDiscussions();
     }, []);
 
@@ -52,7 +58,7 @@ function AllDiscussionsView() {
 
         // Apply active filters if any are selected
         //TODO: Discussions need the filters in their data.
-        if (hasActiveFilters) { 
+        if (hasActiveFilters) {
           filtered = filtered.filter(d => d
             // activeFilters.some(filter =>
             //   d.title.toLowerCase().includes(filter) ||

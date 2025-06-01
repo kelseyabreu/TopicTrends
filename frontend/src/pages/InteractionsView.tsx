@@ -8,6 +8,7 @@ import { Interaction } from '../interfaces/interaction';
 import { Discussion } from '../interfaces/discussions';
 import { Idea } from '../interfaces/ideas';
 import { Topic } from '../interfaces/topics';
+import { PaginatedInteractions, convertTanStackToApiParams } from '../interfaces/pagination';
 
 // Import UI components from ShadCN/UI
 import { Button } from '@/components/ui/button';
@@ -184,22 +185,7 @@ interface DateRange {
     endDate: string;
 }
 
-interface PaginatedInteractions {
-    rows: Interaction[];
-    pageCount: number;
-    totalRowCount: number;
-    meta: {
-        currentPage: number;
-        pageSize: number;
-        hasPreviousPage: boolean;
-        hasNextPage: boolean;
-        searchTerm: string | null;
-        filtersApplied: Record<string, any>;
-        sortBy: string | null;
-        sortDirection: string | null;
-        executionTimeMs: number;
-    };
-}
+
 
 // --- Debounce Hook ---
 function useDebounce<T>(value: T, delay: number): T {
@@ -623,30 +609,13 @@ const InteractionsView: React.FC = () => {
             lastRefreshTimeRef.current = new Date();
 
             try {
-                // Convert TanStack state to standard query parameters
-                const queryParams: Record<string, any> = {
-                    page: pagination.pageIndex + 1, // Convert 0-based to 1-based
-                    page_size: pagination.pageSize,
-                };
-
-                if (sorting.length > 0) {
-                    queryParams.sort = sorting[0].id;
-                    queryParams.sort_dir = sorting[0].desc ? 'desc' : 'asc';
-                }
-
-                if (debouncedGlobalFilter) {
-                    queryParams.search = debouncedGlobalFilter;
-                }
-
-                columnFilters.forEach(filter => {
-                    if (typeof filter.value === 'object' && filter.value !== null) {
-                        Object.entries(filter.value).forEach(([op, val]) => {
-                            queryParams[`filter.${filter.id}.${op}`] = val;
-                        });
-                    } else {
-                        queryParams[`filter.${filter.id}`] = filter.value;
-                    }
-                });
+                // Convert TanStack state to standard query parameters using utility function
+                const queryParams = convertTanStackToApiParams(
+                    pagination,
+                    sorting,
+                    debouncedGlobalFilter,
+                    columnFilters
+                );
 
                 const response = await api.get<PaginatedInteractions>('/interaction/', {
                     params: queryParams

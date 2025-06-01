@@ -36,8 +36,9 @@ import {
   MessageSquareText
 } from "lucide-react";
 import { Discussion } from "../interfaces/discussions";
-import { Topic, TopicsResponse, PaginatedTopicsResponse } from "../interfaces/topics";
+import { Topic } from "../interfaces/topics";
 import { Idea } from "../interfaces/ideas";
+import { PaginatedTopics, convertTanStackToApiParams } from "../interfaces/pagination";
 import TopicListItem from "../components/TopicListItem";
 import InteractionButton, {
   InteractionActionType,
@@ -249,34 +250,25 @@ function DiscussionViewContent() {
       // Map frontend sort values to backend field names
       const sortField = sortBy === 'newest' ? 'id' : sortBy === 'popular' ? 'count' : 'count';
 
-      const topicsResponse = await api.get<PaginatedTopicsResponse | TopicsResponse>(`/discussions/${discussionId}/topics`, {
-        params: {
-          page: topicsPagination.pageIndex + 1, // Convert 0-based to 1-based
-          page_size: topicsPagination.pageSize,
-          sort: sortField,
-          sort_dir: sortDir
-        }
+      // Convert TanStack pagination state to API parameters using standardized utility
+      const queryParams = convertTanStackToApiParams(
+        topicsPagination,
+        [{ id: sortField, desc: sortDir === 'desc' }],
+        undefined, // no global filter for topics
+        [] // no column filters for topics
+      );
+
+      const topicsResponse = await api.get<PaginatedTopics>(`/discussions/${discussionId}/topics`, {
+        params: queryParams
       });
 
-      // Handle both legacy and paginated response formats
-      let fetchedTopics: Topic[] = [];
-      const responseData = topicsResponse.data as any;
-
-      if (responseData.data) {
-        // Paginated response format
-        fetchedTopics = Array.isArray(responseData.data) ? responseData.data : [];
-        if (responseData.meta) {
-          setTopicsPageCount(responseData.meta.total_pages);
-          setTotalTopicsCount(responseData.meta.total);
-        }
-      } else if (responseData.topics) {
-        // Legacy response format (no pagination requested)
-        fetchedTopics = Array.isArray(responseData.topics) ? responseData.topics : [];
-        setTopicsPageCount(1);
-        setTotalTopicsCount(fetchedTopics.length);
-      }
+      // Use standardized paginated response format
+      const responseData = topicsResponse.data;
+      const fetchedTopics = responseData.rows;
 
       setTopics(fetchedTopics);
+      setTopicsPageCount(responseData.pageCount);
+      setTotalTopicsCount(responseData.totalRowCount);
       setUnclusteredCount(responseData.unclustered_count || 0);
 
       console.log(`[DiscussionView] Topics fetched successfully: ${fetchedTopics.length} topics`);

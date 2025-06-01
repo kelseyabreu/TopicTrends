@@ -8,23 +8,4 @@ export interface Topic {
     ideas: Idea[];
 }
 
-export interface TopicResponse {
-    data: Topic[];
-}
-
-export interface TopicsResponse {
-    topics: Topic[];
-    unclustered_count: number;
-}
-
-// Paginated response interface following TanStack pattern
-export interface PaginatedTopicsResponse {
-    data: Topic[];
-    meta: {
-        total: number;
-        page: number;
-        page_size: number;
-        total_pages: number;
-    };
-    unclustered_count: number;
-}
+// Legacy interfaces removed - now using standardized PaginatedTopics from pagination.ts
