@@ -114,7 +114,7 @@ interface ROIDashboardProps {
   discussionId: string;
   className?: string;
   // 🚀 SMART PROPS: Accept consolidated data and sync parameters
-  roiData?: any | null;
+  roiData?: Record<string, any> | null;
   loading?: boolean;
   error?: string | null;
   timeWindow?: string;  // For parameter synchronization
@@ -231,7 +231,7 @@ const ROIDashboard: React.FC<ROIDashboardProps> = ({
         }
       });
       setInternalRoiData(response.data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching ROI data:', err);
       setInternalError('Failed to load ROI metrics');
       toast.error('Failed to load ROI data');

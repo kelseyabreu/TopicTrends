@@ -19,7 +19,7 @@ function Login() {
     // Get redirect path if any
     const from = location.state?.from?.pathname || '/dashboard';
 
-    const handleChange = (e) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setFormData({
             ...formData,
@@ -27,13 +27,13 @@ function Login() {
         });
     };
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         try {
             await login(formData.email, formData.password);
             toast.success('Login successful!');
             navigate(from, { replace: true });
-        } catch (error) {
+        } catch (error: any) {
             const errorMessage = error?.detail || error?.message || 'Login failed. Please check your credentials.';
 
             // Check if user is not verified

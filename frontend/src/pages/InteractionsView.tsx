@@ -629,9 +629,13 @@ const InteractionsView: React.FC = () => {
                 setPageCount(response.data.pageCount);
                 setTotalRowCount(response.data.totalRowCount);
                 isInitialMount.current = false;
-            } catch (err: any) {
+            } catch (err: unknown) {
                 console.error('Error fetching interactions:', err);
-                const errorMsg = err.response?.data?.detail || err.message || 'Failed to load interaction data.';
+                const errorMsg = err && typeof err === 'object' && 'response' in err
+                    ? (err as any).response?.data?.detail || 'Failed to load interaction data.'
+                    : err && typeof err === 'object' && 'message' in err
+                    ? (err as any).message
+                    : 'Failed to load interaction data.';
                 setError(errorMsg);
                 toast.error(errorMsg, { toastId: 'fetch-interactions-error' });
             } finally {

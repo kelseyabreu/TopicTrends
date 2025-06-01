@@ -16,10 +16,11 @@ from app.services.auth import (
     get_optional_current_user,
     verify_token_cookie,
     verify_participation_token,
+    verify_csrf_dependency,
     check_csrf_manual,
-    CSRF_COOKIE_NAME, 
-    CSRF_HEADER_NAME, 
-    csrf_exception 
+    CSRF_COOKIE_NAME,
+    CSRF_HEADER_NAME,
+    csrf_exception
 )
 
 from app.services.query_executor import create_idea_query_executor

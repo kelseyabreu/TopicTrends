@@ -73,7 +73,7 @@ async def get_user_identifiers(
 
 # --- Interaction Endpoints (Like, Pin, View, Saves) ---
 
-@router.post("/{entity_type:str}/{entity_id:str}/{action:str}", response_model=InteractionEvent)
+@router.post("/{entity_type:str}/{entity_id:str}/{action:str}", response_model=InteractionEvent, dependencies=[Depends(verify_csrf_dependency)])
 @limiter.limit("120/minute")
 async def record_interaction(
     request: Request,
@@ -230,7 +230,7 @@ async def get_trending(
     # The service method already projects to a structure matching TrendingEntityResponseItem
     return [TrendingEntityResponseItem(**item) for item in trending_results]
 
-@router.post("/bulk-state", response_model=BulkStateResponse)
+@router.post("/bulk-state", response_model=BulkStateResponse, dependencies=[Depends(verify_csrf_dependency)])
 @limiter.limit("60/minute")
 async def get_bulk_interaction_states(
     request: Request,

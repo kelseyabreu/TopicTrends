@@ -1,8 +1,8 @@
 export interface Discussion {
     idea_count: number;
     require_verification: boolean;
-    join_link: any;
-    qr_code: any;
+    join_link: string | null;
+    qr_code: string | null;
     id: string;
     title: string;
     prompt: string;

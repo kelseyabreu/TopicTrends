@@ -8,7 +8,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Users, MessageSquare, TrendingUp, Clock, BarChart3, Activity, Brain, Target, Zap, Globe, DollarSign } from 'lucide-react';
+import { Loader2, Users, MessageSquare, TrendingUp, Clock, BarChart3, Activity, Brain, Target, Zap, Globe, DollarSign, Download } from 'lucide-react';
 import ROIDashboard from '../components/ROIDashboard';
 import {
   BarChart,
@@ -43,6 +43,7 @@ function DiscussionAnalytics() {
   const [analyticsData, setAnalyticsData] = useState(null);
   const [discussion, setDiscussion] = useState(null);
   const [activeTab, setActiveTab] = useState('roi'); // 🚀 DEFAULT TO ROI TAB
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     if (!discussionId) {
@@ -86,6 +87,46 @@ function DiscussionAnalytics() {
         }
     };
 
+    const handleExportCSV = async () => {
+        if (!discussionId) return;
+
+        setIsExporting(true);
+        try {
+            const response = await api.get(`/analytics/discussions/${discussionId}/export/csv`, {
+                responseType: 'blob' // Important for file downloads
+            });
+
+            // Create blob and download
+            const blob = new Blob([response.data], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+
+            // Extract filename from response headers or use default
+            const contentDisposition = response.headers['content-disposition'];
+            let filename = 'discussion_export.csv';
+            if (contentDisposition) {
+                const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+                if (filenameMatch) {
+                    filename = filenameMatch[1];
+                }
+            }
+
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+
+            toast.success('Discussion data exported successfully!');
+        } catch (error: any) {
+            console.error('Error exporting CSV:', error);
+            toast.error(error?.response?.data?.detail || 'Failed to export discussion data');
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
 
 
 
@@ -124,20 +165,20 @@ function DiscussionAnalytics() {
 
   // Format data for charts - ensure proper chronological ordering
   const hourlyChartData = (realtime.hourly_breakdown || [])
-    .sort((a, b) => {
+    .sort((a: any, b: any) => {
       // Sort by datetime if available, otherwise by hour string
       if (a.datetime && b.datetime) {
         return new Date(a.datetime).getTime() - new Date(b.datetime).getTime();
       }
       return a.hour.localeCompare(b.hour);
     })
-    .map(item => ({
+    .map((item: any) => ({
       hour: item.hour, // Use the pre-formatted label from backend
       ideas: item.ideas || 0,
       fullDate: item.datetime || item.hour // Keep original for tooltip
     }));
 
-  const topicDistributionData = (topics.topic_distribution || []).map(topic => ({
+  const topicDistributionData = (topics.topic_distribution || []).map((topic: any) => ({
     name: topic.topic && topic.topic.length > 30 ? topic.topic.substring(0, 30) + '...' : topic.topic || 'Untitled',
     value: topic.idea_count || 0,
     fullName: topic.topic || 'Untitled'
@@ -188,6 +229,15 @@ function DiscussionAnalytics() {
                 <SelectItem value="all">All Time</SelectItem>
               </SelectContent>
             </Select>
+
+            <Button
+              onClick={handleExportCSV}
+              disabled={isExporting}
+              className="w-full sm:w-auto whitespace-nowrap flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              {isExporting ? 'Exporting...' : 'Export CSV'}
+            </Button>
 
             <Button
               onClick={() => navigate(`/discussion/${discussionId}`)}
@@ -349,7 +399,7 @@ function DiscussionAnalytics() {
                           fill="#8884d8"
                           dataKey="value"
                         >
-                          {topicDistributionData.map((_, index) => (
+                          {topicDistributionData.map((_: any, index: number) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                           ))}
                         </Pie>
@@ -540,7 +590,7 @@ function DiscussionAnalytics() {
               <CardContent>
                 <div className="space-y-3">
                   {(trending.trending_topics || []).length > 0 ? (
-                    (trending.trending_topics || []).map((topic, index) => (
+                    (trending.trending_topics || []).map((topic: any, index: number) => (
                       <div key={topic.topic_id || index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div className="flex items-center gap-3">
                           <Badge variant="default">{index + 1}</Badge>
@@ -567,7 +617,7 @@ function DiscussionAnalytics() {
               <CardContent>
                 <div className="space-y-3">
                   {(trending.trending_ideas || []).length > 0 ? (
-                    (trending.trending_ideas || []).slice(0, 5).map((idea, index) => (
+                    (trending.trending_ideas || []).slice(0, 5).map((idea: any, index: number) => (
                       <div key={idea.idea_id || index} className="p-3 bg-gray-50 rounded-lg">
                         <p className="text-sm mb-2">{idea.content || 'No content available'}</p>
                         <div className="flex items-center gap-3">
@@ -668,7 +718,7 @@ function DiscussionAnalytics() {
                   <div className="space-y-2">
                     <h4 className="font-medium">Key Insights</h4>
                     <div className="space-y-1">
-                      {(executive_summary.key_insights || []).map((insight, index) => (
+                      {(executive_summary.key_insights || []).map((insight: string, index: number) => (
                         <div key={index} className="flex items-center text-sm">
                           <div className="w-2 h-2 bg-blue-500 rounded-full mr-2" />
                           {insight}
@@ -752,7 +802,7 @@ function DiscussionAnalytics() {
                         <div className="flex flex-wrap gap-1">
                           {content_preferences?.content_insights?.top_keywords
                             ?.slice(0, 8)
-                            .map((keyword, index) => (
+                            .map((keyword: string, index: number) => (
                               <Badge key={index} variant="neutral" className="text-xs">
                                 {keyword}
                               </Badge>
@@ -794,7 +844,7 @@ function DiscussionAnalytics() {
                         <div className="space-y-2 max-h-32 overflow-y-auto">
                           {idea_performance?.top_viral_ideas
                             ?.slice(0, 3)
-                            .map((idea, index) => (
+                            .map((idea: any, index: number) => (
                               <div key={index} className="p-2 bg-gray-50 rounded text-sm">
                                 <div className="truncate">{idea.text}</div>
                                 <div className="flex justify-between text-xs text-gray-500 mt-1">

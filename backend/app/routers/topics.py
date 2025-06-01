@@ -1,4 +1,5 @@
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, Request
+from app.services.auth import verify_csrf_dependency
 from typing import List, Dict, Any
 from app.services.genkit.ai import cluster_ideas_into_topics
 from app.services.genkit.cluster import _map_ideas_for_output
@@ -149,8 +150,10 @@ async def get_discussion_topics(
     return response_dict
 
 
-@router.post("/topics", response_model=List[dict]) 
+@router.post("/topics", response_model=List[dict], dependencies=[Depends(verify_csrf_dependency)])
+@limiter.limit(settings.DEFAULT_RATE_LIMIT)
 async def create_topics(
+        request: Request,
         payload: TopicIdPayload, # Expect JSON object
         background_tasks: BackgroundTasks, # Keep BackgroundTasks import
         # Note: Drill-down clustering usually shouldn't run in background

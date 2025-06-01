@@ -4,21 +4,28 @@ ENDPOINTS:
 - GET /summary - Unified analytics (ALL data in one optimized call)
 - GET /ideas-summary - Global ideas analytics (compatibility)
 - GET /user-interaction-stats - User-specific analytics (compatibility)
+- GET /discussions/{discussion_id}/export/csv - Export discussion data to CSV
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response, Request
 from datetime import datetime, timedelta, timezone
 import logging
+import csv
+import io
 from bson import ObjectId
 
 from app.core.database import get_db
-from app.services.auth import verify_token_cookie
+from app.services.auth import verify_token_cookie, verify_csrf_dependency
+from app.core.limiter import limiter
+from app.core.config import settings
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 logger = logging.getLogger(__name__)
 
 @router.get("/summary")
+@limiter.limit(settings.DEFAULT_RATE_LIMIT)
 async def get_analytics_summary(
+    request: Request,
     discussion_id: str,
     time_window: str = "24h",  # 1h, 24h, 7d, 30d, 1y, all
     include_roi: bool = False,  # NEW: Include ROI calculations
@@ -1672,7 +1679,9 @@ async def _calculate_roi_from_raw_data(
 
 
 @router.get("/ideas-summary")
+@limiter.limit(settings.DEFAULT_RATE_LIMIT)
 async def get_ideas_analytics_summary(
+    request: Request,
     db = Depends(get_db),
     current_user: dict = Depends(verify_token_cookie)
 ):
@@ -1826,7 +1835,9 @@ async def get_ideas_analytics_summary(
         raise HTTPException(status_code=500, detail="Failed to get global ideas analytics")
 
 @router.get("/user-interaction-stats")
+@limiter.limit(settings.DEFAULT_RATE_LIMIT)
 async def get_user_interaction_stats(
+    request: Request,
     user_id: str = None,
     db = Depends(get_db),
     current_user: dict = Depends(verify_token_cookie)
@@ -2000,3 +2011,120 @@ async def get_user_interaction_stats(
     except Exception as e:
         logger.error(f"Error getting user interaction stats: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to get user interaction stats")
+
+@router.get("/discussions/{discussion_id}/export/csv", dependencies=[Depends(verify_csrf_dependency)])
+@limiter.limit("10/minute")
+async def export_discussion_csv(
+    request: Request,
+    discussion_id: str,
+    current_user: dict = Depends(verify_token_cookie),
+    db = Depends(get_db)
+):
+    """
+    Export discussion data to CSV format.
+    Includes ideas, topics, and basic analytics.
+    Only accessible to discussion creators or admins.
+    """
+    try:
+        # 1. Verify discussion exists and user has permission
+        discussion = await db.discussions.find_one({"_id": discussion_id})
+        if not discussion:
+            raise HTTPException(status_code=404, detail="Discussion not found")
+
+        user_id = str(current_user["_id"])
+        if discussion.get("creator_id") != user_id:
+            # For now, only allow creators to export. Could add admin check later.
+            raise HTTPException(status_code=403, detail="Only discussion creators can export data")
+
+        # 2. Fetch all ideas for the discussion
+        ideas_cursor = db.ideas.find({"discussion_id": discussion_id})
+        ideas = await ideas_cursor.to_list(None)
+
+        # 3. Fetch all topics for the discussion
+        topics_cursor = db.topics.find({"discussion_id": discussion_id})
+        topics = await topics_cursor.to_list(None)
+
+        # Create topic lookup for idea mapping
+        topic_lookup = {str(topic["_id"]): topic.get("representative_text", "Untitled Topic") for topic in topics}
+
+        # 4. Create CSV content
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        # Write header
+        writer.writerow([
+            "Idea ID",
+            "Idea Text",
+            "Topic",
+            "User ID",
+            "Verified",
+            "Timestamp",
+            "Intent",
+            "Sentiment",
+            "Specificity",
+            "Keywords",
+            "On Topic Score",
+            "Average Rating",
+            "Rating Count"
+        ])
+
+        # Write idea data
+        for idea in ideas:
+            topic_text = "Unclustered"
+            if idea.get("topic_id"):
+                topic_text = topic_lookup.get(str(idea["topic_id"]), "Unknown Topic")
+
+            # Format timestamp
+            timestamp = idea.get("timestamp")
+            timestamp_str = timestamp.isoformat() if timestamp else ""
+
+            # Format keywords
+            keywords = idea.get("keywords", [])
+            keywords_str = "; ".join(keywords) if keywords else ""
+
+            # Format user ID (anonymize if needed)
+            user_id_display = idea.get("user_id", "Anonymous")
+            if user_id_display and user_id_display != "Anonymous":
+                user_id_display = f"User_{user_id_display[:8]}"  # Partial anonymization
+
+            writer.writerow([
+                str(idea["_id"]),
+                idea.get("text", ""),
+                topic_text,
+                user_id_display,
+                idea.get("verified", False),
+                timestamp_str,
+                idea.get("intent", ""),
+                idea.get("sentiment", ""),
+                idea.get("specificity", ""),
+                keywords_str,
+                idea.get("on_topic", ""),
+                idea.get("average_rating", ""),
+                idea.get("rating_count", 0)
+            ])
+
+        # 5. Prepare response
+        csv_content = output.getvalue()
+        output.close()
+
+        # Generate filename with discussion title and timestamp
+        discussion_title = discussion.get("title", "discussion").replace(" ", "_")
+        timestamp_str = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        filename = f"{discussion_title}_{timestamp_str}.csv"
+
+        logger.info(f"User {user_id} exported CSV for discussion {discussion_id} with {len(ideas)} ideas")
+
+        return Response(
+            content=csv_content,
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error exporting CSV for discussion {discussion_id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to export discussion data"
+        )

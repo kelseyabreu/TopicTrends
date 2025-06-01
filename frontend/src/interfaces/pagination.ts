@@ -46,7 +46,7 @@ export interface SearchParams {
 }
 
 export interface FilterParams {
-    [key: string]: any; // Dynamic filter parameters like filter.entity_type, filter.timestamp.gte, etc.
+    [key: string]: string | number | boolean | undefined; // Dynamic filter parameters like filter.entity_type, filter.timestamp.gte, etc.
 }
 
 export interface QueryParams extends PaginationParams, SortingParams, SearchParams, FilterParams {}
@@ -67,7 +67,7 @@ export const convertTanStackToApiParams = (
     pagination: TanStackPaginationState,
     sorting: TanStackSortingState,
     globalFilter?: string,
-    columnFilters?: any[]
+    columnFilters?: Array<{id: string; value: unknown}>
 ): QueryParams => {
     const params: QueryParams = {
         page: pagination.pageIndex + 1, // Convert 0-based to 1-based
@@ -99,7 +99,7 @@ export const convertTanStackToApiParams = (
     return params;
 };
 
-export const convertApiToTanStackResponse = <T>(apiResponse: any): PaginatedResponse<T> => {
+export const convertApiToTanStackResponse = <T>(apiResponse: Record<string, any>): PaginatedResponse<T> => {
     return {
         rows: apiResponse.rows || apiResponse.data || [],
         pageCount: apiResponse.pageCount || apiResponse.meta?.total_pages || 1,

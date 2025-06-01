@@ -93,9 +93,12 @@ export const InteractionStateProvider: React.FC<InteractionStateProviderProps> =
         ...response.data.states
       }));
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error loading bulk interaction states:', err);
-      setError(err.response?.data?.detail || 'Failed to load interaction states');
+      const errorMessage = err && typeof err === 'object' && 'response' in err
+        ? (err as any).response?.data?.detail || 'Failed to load interaction states'
+        : 'Failed to load interaction states';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -136,7 +139,7 @@ export const InteractionStateProvider: React.FC<InteractionStateProviderProps> =
       const entityKey = `${entityType}:${entityId}`;
       updateState(entityKey, response.data);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(`Error refreshing state for ${entityType}:${entityId}:`, err);
     }
   };

@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from typing import List, Dict, Any, Annotated
 import logging
 from app.core.limiter import limiter
 from app.core.config import settings
 from app.core.database import get_db
-from app.services.auth import verify_token_cookie
+from app.services.auth import verify_token_cookie, verify_csrf_dependency
 from datetime import timedelta, datetime, timezone
 from bson import ObjectId
 
@@ -390,4 +390,100 @@ async def get_current_user_engagement(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to generate engagement analytics."
+        )
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(verify_csrf_dependency)])
+@limiter.limit("5/minute")
+async def delete_current_user(
+    request: Request,
+    response: Response,
+    current_user: Annotated[dict, Depends(verify_token_cookie)]
+):
+    """
+    Delete the current user's account and all associated data.
+    This action is irreversible and will:
+    - Anonymize all user's ideas (remove user_id, keep content)
+    - Delete user's interactions
+    - Delete user's discussions (and all associated ideas/topics)
+    - Delete the user account
+    - Clear authentication cookies
+    """
+    user_id = str(current_user["_id"])
+    logger.info(f"User {user_id} requested account deletion")
+
+    try:
+        db = await get_db()
+
+        # 1. Get all discussions created by this user
+        user_discussions = await db.discussions.find({"creator_id": user_id}).to_list(None)
+        discussion_ids = [disc["_id"] for disc in user_discussions]
+
+        # 2. Delete all ideas in user's discussions
+        if discussion_ids:
+            ideas_delete_result = await db.ideas.delete_many({"discussion_id": {"$in": discussion_ids}})
+            logger.info(f"Deleted {ideas_delete_result.deleted_count} ideas from user's discussions")
+
+            # 3. Delete all topics in user's discussions
+            topics_delete_result = await db.topics.delete_many({"discussion_id": {"$in": discussion_ids}})
+            logger.info(f"Deleted {topics_delete_result.deleted_count} topics from user's discussions")
+
+            # 4. Delete user's discussions
+            discussions_delete_result = await db.discussions.delete_many({"creator_id": user_id})
+            logger.info(f"Deleted {discussions_delete_result.deleted_count} discussions")
+
+        # 5. Anonymize ideas submitted by user in other discussions
+        # Remove user_id but keep the content for data integrity
+        anonymize_result = await db.ideas.update_many(
+            {"user_id": user_id},
+            {
+                "$unset": {"user_id": ""},
+                "$set": {
+                    "submitter_display_id": "deleted_user",
+                    "verified": False
+                }
+            }
+        )
+        logger.info(f"Anonymized {anonymize_result.modified_count} ideas from other discussions")
+
+        # 6. Delete user's interactions
+        interactions_delete_result = await db.interaction_events.delete_many({"user_id": user_id})
+        logger.info(f"Deleted {interactions_delete_result.deleted_count} interaction events")
+
+        # 7. Delete user's interaction states
+        states_delete_result = await db.user_interaction_states.delete_many({"user_identifier": user_id})
+        logger.info(f"Deleted {states_delete_result.deleted_count} interaction states")
+
+        # 8. Delete the user account
+        user_delete_result = await db.users.delete_one({"_id": user_id})
+
+        if user_delete_result.deleted_count == 0:
+            logger.error(f"Failed to delete user {user_id} - user not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
+        # 9. Clear authentication cookies
+        cookie_domain = None
+        if settings.ENVIRONMENT != "development":
+            cookie_domain = settings.COOKIE_DOMAIN
+
+        response.delete_cookie(
+            key="access_token",
+            path="/",
+            domain=cookie_domain
+        )
+        response.delete_cookie(
+            key="csrf_token",
+            path="/",
+            domain=cookie_domain
+        )
+
+        logger.info(f"Successfully deleted user {user_id} and all associated data")
+
+    except Exception as e:
+        logger.error(f"Error deleting user {user_id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete user account. Please try again."
         )

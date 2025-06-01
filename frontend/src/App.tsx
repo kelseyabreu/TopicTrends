@@ -25,15 +25,20 @@ import InteractionsView from './pages/InteractionsView.tsx';
 import AllIdeasView from './pages/AllIdeasView.tsx';
 import DiscussionAnalytics from './pages/DiscussionAnalytics.tsx';
 import PitchPage from './pages/PitchPage.tsx';
-import GettingStartedPage from './pages/GettingStarted.tsx'
+import GettingStartedPage from './pages/GettingStarted.tsx';
+import ErrorBoundary, { PageErrorBoundary, ComponentErrorBoundary } from './components/ErrorBoundary.tsx';
 
 function App() {
     return (
-        <Router>
-            <div className="App">
-                <Header />
-                <div className="container">
-                    <Routes>
+        <ErrorBoundary>
+            <Router>
+                <div className="App">
+                    <ComponentErrorBoundary componentName="Header">
+                        <Header />
+                    </ComponentErrorBoundary>
+                    <div className="container">
+                        <PageErrorBoundary>
+                            <Routes>
                         <Route path="/" element={<Home />} />
                         <Route path="/pitch" element={<PitchPage />} /> 
                         <Route path="/getting-started" element={<GettingStartedPage />} /> 
@@ -80,12 +85,13 @@ function App() {
                                 </ProtectedRoute>
                             }
                         />
-                        </Routes>
-            </div>
-            <ToastContainer position="bottom-right" />
-        </div>
-        </Router>
-
+                            </Routes>
+                        </PageErrorBoundary>
+                    </div>
+                    <ToastContainer position="bottom-right" />
+                </div>
+            </Router>
+        </ErrorBoundary>
     )
 }
   

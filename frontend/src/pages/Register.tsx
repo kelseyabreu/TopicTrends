@@ -14,7 +14,7 @@ function Register() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData({
       ...formData,
@@ -22,7 +22,7 @@ function Register() {
     });
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
     // Validate form
@@ -48,8 +48,8 @@ function Register() {
       
       toast.success('Registration successful! Please check your email to verify your account.');
       navigate(`/verify?email=${formData.email}`);
-    } catch (error) {
-      toast.error(error.detail || 'Registration failed. Please try again.');
+    } catch (error: any) {
+      toast.error(error?.detail || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
