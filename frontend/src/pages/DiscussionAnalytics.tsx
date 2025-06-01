@@ -8,7 +8,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Users, MessageSquare, TrendingUp, Clock, BarChart3, Activity, Brain, Target, Zap, Globe } from 'lucide-react';
+import { Loader2, Users, MessageSquare, TrendingUp, Clock, BarChart3, Activity, Brain, Target, Zap, Globe, DollarSign } from 'lucide-react';
+import ROIDashboard from '../components/ROIDashboard';
 import {
   BarChart,
   Bar,
@@ -241,8 +242,12 @@ function DiscussionAnalytics() {
       </div>
 
       {/* Main Content Tabs */}
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
+      <Tabs defaultValue="roi" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="roi">
+            <Target className="h-4 w-4 mr-2" />
+            ROI
+          </TabsTrigger>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="participation">Participation</TabsTrigger>
           <TabsTrigger value="engagement">Engagement</TabsTrigger>
@@ -252,6 +257,11 @@ function DiscussionAnalytics() {
             Advanced
           </TabsTrigger>
         </TabsList>
+
+        {/* ROI Tab */}
+        <TabsContent value="roi" className="space-y-4">
+          <ROIDashboard discussionId={discussionId!} />
+        </TabsContent>
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-4">
