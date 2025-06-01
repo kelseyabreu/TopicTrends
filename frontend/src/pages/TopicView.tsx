@@ -1,6 +1,6 @@
 // src/pages/TopicView.tsx
 
-import React, { useEffect, useState } from "react"; // Import React
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from 'react-toastify';
 import { Loader2 } from "lucide-react"; // Keep Loader
@@ -8,10 +8,16 @@ import { Loader2 } from "lucide-react"; // Keep Loader
 // Application Imports
 import api from "../utils/api"; // Use the configured API client
 import { useAuth } from "../context/AuthContext"; // Import useAuth
+import { AuthStatus } from "../enums/AuthStatus";
 import { Discussion } from "../interfaces/discussions"; // Import Discussion type
 import { Topic } from "../interfaces/topics";
 import TopicListItem from "../components/TopicListItem";
+import { InteractionStateProvider, useInteractionState } from "../context/InteractionStateContext";
 import "../styles/TopicView.css";
+
+// Utility function for participation token key
+const getParticipationTokenKey = (discussionId: string | undefined): string =>
+  `TopicTrends_participation_token_${discussionId || "unknown"}`;
 
 // Define the structure of the response from POST /topics (for drill-down)
 // This assumes the backend returns data nested under a 'data' key
@@ -21,10 +27,12 @@ interface TopicDrilldownResponse {
 }
 
 
-function TopicView() {
+// Inner component that uses the interaction state context
+function TopicViewContent() {
     const { discussionId, topicId } = useParams<{ discussionId: string; topicId: string }>();
     const navigate = useNavigate();
-    const { authStatus } = useAuth(); // Get auth status, user object isn't directly needed now
+    const { authStatus } = useAuth();
+    const { loadBulkStates } = useInteractionState(); // Get auth status, user object isn't directly needed now
 
     // State for fetched data and loading/error status
     const [discussion, setDiscussion] = useState<Discussion | null>(null);
@@ -70,9 +78,28 @@ function TopicView() {
 
                 if (isMounted) {
                     if (topicResponse.data && Array.isArray(topicResponse.data)) {
-                        setSubTopics(topicResponse.data);
-                        console.log(`[TopicView Effect ${discussionId}/${topicId}] Received ${topicResponse.data.length} sub-topics.`);
-                        if (topicResponse.data.length === 0) {
+                        const fetchedSubTopics = topicResponse.data;
+                        setSubTopics(fetchedSubTopics);
+                        console.log(`[TopicView Effect ${discussionId}/${topicId}] Received ${fetchedSubTopics.length} sub-topics.`);
+
+                        // Load bulk interaction states for all entities
+                        const entities = [
+                            // Topic being viewed
+                            { type: 'topic' as const, id: topicId },
+                            // Sub-topics
+                            ...fetchedSubTopics.map(topic => ({ type: 'topic' as const, id: topic.id })),
+                            // Ideas from all sub-topics
+                            ...fetchedSubTopics.flatMap(topic =>
+                                topic.ideas.map((idea: any) => ({ type: 'idea' as const, id: idea.id }))
+                            )
+                        ];
+
+                        if (entities.length > 1) { // More than just the main topic
+                            console.log(`[TopicView] Loading bulk states for ${entities.length} entities...`);
+                            await loadBulkStates(entities);
+                        }
+
+                        if (fetchedSubTopics.length === 0) {
                             toast.info("No further sub-topics could be generated from this topic's ideas.");
                         }
                     } else {
@@ -165,6 +192,7 @@ function TopicView() {
                             topic={subTopic}
                             discussionId={discussionId!}
                             limitIdeas={false}
+                            participationToken={null} // TopicView requires authentication
                         />
                     ))
                 ) : (
@@ -173,6 +201,30 @@ function TopicView() {
                 )}
             </div>
         </div>
+    );
+}
+
+// Main wrapper component that provides the interaction state context
+function TopicView() {
+    const { discussionId } = useParams<{ discussionId: string }>();
+    const [participationToken, setParticipationToken] = useState<string | null>(null);
+    const { authStatus } = useAuth();
+
+    // Get participation token for the provider
+    useEffect(() => {
+        if (authStatus === AuthStatus.Unauthenticated && discussionId) {
+            const storageKey = getParticipationTokenKey(discussionId);
+            const token = sessionStorage.getItem(storageKey);
+            setParticipationToken(token);
+        } else {
+            setParticipationToken(null);
+        }
+    }, [authStatus, discussionId]);
+
+    return (
+        <InteractionStateProvider participationToken={participationToken}>
+            <TopicViewContent />
+        </InteractionStateProvider>
     );
 }
 

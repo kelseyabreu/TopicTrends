@@ -13,6 +13,7 @@ from app.models.user_schemas import User # Pydantic User model
 from app.services.genkit.ai import background_ai_processes # Keep background task
 # Import security functions and constants
 from app.services.auth import (
+    get_optional_current_user,
     verify_token_cookie,
     verify_participation_token,
     check_csrf_manual,
@@ -203,7 +204,11 @@ async def submit_idea(
         "sentiment": None,
         "specificity": None,
         "related_topics": [],
-        "on_topic": None
+        "on_topic": None,
+        # Initialize rating fields
+        "average_rating": None,
+        "rating_count": 0,
+        "rating_distribution": {str(i): 0 for i in range(11)}
     }
 
 # --- 7. Insert Idea into Database ---
@@ -306,12 +311,16 @@ async def get_discussion_ideas(
         idea_doc.setdefault("on_topic", None)
         idea_doc.setdefault("anonymous_user_id", None)
         idea_doc.setdefault("submitter_display_id", "anonymous") # Add default
+        # Add rating fields defaults
+        idea_doc.setdefault("average_rating", None)
+        idea_doc.setdefault("rating_count", 0)
+        idea_doc.setdefault("rating_distribution", {str(i): 0 for i in range(11)})
         results.append(Idea(**idea_doc))
 
     return results
 
-@router.get("/ideas", response_model=None) 
-@router.get("/ideas/", response_model=None) 
+@router.get("/ideas", response_model=None)
+@router.get("/ideas/", response_model=None)
 @limiter.limit(settings.HIGH_RATE_LIMIT)
 async def get_all_ideas(
     request: Request,
@@ -319,7 +328,10 @@ async def get_all_ideas(
     # The params_dependency handles all query parameter parsing and validation
     # This includes pagination, sorting, filtering, etc.
 ):
-    """Get ideas with searching, pagination, filtering, and sorting."""  
+    """Get ideas with searching, pagination, filtering, and sorting."""
     params = await idea_query_executor.query_service.get_query_parameters_dependency()(request)
     result =  await idea_query_executor.execute(params=params)
     return result.to_tanstack_response()
+
+
+# Rate idea endpoint removed - now handled by /interaction/idea/{idea_id}/rate

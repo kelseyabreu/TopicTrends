@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Heart, Pin, Bookmark, Loader2 } from 'lucide-react'; 
-import api from '../utils/api'; 
+import { Heart, Pin, Bookmark, Loader2 } from 'lucide-react';
+import api from '../utils/api';
+import { useEntityState } from '../context/InteractionStateContext';
 
 // --- TypeScript Interfaces for API Responses ---
 export interface InteractionUserState {
@@ -84,8 +85,10 @@ const InteractionButton: React.FC<InteractionButtonProps> = ({
     onStateChange,
     disableInitialFetch = false,
 }) => {
+    const { state, updateState, refreshState } = useEntityState(entityType, entityId);
+
     const [isActive, setIsActive] = useState<boolean>(initialActive);
-    const [canInteract, setCanInteract] = useState<boolean>(false); 
+    const [canInteract, setCanInteract] = useState<boolean>(false);
     const [isLoadingInitial, setIsLoadingInitial] = useState<boolean>(!disableInitialFetch);
     const [isInteracting, setIsInteracting] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
@@ -106,6 +109,30 @@ const InteractionButton: React.FC<InteractionButtonProps> = ({
             return;
         }
 
+        // Try to use context data first
+        if (state) {
+            let serverActive = initialActive;
+            let serverCanInteract = false;
+
+            if (actionType === 'like') {
+                serverActive = state?.user_state?.liked ?? initialActive;
+                serverCanInteract = state?.can_like ?? false;
+            } else if (actionType === 'pin') {
+                serverActive = state?.user_state?.pinned ?? initialActive;
+                serverCanInteract = state?.can_pin ?? false;
+            } else if (actionType === 'save') {
+                serverActive = state?.user_state?.saved ?? initialActive;
+                serverCanInteract = state?.can_save ?? false;
+            }
+
+            setIsActive(serverActive);
+            setCanInteract(serverCanInteract);
+            setIsLoadingInitial(false);
+            onStateChangeRef.current?.(serverActive, actionType);
+            return;
+        }
+
+        // Fallback to individual API call if no context data
         let isMounted = true;
         setIsLoadingInitial(true);
         setError(null);
@@ -151,7 +178,7 @@ const InteractionButton: React.FC<InteractionButtonProps> = ({
                 clearTimeout(errorTimeoutRef.current);
             }
         };
-    }, [entityType, entityId, disableInitialFetch, initialActive, actionType]);
+    }, [entityType, entityId, disableInitialFetch, initialActive, actionType, state]);
 
 
     const handleToggleState = useCallback(async () => {
@@ -188,11 +215,34 @@ const InteractionButton: React.FC<InteractionButtonProps> = ({
         setIsActive(newActiveState);
         onStateChangeRef.current?.(newActiveState, actionType);
 
+        // Update context optimistically
+        const stateUpdate: any = { user_state: { ...state?.user_state } };
+        if (actionType === 'like') {
+            stateUpdate.user_state.liked = newActiveState;
+        } else if (actionType === 'pin') {
+            stateUpdate.user_state.pinned = newActiveState;
+        } else if (actionType === 'save') {
+            stateUpdate.user_state.saved = newActiveState;
+        }
+        updateState(stateUpdate);
+
         try {
             await interactionAPI.recordInteraction(entityType, entityId, apiAction);
         } catch (err) {
             setIsActive(prevActiveState);
             onStateChangeRef.current?.(prevActiveState, actionType);
+
+            // Revert context state on error
+            const revertUpdate: any = { user_state: { ...state?.user_state } };
+            if (actionType === 'like') {
+                revertUpdate.user_state.liked = prevActiveState;
+            } else if (actionType === 'pin') {
+                revertUpdate.user_state.pinned = prevActiveState;
+            } else if (actionType === 'save') {
+                revertUpdate.user_state.saved = prevActiveState;
+            }
+            updateState(revertUpdate);
+
             const errorMessage = err?.detail || err?.message || `Failed to ${apiAction}.`;
             setError(errorMessage);
             console.error(`Error ${apiAction}ing entity:`, err);

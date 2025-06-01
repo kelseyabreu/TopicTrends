@@ -1,27 +1,31 @@
+/* Sleek Professional Idea View */
 .idea-view-container {
-    max-width: 800px;
+    max-width: 900px;
     margin: 2rem auto;
-    padding: 1.5rem;
-    background: white;
-    border: 2px solid black;
-    box-shadow: 4px 4px 0px 0px rgba(0,0,0,0.75);
-    border-radius: 0;
+    padding: 0;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
 }
 
 .idea-view-container.loading,
 .idea-view-container.error {
     text-align: center;
-    padding: 3rem;
+    padding: 4rem 2rem;
+    background: rgba(255, 255, 255, 0.9);
 }
 
 .loader {
-    border: 3px solid #f3f3f3;
+    border: 3px solid rgba(59, 130, 246, 0.1);
     border-radius: 50%;
-    border-top: 3px solid #3498db;
-    width: 40px;
-    height: 40px;
+    border-top: 3px solid #3b82f6;
+    width: 48px;
+    height: 48px;
     animation: spin 1s linear infinite;
-    margin: 0 auto 1rem;
+    margin: 0 auto 1.5rem;
 }
 
 @keyframes spin {
@@ -30,110 +34,244 @@
 }
 
 .back-button {
-    background: none;
-    border: none;
-    color: #333;
-    font-size: 1rem;
+    background: rgba(255, 255, 255, 0.8) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    border-radius: 12px !important;
+    color: #6b7280 !important;
+    font-size: 0.875rem !important;
     cursor: pointer;
-    padding: 0.5rem 0;
-    margin-bottom: 1.5rem;
-    transition: color 0.2s;
-    font-weight: bold;
+    padding: 0.75rem 1rem !important;
+    margin-bottom: 0 !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    font-weight: 500 !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06) !important;
 }
 
 .back-button:hover {
-    color: #000;
+    background: rgba(255, 255, 255, 1) !important;
+    color: #1a1a1a !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12) !important;
+    border-color: rgba(0, 0, 0, 0.12) !important;
 }
 
 .idea-content {
-    padding: 1rem 0;
+    padding: 2rem;
+    overflow-x: hidden;
 }
-.keywords,.related-topics {
+
+/* Rating Section */
+.rating-section {
+    margin: 2rem 0;
+    max-width: 100%;
+    overflow-x: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fafbfc;
+    padding: 1rem;
+}
+
+.keywords, .related-topics {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
 }
+
+.keywords h4, .related-topics h4 {
+    width: 100%;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
 .idea-view-container .idea-text {
-    font-size: 2rem!important;
-    line-height: 1.6;
-    color: #333;
-    border-bottom: 1px dashed #ccc;
-    padding-bottom: 1.5rem;
+    font-size: 1.5rem !important;
+    line-height: 1.7 !important;
+    color: #1a1a1a !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+    padding-bottom: 2rem !important;
+    margin-bottom: 2rem !important;
+    font-weight: 400 !important;
+    letter-spacing: -0.025em !important;
 }
 
 .idea-meta {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-top: 1rem;
-    color: #666;
-    font-size: 0.9rem;
+    padding: 1.5rem 2rem;
+    color: #6b7280;
+    font-size: 0.875rem;
+    background: rgba(248, 250, 252, 0.8);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .verification-badge {
-    color: #fff;
-    font-weight: 500;
-    border: 1px solid #2ecc71;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
+    background: rgba(34, 197, 94, 0.1) !important;
+    color: #166534 !important;
+    border: 1px solid rgba(34, 197, 94, 0.2) !important;
+    padding: 0.5rem 0.75rem !important;
+    border-radius: 20px !important;
+    font-weight: 600 !important;
+    font-size: 0.75rem !important;
 }
 
 .anonymous-badge {
-    color: #95a5a6;
-    border: 1px solid #95a5a6;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
+    background: rgba(107, 114, 128, 0.1) !important;
+    color: #4b5563 !important;
+    border: 1px solid rgba(107, 114, 128, 0.2) !important;
+    padding: 0.5rem 0.75rem !important;
+    border-radius: 20px !important;
+    font-weight: 600 !important;
+    font-size: 0.75rem !important;
 }
 
 .idea-timestamp {
-    color: #95a5a6;
+    color: #9ca3af;
+    font-weight: 500;
 }
 
 .stats-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+    padding: 0 2rem;
 }
 
 .stat-box {
-    flex: 1 1 120px; /* Allow boxes to grow/shrink, with a base width */
-    max-width: 150px; /* Max width for larger screens */
-    border: 2px solid black;
-    box-shadow: 3px 3px 0px 0px rgba(0,0,0,0.75);
-    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 16px;
+    padding: 1.5rem 1rem;
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
-    background-color: #fff;
-    transition: transform 0.1s ease-in-out, box-shadow 0.1s ease-in-out;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .stat-box:hover {
-    transform: translate(1px, 1px);
-    box-shadow: 1px 1px 0px 0px rgba(0,0,0,0.75);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    border-color: rgba(0, 0, 0, 0.12);
 }
 
 .stat-title {
-    font-size: 0.8rem;
-    font-weight: bold;
-    color: #333;
-    margin-bottom: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 0.75rem;
     text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.stat-icon {
+    margin-bottom: 0.75rem;
+    padding: 0.75rem;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 12px;
+    color: #2563eb;
 }
 
 .stat-icon svg {
-    width: 24px;
-    height: 24px;
-    margin-bottom: 0.5rem;
+    width: 20px;
+    height: 20px;
 }
 
 .stat-value {
-    font-size: 16px!important;
-    color: #555!important;
+    font-size: 0.875rem !important;
+    color: #1a1a1a !important;
     text-transform: capitalize;
-    word-break: break-all; /* Prevent long values from overflowing */
+    font-weight: 600 !important;
+    word-break: break-word;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .idea-view-container {
+        margin: 1rem;
+        border-radius: 16px;
+    }
+
+    .idea-content {
+        padding: 1.5rem;
+    }
+
+    .stats-row {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 1rem;
+        padding: 0 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .stat-box {
+        padding: 1rem 0.75rem;
+    }
+
+    .idea-view-container .idea-text {
+        font-size: 1.25rem !important;
+        padding-bottom: 1.5rem !important;
+        margin-bottom: 1.5rem !important;
+    }
+
+    .idea-meta {
+        padding: 1rem 1.5rem;
+        flex-direction: column;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+
+    .keywords, .related-topics {
+        margin-top: 1rem;
+    }
+
+    .rating-section {
+        margin: 1.5rem 0;
+        padding: 0.75rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .idea-view-container {
+        margin: 0.5rem;
+        border-radius: 12px;
+    }
+
+    .idea-content {
+        padding: 1rem;
+    }
+
+    .stats-row {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+        padding: 0 1rem;
+    }
+
+    .stat-box {
+        padding: 1rem;
+    }
+
+    .idea-view-container .idea-text {
+        font-size: 1.125rem !important;
+    }
+
+    .idea-meta {
+        padding: 1rem;
+    }
+
+    .rating-section {
+        margin: 1rem 0;
+        padding: 0.5rem;
+    }
 }

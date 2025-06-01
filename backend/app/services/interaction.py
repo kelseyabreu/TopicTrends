@@ -147,10 +147,11 @@ class InteractionService:
         background_tasks: BackgroundTasks,
         entity_id: str,
         entity_type: Literal["discussion", "topic", "idea"],
-        action_type: Literal["like", "unlike", "pin", "unpin", "save", "unsave", "view"],
+        action_type: Literal["like", "unlike", "pin", "unpin", "save", "unsave", "view", "rate"],
         user_id: Optional[str] = None,
-        anonymous_id: Optional[str] = None, 
-        client_info_dict: Optional[Dict[str, str]] = None
+        anonymous_id: Optional[str] = None,
+        client_info_dict: Optional[Dict[str, str]] = None,
+        rating_value: Optional[int] = None
     ) -> InteractionEvent:
         """
         Records an event and schedules background tasks to update read models.
@@ -169,21 +170,26 @@ class InteractionService:
             entity_type=entity_type,
             action_type=action_type,
             user_id=user_id,
-            anonymous_id=anonymous_id, 
+            anonymous_id=anonymous_id,
             client_info=event_client_info,
-            parent_id=parent_id
+            parent_id=parent_id,
+            rating_value=rating_value
         )
         await db.interaction_events.insert_one(event.model_dump(by_alias=True))
         logger.debug(f"Recorded event: {event.id} for entity {entity_id}, action {action_type}")
 
         # 2. Schedule background tasks for updating read models
         background_tasks.add_task(self.update_entity_metrics_from_event, event.model_dump(by_alias=True))
-        
+
         # Only update user state if a user identifier is present
         user_identifier = user_id or anonymous_id
         if user_identifier:
             background_tasks.add_task(self.update_user_interaction_state_from_event, event.model_dump(by_alias=True), user_identifier)
-        
+
+        # If this is a rating action, schedule rating metrics recalculation
+        if action_type == "rate" and rating_value is not None and user_identifier:
+            background_tasks.add_task(self.recalculate_rating_metrics, entity_id, user_identifier, rating_value)
+
         return event
 
     async def update_entity_metrics_from_event(self, event_data: Dict[str, Any]):
@@ -373,7 +379,11 @@ class InteractionService:
         elif event.action_type == "unsave":
             if current_state_doc and current_state_doc.get("state", {}).get("saved", False):
                 update_ops["$set"]["state.saved"] = False
-        
+        elif event.action_type == "rate":
+            # Update user rating immediately (in addition to the background recalculation)
+            if event.rating_value is not None:
+                update_ops["$set"]["state.user_rating"] = event.rating_value
+
         update_ops["$set"]["entity_type"] = event.entity_type # Ensure type is set
         update_ops["$set"]["last_updated_at"] = now
         
@@ -433,7 +443,80 @@ class InteractionService:
         # EntityMetrics uses entity_id as _id
         doc = await db.entity_metrics.find_one({"_id": entity_id})
         return Metrics(**doc["metrics"]) if doc and "metrics" in doc else Metrics()
-        
+
+    async def get_bulk_entity_metrics(self, entity_ids: List[str]) -> Dict[str, Optional[Metrics]]:
+        """
+        Get metrics for multiple entities in a single database query.
+        Returns a dictionary mapping entity_id to Metrics object.
+        """
+        if not entity_ids:
+            return {}
+
+        try:
+            db = await get_db()
+            # Single query to get all metrics
+            cursor = db.entity_metrics.find({"_id": {"$in": entity_ids}})
+            metrics_docs = await cursor.to_list(length=None)
+
+            # Build result dictionary
+            result = {}
+            for doc in metrics_docs:
+                entity_id = doc["_id"]
+                if "metrics" in doc:
+                    result[entity_id] = Metrics(**doc["metrics"])
+                else:
+                    result[entity_id] = Metrics()
+
+            # Fill in default metrics for entities that don't have metrics
+            for entity_id in entity_ids:
+                if entity_id not in result:
+                    result[entity_id] = Metrics()
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Error fetching bulk entity metrics: {e}", exc_info=True)
+            # Return default metrics for all entities on error
+            return {entity_id: Metrics() for entity_id in entity_ids}
+
+    async def get_bulk_user_interaction_states(self, entity_ids: List[str], user_identifier: Optional[str]) -> Dict[str, Optional[UserState]]:
+        """
+        Get user interaction states for multiple entities in a single database query.
+        Returns a dictionary mapping entity_id to UserState object.
+        """
+        if not entity_ids or not user_identifier:
+            return {entity_id: UserState() for entity_id in entity_ids}
+
+        try:
+            db = await get_db()
+            # Single query to get all user states
+            cursor = db.user_interaction_states.find({
+                "entity_id": {"$in": entity_ids},
+                "user_identifier": user_identifier
+            })
+            state_docs = await cursor.to_list(length=None)
+
+            # Build result dictionary
+            result = {}
+            for doc in state_docs:
+                entity_id = doc["entity_id"]
+                if "state" in doc:
+                    result[entity_id] = UserState(**doc["state"])
+                else:
+                    result[entity_id] = UserState()
+
+            # Fill in default user states for entities that don't have user states
+            for entity_id in entity_ids:
+                if entity_id not in result:
+                    result[entity_id] = UserState()
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Error fetching bulk user interaction states: {e}", exc_info=True)
+            # Return default user states for all entities on error
+            return {entity_id: UserState() for entity_id in entity_ids}
+
     async def get_entity_time_window_metrics(self, entity_id: str) -> Optional[TimeWindowMetricsContainer]:
         db = await get_db()
         doc = await db.entity_metrics.find_one({"_id": entity_id})
@@ -516,6 +599,105 @@ class InteractionService:
         
         results = await db.entity_metrics.aggregate(pipeline).to_list(length=limit)
         return results
+
+
+
+    async def recalculate_rating_metrics(
+        self,
+        entity_id: str,
+        user_identifier: str,
+        new_rating: int,
+        old_rating: Optional[int] = None
+    ):
+        """
+        Recalculates rating metrics ensuring only latest rating per user counts.
+        """
+        db = await get_db()
+
+        try:
+            # Get all latest ratings for this entity (one per user)
+            pipeline = [
+                {"$match": {
+                    "entity_id": entity_id,
+                    "action_type": "rate",
+                    "rating_value": {"$exists": True}
+                }},
+                {"$addFields": {
+                    "user_identifier": {
+                        "$ifNull": ["$user_id", "$anonymous_id"]
+                    }
+                }},
+                {"$sort": {"timestamp": -1}},
+                {"$group": {
+                    "_id": "$user_identifier",
+                    "latest_rating": {"$first": "$rating_value"},
+                    "timestamp": {"$first": "$timestamp"}
+                }},
+                {"$group": {
+                    "_id": None,
+                    "ratings": {"$push": "$latest_rating"},
+                    "total_votes": {"$sum": 1},
+                    "rating_sum": {"$sum": "$latest_rating"}
+                }}
+            ]
+
+            result = await db.interaction_events.aggregate(pipeline).to_list(length=1)
+
+            if result:
+                data = result[0]
+                total_votes = data["total_votes"]
+                rating_sum = data["rating_sum"]
+                average_rating = rating_sum / total_votes if total_votes > 0 else 0
+
+                # Calculate rating distribution
+                ratings = data["ratings"]
+                rating_distribution = {str(i): 0 for i in range(11)}
+                for rating in ratings:
+                    rating_distribution[str(rating)] += 1
+            else:
+                total_votes = 0
+                rating_sum = 0
+                average_rating = 0
+                rating_distribution = {str(i): 0 for i in range(11)}
+
+            # Update entity metrics
+            await db.entity_metrics.update_one(
+                {"_id": entity_id},
+                {
+                    "$set": {
+                        "metrics.rating_count": total_votes,
+                        "metrics.rating_sum": rating_sum,
+                        "metrics.average_rating": round(average_rating, 2),
+                        "metrics.rating_distribution": rating_distribution,
+                        "metrics.last_activity_at": datetime.now(timezone.utc)
+                    }
+                },
+                upsert=True
+            )
+
+            # Update user interaction state
+            await db.user_interaction_states.update_one(
+                {
+                    "user_identifier": user_identifier,
+                    "entity_id": entity_id
+                },
+                {
+                    "$set": {
+                        "state.user_rating": new_rating,
+                        "last_updated_at": datetime.now(timezone.utc)
+                    },
+                    "$setOnInsert": {
+                        "entity_type": "idea",  # Assuming ratings are for ideas
+                        "state": UserState(user_rating=new_rating).model_dump()
+                    }
+                },
+                upsert=True
+            )
+
+            logger.debug(f"Updated rating metrics for entity {entity_id}: {total_votes} votes, avg {average_rating}")
+
+        except Exception as e:
+            logger.error(f"Error recalculating rating metrics for entity {entity_id}: {e}", exc_info=True)
 
 # Singleton instance
 interaction_service = InteractionService()

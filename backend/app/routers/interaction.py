@@ -4,6 +4,9 @@ from typing import List, Optional, Dict, Any, Literal, Annotated
 from app.services.auth import get_optional_current_user, verify_token_cookie, verify_participation_token, check_csrf_manual
 from app.services.interaction import interaction_service
 from app.models.interaction_schemas import InteractionEvent, InteractionStateResponse, UserState,TrendingEntityResponseItem,SavedEntityResponseItem, Metrics, TimeWindowMetricsContainer
+from app.models.schemas import RatingSubmit
+from pydantic import BaseModel
+from typing import Dict
 from app.core.limiter import limiter 
 from app.core.config import settings 
 from app.models.query_models import InteractionQueryParameters
@@ -20,6 +23,17 @@ interaction_query_executor = create_interaction_query_executor(
 )
 
 router = APIRouter(prefix="/interaction", tags=["Interaction"])
+
+# Bulk state request/response models
+class EntityRequest(BaseModel):
+    type: Literal["discussion", "topic", "idea"]
+    id: str
+
+class BulkStateRequest(BaseModel):
+    entities: List[EntityRequest]
+
+class BulkStateResponse(BaseModel):
+    states: Dict[str, InteractionStateResponse]
 
 def get_client_info_dict(request: Request) -> Dict[str, str]:
     # Basic IP hashing for privacy, consider more robust methods for production
@@ -65,8 +79,9 @@ async def record_interaction(
     request: Request,
     entity_type: Literal["discussion", "topic", "idea"],
     entity_id: str,
-    action: Literal["like", "unlike", "pin", "unpin", "save","unsave","view"],
+    action: Literal["like", "unlike", "pin", "unpin", "save","unsave","view","rate"],
     background_tasks: BackgroundTasks,
+    rating_data: Optional[RatingSubmit] = None,  # Optional rating data for rate action
     current_user_data: Optional[dict] = Depends(get_optional_current_user), # Optional auth
     x_participation_token: Optional[str] = Header(None)
 ):
@@ -83,16 +98,23 @@ async def record_interaction(
          raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication or participation token required for this action.")
 
     # CSRF Check for authenticated users on state-changing actions
-    if user_id and action in ["like", "unlike", "pin", "unpin","save","unsave"]:
+    if user_id and action in ["like", "unlike", "pin", "unpin","save","unsave","rate"]:
         try:
             await check_csrf_manual(request) # Manually invoke CSRF check
         except HTTPException as e:
             # check_csrf_manual raises its own specific HTTPException
-            raise e 
-            
-    # Restriction: Only authenticated users can like/pin or unlike/unpin
-    if action in ["like", "unlike", "pin", "unpin","save","unsave"] and not user_id:
+            raise e
+
+    # Restriction: Only authenticated users can like/pin or unlike/unpin or rate
+    if action in ["like", "unlike", "pin", "unpin","save","unsave", "rate"] and not user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only authenticated users can perform this action.")
+
+    # Validate rating data for rate action
+    rating_value = None
+    if action == "rate":
+        if not rating_data:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Rating data required for rate action.")
+        rating_value = rating_data.rating
 
     client_info = get_client_info_dict(request)
 
@@ -104,7 +126,8 @@ async def record_interaction(
             action_type=action,
             user_id=user_id,
             anonymous_id=anonymous_id,
-            client_info_dict=client_info
+            client_info_dict=client_info,
+            rating_value=rating_value
         )
         # For MVP, we return the event. Client might then re-fetch state or metrics.
         return event 
@@ -206,6 +229,63 @@ async def get_trending(
     )
     # The service method already projects to a structure matching TrendingEntityResponseItem
     return [TrendingEntityResponseItem(**item) for item in trending_results]
+
+@router.post("/bulk-state", response_model=BulkStateResponse)
+@limiter.limit("60/minute")
+async def get_bulk_interaction_states(
+    request: Request,
+    bulk_request: BulkStateRequest,
+    current_user_data: Optional[dict] = Depends(get_optional_current_user),
+    x_participation_token: Optional[str] = Header(None)
+):
+    """
+    Get interaction states for multiple entities in a single request.
+    Optimizes performance by reducing N+1 query problems.
+    """
+    if not bulk_request.entities:
+        return BulkStateResponse(states={})
+
+    if len(bulk_request.entities) > 100:  # Reasonable limit
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Too many entities requested. Maximum 100 entities per request."
+        )
+
+    # Get user identifiers once
+    user_id, anonymous_id = await get_user_identifiers(current_user_data, x_participation_token)
+    user_identifier = user_id or anonymous_id
+
+    # Extract entity IDs for bulk queries
+    entity_ids = [entity.id for entity in bulk_request.entities]
+
+    try:
+        # Bulk fetch metrics and user states
+        metrics_dict = await interaction_service.get_bulk_entity_metrics(entity_ids)
+        user_states_dict = await interaction_service.get_bulk_user_interaction_states(entity_ids, user_identifier)
+
+        # Build response
+        states = {}
+        for entity in bulk_request.entities:
+            entity_key = f"{entity.type}:{entity.id}"
+            metrics = metrics_dict.get(entity.id)
+            user_state = user_states_dict.get(entity.id)
+
+            states[entity_key] = InteractionStateResponse(
+                metrics=metrics,
+                user_state=user_state,
+                can_like=bool(user_id),
+                can_pin=bool(user_id),
+                can_save=bool(user_id)
+            )
+
+        return BulkStateResponse(states=states)
+
+    except Exception as e:
+        logger.error(f"Error fetching bulk interaction states: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch interaction states"
+        )
 
 @router.get("/", response_model=None) 
 @limiter.limit(settings.HIGH_RATE_LIMIT)

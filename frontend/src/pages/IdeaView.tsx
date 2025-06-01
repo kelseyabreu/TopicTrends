@@ -6,6 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Button } from "@/components/ui/button";
 import api from "../utils/api";
 import { Idea } from "../interfaces/ideas";
+import RatingComponent from "../components/RatingComponent";
+import { InteractionStateProvider, useInteractionState } from "../context/InteractionStateContext";
+import { useAuth } from "../context/AuthContext";
+import { AuthStatus } from "../enums/AuthStatus";
 import "../styles/IdeaView.css";
 import {
     Target, 
@@ -38,9 +42,11 @@ import {
     EyeOff, 
 } from "lucide-react";
 
-function IdeaView() {
+// Inner component that uses the interaction state context
+function IdeaViewContent() {
     const { ideaId } = useParams();
     const navigate = useNavigate();
+    const { loadBulkStates } = useInteractionState();
     const [idea, setIdea] = useState<Idea | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -50,6 +56,11 @@ function IdeaView() {
                 await api.post(`/interaction/idea/${ideaId}/view`);
                 const response = await api.get(`/ideas/${ideaId}`);
                 setIdea(response.data);
+
+                // Load interaction state for this idea
+                if (ideaId) {
+                    await loadBulkStates([{ type: 'idea', id: ideaId }]);
+                }
             } catch (error) {
                 console.error('Error fetching idea:', error);
                 toast.error('Failed to load idea details');
@@ -175,7 +186,7 @@ if (!idea) {
 
 return (
     <Card className="idea-view-container">
-        <CardHeader>
+        <CardHeader style={{ padding: '1.5rem 2rem', borderBottom: '1px solid rgba(0, 0, 0, 0.06)', background: 'rgba(248, 250, 252, 0.8)', backdropFilter: 'blur(10px)' }}>
             <Button onClick={() => navigate(-1)} className="back-button">
                 &larr; Back
             </Button>
@@ -205,6 +216,20 @@ return (
             </div>
 
             <p className="idea-text">"{idea.text}"</p>
+
+            {/* Rating Section */}
+            <div className="rating-section">
+                <RatingComponent
+                    ideaId={idea.id}
+                    averageRating={idea.average_rating}
+                    ratingCount={idea.rating_count || 0}
+                    ratingDistribution={idea.rating_distribution}
+                    showDistribution={true}
+                    compact={false}
+                    participationToken={null} // IdeaView requires authentication
+                />
+            </div>
+
             <div className="idea-meta text-gray-600 text-sm">
                 {idea?.related_topics?.length > 0 && (
                     <div className="related-topics flex flex-wrap gap-2">
@@ -242,6 +267,20 @@ return (
         </CardFooter>
     </Card>
 );
+}
+
+// Main wrapper component that provides the interaction state context
+function IdeaView() {
+    const { authStatus } = useAuth();
+
+    // IdeaView requires authentication, so no participation token needed
+    const participationToken = authStatus === AuthStatus.Authenticated ? null : null;
+
+    return (
+        <InteractionStateProvider participationToken={participationToken}>
+            <IdeaViewContent />
+        </InteractionStateProvider>
+    );
 }
 
 export default IdeaView;
