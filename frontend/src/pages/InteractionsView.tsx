@@ -649,10 +649,9 @@ const InteractionsView: React.FC = () => {
             setStatsError(null);
 
             try {
-                // Generate fake stats for demonstration
-                // In a real app, you would make an API call to get these stats
-                const mockStats: UserInteractionStats = await generateMockStats();
-                setStats(mockStats);
+                // Fetch real interaction stats from API
+                const response = await api.get('/analytics/user-interaction-stats');
+                setStats(response.data);
             } catch (err: any) {
                 console.error('Error fetching interaction stats:', err);
                 setStatsError('Failed to load interaction statistics.');
@@ -705,113 +704,7 @@ const InteractionsView: React.FC = () => {
         };
     }, [activeTab]);
 
-    // Helper: Mock stats generation (would be replaced with actual API call)
-    const generateMockStats = async (): Promise<UserInteractionStats> => {
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 700));
 
-        const now = new Date();
-        const pastDate = new Date();
-        pastDate.setDate(now.getDate() - 30); // 30 days ago
-
-        // Generate activity by day (last 30 days)
-        const activityByDay: ActivityByDay[] = [];
-        const currentDate = new Date(pastDate);
-        while (currentDate <= now) {
-            // More activity on weekdays, less on weekends, and random distribution
-            const dayOfWeek = currentDate.getDay();
-            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-            const baseCount = isWeekend ? 2 : 5;
-            const count = Math.floor(Math.random() * baseCount) + (isWeekend ? 0 : 3);
-
-            activityByDay.push({
-                date: currentDate.toISOString().split('T')[0],
-                count
-            });
-
-            currentDate.setDate(currentDate.getDate() + 1);
-        }
-
-        // Calculate total interactions and avg per day
-        const totalInteractions = activityByDay.reduce((sum, day) => sum + day.count, 0);
-        const avgInteractionsPerDay = Math.round((totalInteractions / activityByDay.length) * 10) / 10;
-
-        // Generate action type distribution
-        const actionTypes = ['view', 'like', 'unlike', 'pin', 'unpin', 'save', 'unsave'];
-        const actionTypeCounts: { [key: string]: number } = {};
-        actionTypes.forEach(type => {
-            if (type === 'view') {
-                actionTypeCounts[type] = Math.floor(totalInteractions * (type === 'view' ? 0.5 : type === 'like' ? 0.2 : type === 'save' ? 0.15 : type === 'pin' ? 0.1 : 0.05) * (Math.random() * 0.4 + 0.8));
-            }
-        });
-
-        // Generate entity type distribution
-        const entityTypes = ['discussion', 'topic', 'idea'];
-        const entityTypeCounts: { [key: string]: number } = {};
-        entityTypes.forEach(type => {
-            entityTypeCounts[type] = Math.floor(totalInteractions * (type === 'idea' ? 0.5 : type === 'topic' ? 0.3 : 0.2) * (Math.random() * 0.4 + 0.8));
-        });
-
-        // Generate hourly distribution (24-hour format)
-        const hourlyDistribution: { [hour: string]: number } = {};
-        for (let i = 0; i < 24; i++) {
-            // More activity during work hours (9-17)
-            const hourString = i.toString().padStart(2, '0');
-            const workHour = i >= 9 && i <= 17;
-            const eveningHour = i >= 18 && i <= 22;
-            const lateNightHour = i >= 23 || i <= 5;
-
-            let multiplier = 1;
-            if (workHour) multiplier = 5;
-            else if (eveningHour) multiplier = 3;
-            else if (lateNightHour) multiplier = 0.5;
-
-            hourlyDistribution[hourString] = Math.floor(multiplier * (Math.random() * 3 + 1));
-        }
-
-        // Generate streak data
-        const streakData = {
-            currentStreak: Math.floor(Math.random() * 7) + 1,
-            longestStreak: Math.floor(Math.random() * 14) + 7,
-            lastActive: new Date().toISOString()
-        };
-
-        // Mock recent entities
-        const recentEntities: EntityDetails[] = [
-            { id: uuid(), title: "Community Feedback Discussion", type: "discussion" },
-            { id: uuid(), title: "Product Improvement Ideas", type: "discussion" },
-            { id: uuid(), text: "We should add a dark mode option", type: "idea" },
-            { id: uuid(), title: "User Interface Suggestions", type: "topic" },
-            { id: uuid(), text: "The navigation could be more intuitive", type: "idea" }
-        ];
-
-        // Mock most active discussion
-        const mostActiveDiscussion = {
-            id: uuid(),
-            title: "Website Redesign Feedback",
-            count: Math.floor(Math.random() * 50) + 20
-        };
-
-        return {
-            activityByDay,
-            actionTypeCounts,
-            entityTypeCounts,
-            recentEntities,
-            hourlyDistribution,
-            totalInteractions,
-            mostActiveDiscussion,
-            avgInteractionsPerDay,
-            streakData
-        };
-    };
-
-    // Helper: Generate a random UUID (for demo purposes)
-    const uuid = () => {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-            const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
-        });
-    };
 
     // --- Event Handlers ---
 
