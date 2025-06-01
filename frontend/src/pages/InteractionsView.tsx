@@ -1387,151 +1387,144 @@ const InteractionsView: React.FC = () => {
                         </div>
                     )}
 
-                    {/* View Modes */}
-                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-4 lg:gap-8">
-                        {/* Main content */}
-                        <div className={`${showDetailPanel ? 'lg:col-span-3' : 'lg:col-span-4'}`}>
-                            {/* Table/Grid View */}
-                            <Card className="mb-4 interactionsGridCard">
-                                <CardContent className="p-0 card-content">
-                                    {/* Content based on view mode */}
-                                    {viewMode === 'table' && (
-                                        <div className="overflow-x-auto">
-                                            <Table>
-                                                <TableHeader>
-                                                    {table.getHeaderGroups().map((headerGroup) => (
-                                                        <TableRow key={headerGroup.id}>
-                                                            {headerGroup.headers.map((header) => (
-                                                                <TableHead key={header.id} className="px-3 py-2.5 text-xs whitespace-nowrap">
-                                                                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                                                                </TableHead>
-                                                            ))}
-                                                        </TableRow>
+                    {/* Main Content Area */}
+                    <Card className="mb-4">
+                        <CardContent className="p-0">
+                            {viewMode === 'table' && (
+                                <div className="overflow-x-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            {table.getHeaderGroups().map((headerGroup) => (
+                                                <TableRow key={headerGroup.id}>
+                                                    {headerGroup.headers.map((header) => (
+                                                        <TableHead key={header.id} className="px-3 py-2.5 text-xs whitespace-nowrap">
+                                                            {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                                                        </TableHead>
                                                     ))}
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {isLoading && !error && (
-                                                        <TableRow>
-                                                            <TableCell colSpan={columns.length} className="h-24 text-center">
-                                                                <div className="flex justify-center items-center text-sm text-muted-foreground">
-                                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Updating results...
-                                                                </div>
+                                                </TableRow>
+                                            ))}
+                                        </TableHeader>
+                                        <TableBody>
+                                            {isLoading && !error && (
+                                                <TableRow>
+                                                    <TableCell colSpan={columns.length} className="h-24 text-center">
+                                                        <div className="flex justify-center items-center text-sm text-muted-foreground">
+                                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Updating results...
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                            {!isLoading && table.getRowModel().rows?.length > 0 ? (
+                                                table.getRowModel().rows.map((row) => (
+                                                    <TableRow
+                                                        key={row.id}
+                                                        data-state={row.getIsSelected() && "selected"}
+                                                        className={row.getIsSelected() ? "bg-muted/50" : ""}
+                                                    >
+                                                        {row.getVisibleCells().map((cell) => (
+                                                            <TableCell key={cell.id} className="px-3 py-2 align-middle text-xs">
+                                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                                             </TableCell>
-                                                        </TableRow>
-                                                    )}
-                                                    {!isLoading && table.getRowModel().rows?.length > 0 ? (
-                                                        table.getRowModel().rows.map((row) => (
-                                                            <TableRow
-                                                                key={row.id}
-                                                                data-state={row.getIsSelected() && "selected"}
-                                                                className={row.getIsSelected() ? "bg-muted/50" : ""}
-                                                            >
-                                                                {row.getVisibleCells().map((cell) => (
-                                                                    <TableCell key={cell.id} className="px-3 py-2 align-middle text-xs">
-                                                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                                                    </TableCell>
-                                                                ))}
-                                                            </TableRow>
-                                                        ))
-                                                    ) : null}
-                                                    {!isLoading && table.getRowModel().rows?.length === 0 && (
-                                                        <TableRow>
-                                                            <TableCell colSpan={columns.length} className="h-24 text-center text-sm text-muted-foreground">
-                                                                {error && data.length > 0 ? `Error updating: ${error}` : "No interactions found matching your criteria."}
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    )}
-                                                </TableBody>
-                                            </Table>
-                                        </div>
-                                    )}
-
-                                    {viewMode === 'grid' && renderGridView()}
-
-                                    {viewMode === 'calendar' && (
-                                        <div className="p-4">
-                                            <h3 className="text-lg font-medium mb-4">Calendar View</h3>
-                                            <div className="text-center text-muted-foreground mb-4">
-                                                <p>Calendar view coming soon!</p>
-                                                <p className="text-sm">This view will show your interactions organized by date.</p>
-                                            </div>
-                                        </div>
-                                    )}
-                                </CardContent>
-                                <CardFooter className="border-t p-3">
-                                    <div className="flex flex-col sm:flex-row items-center justify-between w-full text-xs text-muted-foreground gap-4">
-                                        <div className="flex-1 text-center sm:text-left">
-                                            {table.getFilteredSelectedRowModel().rows.length > 0 ?
-                                                `${table.getFilteredSelectedRowModel().rows.length} of ` : ''}
-                                            {totalRowCount} row(s)
-                                            {table.getFilteredSelectedRowModel().rows.length > 0 ? ' selected.' : '.'}
-                                        </div>
-                                        <div className="flex items-center gap-x-2 sm:gap-x-4">
-                                            <div className="flex items-center gap-x-1">
-                                                <span className="hidden sm:inline">Rows:</span>
-                                                <Select
-                                                    value={`${pagination.pageSize}`}
-                                                    onValueChange={(value) => table.setPageSize(Number(value))}
-                                                >
-                                                    <SelectTrigger className="h-7 w-[70px] text-xs">
-                                                        <SelectValue placeholder={pagination.pageSize} />
-                                                    </SelectTrigger>
-                                                    <SelectContent side="top">
-                                                        {[10, 20, 50, 100].map((size) => (
-                                                            <SelectItem key={size} value={`${size}`} className="text-xs">{size}</SelectItem>
                                                         ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <span className="whitespace-nowrap">
-                                                Page {pagination.pageIndex + 1} of {pageCount || 1}
-                                            </span>
-                                            <div className="flex items-center gap-x-1">
-                                                <Button variant="outline" size="icon-xs" onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()}><ChevronsLeft className="h-3.5 w-3.5" /></Button>
-                                                <Button variant="outline" size="icon-xs" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}><ChevronLeft className="h-3.5 w-3.5" /></Button>
-                                                <Button variant="outline" size="icon-xs" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}><ChevronRight className="h-3.5 w-3.5" /></Button>
-                                                <Button variant="outline" size="icon-xs" onClick={() => table.setPageIndex(pageCount - 1)} disabled={!table.getCanNextPage()}><ChevronsRight className="h-3.5 w-3.5" /></Button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </CardFooter>
-                            </Card>
+                                                    </TableRow>
+                                                ))
+                                            ) : null}
+                                            {!isLoading && table.getRowModel().rows?.length === 0 && (
+                                                <TableRow>
+                                                    <TableCell colSpan={columns.length} className="h-24 text-center text-sm text-muted-foreground">
+                                                        {error && data.length > 0 ? `Error updating: ${error}` : "No interactions found matching your criteria."}
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            )}
 
-                            {/* Summary Cards */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                                {["view", "like", "pin", "save"].map(action => {
-                                    const count = data.filter(i => i.action_type === action).length;
-                                    return (
-                                        <Card key={action} className="overflow-hidden">
-                                            <CardHeader className="flex flex-row items-center justify-between p-4 pb-2 space-y-0">
-                                                <CardTitle className="text-sm font-medium">
-                                                    {formatActionType(action)}
-                                                </CardTitle>
-                                                {getActionIcon(action, 5)}
-                                            </CardHeader>
-                                            <CardContent className="p-4 pt-0">
-                                                <div className="text-2xl font-bold">{count}</div>
-                                                <p className="text-xs text-muted-foreground">on current page</p>
-                                            </CardContent>
-                                        </Card>
-                                    );
-                                })}
-                            </div>
-                        </div>
+                            {viewMode === 'grid' && renderGridView()}
 
-                        {/* Details panel (shown conditionally) */}
-                        {showDetailPanel && (
-                            <div className="bg-background border rounded-md overflow-hidden">
-                                {isLoadingEntity ? (
-                                    <div className="flex justify-center items-center h-full min-h-[200px]">
-                                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            {viewMode === 'calendar' && (
+                                <div className="p-4">
+                                    <h3 className="text-lg font-medium mb-4">Calendar View</h3>
+                                    <div className="text-center text-muted-foreground mb-4">
+                                        <p>Calendar view coming soon!</p>
+                                        <p className="text-sm">This view will show your interactions organized by date.</p>
                                     </div>
-                                ) : (
-                                    renderEntityDetailsPanel()
-                                )}
+                                </div>
+                            )}
+                        </CardContent>
+                        <CardFooter className="border-t p-3">
+                            <div className="flex flex-col sm:flex-row items-center justify-between w-full text-xs text-muted-foreground gap-4">
+                                <div className="flex-1 text-center sm:text-left">
+                                    {table.getFilteredSelectedRowModel().rows.length > 0 ?
+                                        `${table.getFilteredSelectedRowModel().rows.length} of ` : ''}
+                                    {totalRowCount} row(s)
+                                    {table.getFilteredSelectedRowModel().rows.length > 0 ? ' selected.' : '.'}
+                                </div>
+                                <div className="flex items-center gap-x-2 sm:gap-x-4">
+                                    <div className="flex items-center gap-x-1">
+                                        <span className="hidden sm:inline">Rows:</span>
+                                        <Select
+                                            value={`${pagination.pageSize}`}
+                                            onValueChange={(value) => table.setPageSize(Number(value))}
+                                        >
+                                            <SelectTrigger className="h-7 w-[70px] text-xs">
+                                                <SelectValue placeholder={pagination.pageSize} />
+                                            </SelectTrigger>
+                                            <SelectContent side="top">
+                                                {[10, 20, 50, 100].map((size) => (
+                                                    <SelectItem key={size} value={`${size}`} className="text-xs">{size}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <span className="whitespace-nowrap">
+                                        Page {pagination.pageIndex + 1} of {pageCount || 1}
+                                    </span>
+                                    <div className="flex items-center gap-x-1">
+                                        <Button variant="outline" size="icon-xs" onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()}><ChevronsLeft className="h-3.5 w-3.5" /></Button>
+                                        <Button variant="outline" size="icon-xs" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}><ChevronLeft className="h-3.5 w-3.5" /></Button>
+                                        <Button variant="outline" size="icon-xs" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}><ChevronRight className="h-3.5 w-3.5" /></Button>
+                                        <Button variant="outline" size="icon-xs" onClick={() => table.setPageIndex(pageCount - 1)} disabled={!table.getCanNextPage()}><ChevronsRight className="h-3.5 w-3.5" /></Button>
+                                    </div>
+                                </div>
                             </div>
-                        )}
+                        </CardFooter>
+                    </Card>
+
+                    {/* Summary Statistics */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {["view", "like", "pin", "save"].map(action => {
+                            const count = data.filter(i => i.action_type === action).length;
+                            return (
+                                <Card key={action} className="overflow-hidden">
+                                    <CardHeader className="flex flex-row items-center justify-between p-4 pb-2 space-y-0">
+                                        <CardTitle className="text-sm font-medium">
+                                            {formatActionType(action)}
+                                        </CardTitle>
+                                        {getActionIcon(action, 5)}
+                                    </CardHeader>
+                                    <CardContent className="p-4 pt-0">
+                                        <div className="text-2xl font-bold">{count}</div>
+                                        <p className="text-xs text-muted-foreground">on current page</p>
+                                    </CardContent>
+                                </Card>
+                            );
+                        })}
                     </div>
+
+                    {/* Details panel (shown conditionally) */}
+                    {showDetailPanel && (
+                        <div className="bg-background border rounded-md overflow-hidden mt-4">
+                            {isLoadingEntity ? (
+                                <div className="flex justify-center items-center h-full min-h-[200px]">
+                                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                </div>
+                            ) : (
+                                renderEntityDetailsPanel()
+                            )}
+                        </div>
+                    )}
                 </TabsContent>
 
                 <TabsContent value="analytics" className="mt-6 space-y-6">
