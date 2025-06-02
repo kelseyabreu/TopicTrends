@@ -28,9 +28,9 @@
    - ✅ Share modal with copyable link
    - ✅ Discussion link generation
    - ✅ Frontend-based join links (Fixed backend joinLink)
-   
-5. **Core Refactoring & Consistency** 
-   - ✅ **Completed Core Terminology Refactor (Session->Discussion, Cluster->Topic)** 
+
+5. **Core Refactoring & Consistency**
+   - ✅ **Completed Core Terminology Refactor (Session->Discussion, Cluster->Topic)**
 
 6. **User Experience Enhancements**
    - ✅ Likes on ideas, topics, and discussions
@@ -52,6 +52,14 @@
    - ✅ CSRF protection implementation
    - ✅ Advanced Search API - Full-text search implemented
    - ✅ Database indexes optimization (comprehensive indexes implemented)
+   - ✅ Rating system with 0-10 scale and rating distributions
+   - ✅ Comprehensive interaction tracking (like, unlike, pin, unpin, save, unsave, view, rate)
+   - ✅ Bulk state loading to prevent N+1 queries
+   - ✅ ROI calculations with realistic scaling models
+   - ✅ CSV export functionality for discussions
+   - ✅ Embedded discussion view for iframe integration
+   - ✅ Topic drill-down for sub-clustering
+   - ✅ AI categorization (sentiment, intent, specificity, keywords)
 
 ## What's Missing or Incomplete
 
@@ -76,8 +84,8 @@
 
 4. **Delete User Profile & Data**
    - ✅ Backend anonymization endpoint implemented
-   - ❌ Full user deletion with cascade
-   - ❌ Self-service deletion UI
+   - ✅ Full user deletion with cascade
+   - ✅ Self-service deletion UI
    - ❌ Data retention warnings
 
 5. **Fix SocketIO Events for Multiple Users**
