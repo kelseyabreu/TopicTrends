@@ -18,6 +18,13 @@ from app.core.database import get_db
 from app.services.auth import verify_token_cookie, verify_csrf_dependency
 from app.core.limiter import limiter
 from app.core.config import settings
+from app.services.pattern_detection import (
+    analyze_semantic_evolution,
+    analyze_influence_networks,
+    detect_cognitive_biases,
+    detect_emergence_patterns,
+    analyze_participation_behaviors
+)
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 logger = logging.getLogger(__name__)
@@ -536,6 +543,7 @@ async def _process_unified_analytics(ideas, interactions, topics, time_window="2
         "content_preferences": advanced_analytics.get("content_preferences", {}),
         "idea_performance": advanced_analytics.get("idea_performance", {}),
         "contributor_diversity": advanced_analytics.get("contributor_diversity", {}),
+        "hidden_patterns": advanced_analytics.get("hidden_patterns", {}),
         "engagement_heatmap": engagement_heatmap,
         "executive_summary": executive_summary
     }
@@ -693,15 +701,16 @@ async def _calculate_trending_topics(ideas, topics, recent_interactions, analysi
 async def process_advanced_analytics_from_data(ideas, interactions, topics, interaction_by_entity, contributor_counts):
     """
     Process advanced analytics from pre-fetched data.
-    This function processes content preferences, idea performance, and contributor diversity
-    from the data already loaded in memory.
+    This function processes content preferences, idea performance, contributor diversity,
+    and advanced hidden pattern detection from the data already loaded in memory.
     """
     try:
         if not ideas:
             return {
                 "content_preferences": {"intent_preferences": {}},
                 "idea_performance": {"top_viral_ideas": []},
-                "contributor_diversity": {"diversity_metrics": {}}
+                "contributor_diversity": {"diversity_metrics": {}},
+                "hidden_patterns": {"semantic_evolution": {}, "influence_networks": {}, "cognitive_biases": {}, "emergence_patterns": {}}
             }
 
         # Content Preferences Analysis
@@ -849,6 +858,9 @@ async def process_advanced_analytics_from_data(ideas, interactions, topics, inte
 
         retention_rate = len([user for user, count in contributor_counts.items() if count > 1]) / unique_contributors if unique_contributors > 0 else 0
 
+        # Advanced Hidden Pattern Analysis
+        hidden_patterns = await analyze_hidden_patterns(ideas, interactions, contributor_counts)
+
         return {
             "content_preferences": {
                 "intent_preferences": intent_preferences,
@@ -887,7 +899,8 @@ async def process_advanced_analytics_from_data(ideas, interactions, topics, inte
                     "contributor_retention_rate": round(retention_rate, 3),
                     "participation_inequality": "High" if gini > 0.6 else "Moderate" if gini > 0.3 else "Low"
                 }
-            }
+            },
+            "hidden_patterns": hidden_patterns
         }
 
     except Exception as e:
@@ -2128,3 +2141,61 @@ async def export_discussion_csv(
             status_code=500,
             detail="Failed to export discussion data"
         )
+
+
+async def analyze_hidden_patterns(ideas, interactions, contributor_counts):
+    """
+    🔍 ADVANCED HIDDEN PATTERN DETECTION
+
+    Analyzes sophisticated patterns that aren't immediately obvious:
+    - Semantic evolution tracking
+    - Influence network analysis
+    - Cognitive bias detection
+    - Emergence pattern recognition
+    - Participation behavior profiling
+    """
+    try:
+        if not ideas or len(ideas) < 3:
+            return {
+                "semantic_evolution": {"evolution_detected": False, "reason": "Insufficient data"},
+                "influence_networks": {"networks_detected": False, "reason": "Insufficient data"},
+                "cognitive_biases": {"biases_detected": [], "confidence": "low"},
+                "emergence_patterns": {"emerging_themes": [], "confidence": "low"},
+                "participation_behaviors": {"archetypes": [], "confidence": "low"}
+            }
+
+        # Sort ideas by timestamp for temporal analysis
+        sorted_ideas = sorted(ideas, key=lambda x: x.get("timestamp", datetime.min.replace(tzinfo=timezone.utc)))
+
+        # 1. SEMANTIC EVOLUTION TRACKING
+        semantic_evolution = await analyze_semantic_evolution(sorted_ideas)
+
+        # 2. INFLUENCE NETWORK ANALYSIS
+        influence_networks = await analyze_influence_networks(sorted_ideas, interactions)
+
+        # 3. COGNITIVE BIAS DETECTION
+        cognitive_biases = await detect_cognitive_biases(sorted_ideas, contributor_counts)
+
+        # 4. EMERGENCE PATTERN RECOGNITION
+        emergence_patterns = await detect_emergence_patterns(sorted_ideas)
+
+        # 5. PARTICIPATION BEHAVIOR PROFILING
+        participation_behaviors = await analyze_participation_behaviors(sorted_ideas, contributor_counts, interactions)
+
+        return {
+            "semantic_evolution": semantic_evolution,
+            "influence_networks": influence_networks,
+            "cognitive_biases": cognitive_biases,
+            "emergence_patterns": emergence_patterns,
+            "participation_behaviors": participation_behaviors
+        }
+
+    except Exception as e:
+        logger.error(f"Error in hidden pattern analysis: {e}", exc_info=True)
+        return {
+            "semantic_evolution": {"evolution_detected": False, "error": str(e)},
+            "influence_networks": {"networks_detected": False, "error": str(e)},
+            "cognitive_biases": {"biases_detected": [], "error": str(e)},
+            "emergence_patterns": {"emerging_themes": [], "error": str(e)},
+            "participation_behaviors": {"archetypes": [], "error": str(e)}
+        }

@@ -8,8 +8,9 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Users, MessageSquare, TrendingUp, Clock, BarChart3, Activity, Brain, Target, Zap, Globe, DollarSign, Download } from 'lucide-react';
+import { Loader2, Users, MessageSquare, TrendingUp, Clock, BarChart3, Activity, Brain, Target, Zap, Globe, DollarSign, Download, Eye } from 'lucide-react';
 import ROIDashboard from '../components/ROIDashboard';
+import HiddenPatternsAnalysis from '../components/HiddenPatternsAnalysis';
 import {
   BarChart,
   Bar,
@@ -159,6 +160,7 @@ function DiscussionAnalytics() {
     content_preferences = {},
     idea_performance = {},
     contributor_diversity = {},
+    hidden_patterns = {},
     engagement_heatmap = {},
     executive_summary = {}
   } = analyticsData || {};
@@ -306,11 +308,16 @@ function DiscussionAnalytics() {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        {/* 🚀 ANALYTICS + ROI TABS */}
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 h-auto min-h-[48px] p-1">
+        {/* 🚀 ANALYTICS + ROI + HIDDEN PATTERNS TABS */}
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 h-auto min-h-[48px] p-1">
           <TabsTrigger value="roi" className="text-xs sm:text-sm flex items-center justify-center gap-1 h-10 sm:h-auto">
             <Target className="h-3 w-3 sm:h-4 sm:w-4" />
             <span className="hidden sm:inline">ROI</span>
+          </TabsTrigger>
+          <TabsTrigger value="patterns" className="text-xs sm:text-sm flex items-center justify-center gap-1 h-10 sm:h-auto">
+            <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Hidden Patterns</span>
+            <span className="sm:hidden">Patterns</span>
           </TabsTrigger>
           <TabsTrigger value="overview" className="text-xs sm:text-sm h-10 sm:h-auto">Overview</TabsTrigger>
           <TabsTrigger value="participation" className="text-xs sm:text-sm h-10 sm:h-auto">
@@ -337,6 +344,14 @@ function DiscussionAnalytics() {
             loading={loading}
             error={null}
             timeWindow={timeWindow}
+          />
+        </TabsContent>
+
+        {/* Hidden Patterns Tab - 🔍 ADVANCED PATTERN DETECTION */}
+        <TabsContent value="patterns" className="space-y-4">
+          <HiddenPatternsAnalysis
+            hiddenPatterns={analyticsData?.hidden_patterns || null}
+            loading={loading}
           />
         </TabsContent>
 
