@@ -33,7 +33,9 @@ import {
   Filter,
   SortDesc,
   SortAsc,
-  MessageSquareText
+  MessageSquareText,
+  Grid3x3,
+  List
 } from "lucide-react";
 import { Discussion } from "../interfaces/discussions";
 import { Topic } from "../interfaces/topics";
@@ -88,6 +90,7 @@ function DiscussionViewContent() {
   const [sortBy, setSortBy] = useState<'newest' | 'popular' | 'trending'>('popular');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [filterBy, setFilterBy] = useState<'all' | 'ripple' | 'wave' | 'breaker' | 'tsunami'>('all');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Topics pagination and sorting state (separate from main data fetching)
   const [topicsPagination, setTopicsPagination] = useState({
@@ -1118,6 +1121,28 @@ function DiscussionViewContent() {
               )}
               {sortBy}
             </Button>
+
+            {/* View Toggle Controls */}
+            <div className="view-toggle-controls">
+              <Button
+                variant="neutral"
+                size="sm"
+                onClick={() => setViewMode('grid')}
+                className={`view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                title="Grid view - Show topics in responsive columns"
+              >
+                <Grid3x3 className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="neutral"
+                size="sm"
+                onClick={() => setViewMode('list')}
+                className={`view-toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
+                title="List view - Show topics in full-width rows"
+              >
+                <List className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -1218,7 +1243,7 @@ function DiscussionViewContent() {
 
                 {/* Topics List - Only render when bulk states are ready */}
                 {!isTopicsLoading && !isBulkStatesLoading && (
-                  <div className="modern-topics-list">
+                  <div className={`modern-topics-list ${viewMode === 'list' ? 'list-view' : 'grid-view'}`}>
                     {filteredTopics.map((topic) => (
                       <TopicListItem
                         key={topic.id}
