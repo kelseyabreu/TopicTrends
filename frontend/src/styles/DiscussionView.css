@@ -598,7 +598,7 @@
   }
 }
 
-/* Extra large devices (large desktops, 1200px and up) */
+/* Extra large devices (large desktops, 1200px +) */
 @media (min-width: 1200px) {
   .modern-topics-list.grid-view {
     grid-template-columns: repeat(3, 1fr);
