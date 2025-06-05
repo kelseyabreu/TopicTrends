@@ -45,6 +45,7 @@ import TopicListItem from "../components/TopicListItem";
 import InteractionButton, {
   InteractionActionType,
 } from "../components/InteractionButton";
+import IdeaSimulator, { GeneratedIdea } from "../components/IdeaSimulator";
 import {
   Dialog,
   DialogClose,
@@ -100,16 +101,130 @@ function DiscussionViewContent() {
   const [topicsPageCount, setTopicsPageCount] = useState(1);
   const [totalTopicsCount, setTotalTopicsCount] = useState(0);
   const [isTopicsLoading, setIsTopicsLoading] = useState(false);
+  const [isInitialTopicsLoad, setIsInitialTopicsLoad] = useState(true);
   const [isBulkStatesLoading, setIsBulkStatesLoading] = useState(false);
   const [bulkStatesLoaded, setBulkStatesLoaded] = useState(false);
 
   // Track which topics have had their bulk states loaded to prevent duplicate calls
   const loadedTopicsRef = useRef<string>('');
+  const currentTopicsRef = useRef<Topic[]>([]);
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showNewIdeaModal, setShowNewIdeaModal] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const [isClustering, setIsClustering] = useState(false);
+
+  // Idea Simulator state
+  const [simulatorIdeaCount, setSimulatorIdeaCount] = useState(0);
+  const [isSimulatorSubmitting, setIsSimulatorSubmitting] = useState(false);
+
+  // Simulator callback functions
+  const handleSimulatorIdeaCountChange = useCallback((count: number) => {
+    setSimulatorIdeaCount(count);
+  }, []);
+
+  const handleSimulatorFloodGates = useCallback(() => {
+    setIsSimulatorSubmitting(true);
+    const ideaCountDisplay = Math.floor(simulatorIdeaCount);
+    const message = simulatorIdeaCount <= 100
+      ? `Simulating submission of ${ideaCountDisplay} ideas for clustering!`
+      : `Simulating submission of ${ideaCountDisplay} ideas for clustering! (Content area full, overflow in actions bar)`;
+    toast.success(message);
+
+    // Reset after 3 seconds (matches the simulator's internal timing)
+    setTimeout(() => {
+      setIsSimulatorSubmitting(false);
+    }, 3000);
+  }, [simulatorIdeaCount]);
+
+  const handleIdeasGenerated = useCallback(async (generatedIdeas: GeneratedIdea[]) => {
+    try {
+      console.log(`Submitting ${generatedIdeas.length} generated ideas to backend...`);
+
+      // Authorization check (same as manual submission)
+      const headers: Record<string, string> = {};
+      if (authStatus === AuthStatus.Authenticated) {
+        // CSRF handled by api.ts interceptor
+      } else if (
+        authStatus === AuthStatus.Unauthenticated &&
+        participationToken
+      ) {
+        headers["X-Participation-Token"] = participationToken;
+      } else {
+        toast.error("Cannot submit: Authentication issue. Please refresh.");
+        return;
+      }
+
+      // Submit each idea using the same method as manual submission
+      for (const idea of generatedIdeas) {
+        const ideaData = {
+          text: idea.text
+        };
+
+        // Use the same API client as manual submission
+        await api.post(
+          `/discussions/${discussionId}/ideas`,
+          ideaData,
+          { headers }
+        );
+      }
+
+      toast.success(`Successfully submitted ${generatedIdeas.length} ideas from Orlando idea bank!`);
+
+      // No need to refresh - Socket.IO will automatically update the UI with new ideas
+
+    } catch (error) {
+      console.error('Error submitting generated ideas:', error);
+
+      // Same error handling as manual submission
+      if (error.response?.status === 401) {
+        toast.error("Auth failed. Session expired? Refresh or log in.");
+        if (authStatus === AuthStatus.Unauthenticated) {
+          sessionStorage.removeItem(getParticipationTokenKey(discussionId));
+          setParticipationToken(null);
+        } else {
+          checkAuthStatus();
+        }
+      } else if (error.response?.status === 403) {
+        toast.error(error.message || "Permission denied (verification/CSRF?).");
+      } else if (error.response?.status === 429) {
+        toast.warn("Submitting too quickly. Please wait.");
+      } else {
+        toast.error(error.message || "Failed to submit ideas.");
+      }
+    }
+  }, [discussionId, authStatus, participationToken, checkAuthStatus]);
+
+  // Calculate background fill styles for smooth 0.1% transitions (10 updates per second)
+  const getContentFillStyle = (): React.CSSProperties => {
+    if (isSimulatorSubmitting) return { '--content-fill-height': '100%' } as React.CSSProperties;
+
+    // Content area fills from 0-100 ideas (1% per idea, 0.1% per update)
+    const contentPercentage = Math.min(simulatorIdeaCount, 100);
+    return { '--content-fill-height': `${contentPercentage.toFixed(1)}%` } as React.CSSProperties;
+  };
+
+  const getContentFillClass = () => {
+    if (isSimulatorSubmitting) return 'submitting';
+    if (simulatorIdeaCount >= 100) return 'content-full';
+    return '';
+  };
+
+  const getActionsFillStyle = (): React.CSSProperties => {
+    if (isSimulatorSubmitting) return { '--actions-fill-height': '100%' } as React.CSSProperties;
+    if (simulatorIdeaCount <= 100) return { '--actions-fill-height': '0%' } as React.CSSProperties;
+
+    // Actions bar starts filling after 100 ideas (1% per idea, 0.1% per update)
+    const excessIdeas = simulatorIdeaCount - 100;
+    const actionsPercentage = Math.min(excessIdeas, 100);
+    return { '--actions-fill-height': `${actionsPercentage.toFixed(1)}%` } as React.CSSProperties;
+  };
+
+  const getActionsFillClass = () => {
+    if (isSimulatorSubmitting) return 'submitting';
+    if (simulatorIdeaCount >= 200) return 'actions-full';
+    return '';
+  };
 
   // Utility functions for filtering (sorting is now handled by the server)
 
@@ -269,10 +384,79 @@ function DiscussionViewContent() {
       const responseData = topicsResponse.data;
       const fetchedTopics = responseData.rows;
 
-      setTopics(fetchedTopics);
-      setTopicsPageCount(responseData.pageCount);
-      setTotalTopicsCount(responseData.totalRowCount);
-      setUnclusteredCount(responseData.unclustered_count || 0);
+      // Smart update: only change state if data actually changed
+      const newPageCount = responseData.pageCount;
+      const newTotalCount = responseData.totalRowCount;
+      const newUnclusteredCount = responseData.unclustered_count || 0;
+
+      // Check if topics data has meaningful changes (by ID and count)
+      const currentTopics = currentTopicsRef.current;
+      const topicsChanged =
+        currentTopics.length !== fetchedTopics.length ||
+        currentTopics.some((topic, index) =>
+          !fetchedTopics[index] ||
+          topic.id !== fetchedTopics[index].id ||
+          topic.count !== fetchedTopics[index].count
+        );
+
+      // Smart topic updates: merge changes instead of replacing entire array
+      if (topicsChanged || isInitialTopicsLoad) {
+        console.log(`[DiscussionView] Topics changed, updating UI:`, {
+          topicsChanged,
+          isInitialTopicsLoad,
+          oldLength: currentTopics.length,
+          newLength: fetchedTopics.length,
+          reason: topicsChanged ? 'data changed' : 'initial load'
+        });
+
+        if (isInitialTopicsLoad) {
+          // Initial load: replace everything
+          setTopics(fetchedTopics);
+        } else {
+          // Background update: merge changes smoothly
+          setTopics(prevTopics => {
+            // Create a map of existing topics for quick lookup
+            const existingTopicsMap = new Map(prevTopics.map(topic => [topic.id, topic]));
+
+            // Process fetched topics
+            const updatedTopics = fetchedTopics.map(fetchedTopic => {
+              const existingTopic = existingTopicsMap.get(fetchedTopic.id);
+
+              // If topic exists and count changed, create updated version
+              if (existingTopic && existingTopic.count !== fetchedTopic.count) {
+                return { ...existingTopic, count: fetchedTopic.count };
+              }
+
+              // If topic exists and unchanged, keep existing reference
+              if (existingTopic && existingTopic.count === fetchedTopic.count) {
+                return existingTopic;
+              }
+
+              // New topic, use fetched version
+              return fetchedTopic;
+            });
+
+            return updatedTopics;
+          });
+        }
+
+        currentTopicsRef.current = fetchedTopics;
+      } else {
+        console.log(`[DiscussionView] Topics unchanged, keeping existing UI:`, {
+          existingLength: topics.length,
+          fetchedLength: fetchedTopics.length
+        });
+      }
+
+      // Update counts only if they changed
+      if (topicsPageCount !== newPageCount) setTopicsPageCount(newPageCount);
+      if (totalTopicsCount !== newTotalCount) setTotalTopicsCount(newTotalCount);
+      if (unclusteredCount !== newUnclusteredCount) setUnclusteredCount(newUnclusteredCount);
+
+      // Mark initial load as complete after first successful fetch
+      if (isInitialTopicsLoad) {
+        setIsInitialTopicsLoad(false);
+      }
 
       console.log(`[DiscussionView] Topics fetched successfully: ${fetchedTopics.length} topics`);
     } catch (error) {
@@ -281,7 +465,7 @@ function DiscussionViewContent() {
     } finally {
       setIsTopicsLoading(false);
     }
-  }, [discussionId, sortBy, sortDir, topicsPagination]); // Remove loadBulkStates to prevent infinite loop
+  }, [discussionId, sortBy, sortDir, topicsPagination]);
 
   // --- Topics Fetching Effect (separate from main effect) ---
   useEffect(() => {
@@ -461,13 +645,13 @@ function DiscussionViewContent() {
       }
     };
 
-    // Refactored handleTopicsUpdated to trigger topics fetch only
+    // Refactored handleTopicsUpdated to trigger topics fetch only (with smart update)
     const handleTopicsUpdated = (data: { discussion_id: string }) => {
       if (data.discussion_id === discussionId && isMounted) {
         console.log(
-          `[Socket ${discussionId}] Received topics_updated event. Fetching latest topics...`
+          `[Socket ${discussionId}] Received topics_updated event. Fetching latest topics in background...`
         );
-        // Trigger a fetch of only the topics data (not the entire discussion)
+        // Trigger a background fetch that won't clear existing topics
         fetchTopics();
       } else if (isMounted) {
         console.log(
@@ -936,18 +1120,21 @@ function DiscussionViewContent() {
                 </div>
                 <div className="stat-content">
                   <div className="stat-value">
-                    {topics.reduce((sum, t) => sum + t.count, 0) + unclusteredCount}
+                    {discussion?.idea_count || 0}
                   </div>
                   <div className="stat-label">Ideas</div>
                 </div>
               </div>
 
-              <div className="stat-card">
+              <div className={`stat-card ${!isInitialTopicsLoad && isTopicsLoading ? 'updating' : ''}`}>
                 <div className="stat-icon">
                   <MessageSquareText className="w-5 h-5 text-green-500" />
+                  {!isInitialTopicsLoad && isTopicsLoading && (
+                    <Loader2 className="w-3 h-3 animate-spin text-green-400 ml-1" />
+                  )}
                 </div>
                 <div className="stat-content">
-                  <div className="stat-value">{topics.length || 0}</div>
+                  <div className="stat-value">{totalTopicsCount || 0}</div>
                   <div className="stat-label">Topics</div>
                 </div>
               </div>
@@ -1058,7 +1245,10 @@ function DiscussionViewContent() {
       )}
 
       {/* Quick Actions Bar */}
-      <div className="quick-actions-bar">
+      <div
+        className={`quick-actions-bar ${getActionsFillClass()}`}
+        style={getActionsFillStyle()}
+      >
         <div className="quick-actions-content">
           {/* Interaction Buttons */}
           {discussionId && (
@@ -1123,7 +1313,7 @@ function DiscussionViewContent() {
             </Button>
 
             {/* View Toggle Controls */}
-            <div className="view-toggle-controls">
+            <div className="view-toggle-controls hidden md:flex">
               <Button
                 variant="neutral"
                 size="sm"
@@ -1209,7 +1399,10 @@ function DiscussionViewContent() {
       )}
 
       {/* Modern Topics List */}
-      <div className="modern-content">
+      <div
+        className={`modern-content ${getContentFillClass()}`}
+        style={getContentFillStyle()}
+      >
         {discussion ? (
           <>
             {filteredTopics.length === 0 ? (
@@ -1232,17 +1425,17 @@ function DiscussionViewContent() {
             ) : (
               <>
                 {/* Topics Loading State */}
-                {(isTopicsLoading || isBulkStatesLoading) && (
+                {((isInitialTopicsLoad && isTopicsLoading && topics.length === 0) || isBulkStatesLoading) && (
                   <div className="flex justify-center items-center py-8">
                     <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
                     <span className="ml-2 text-gray-600">
-                      {isTopicsLoading ? "Loading topics..." : "Loading interaction states..."}
+                      {(isInitialTopicsLoad && isTopicsLoading) ? "Loading topics..." : "Loading interaction states..."}
                     </span>
                   </div>
                 )}
 
-                {/* Topics List - Only render when bulk states are ready */}
-                {!isTopicsLoading && !isBulkStatesLoading && (
+                {/* Topics List - */}
+                {!(isInitialTopicsLoad && isTopicsLoading) && !isBulkStatesLoading && (
                   <div className={`modern-topics-list ${viewMode === 'list' ? 'list-view' : 'grid-view'}`}>
                     {filteredTopics.map((topic) => (
                       <TopicListItem
@@ -1330,6 +1523,14 @@ function DiscussionViewContent() {
           <Plus className="w-6 h-6" />
         </Button>
       </div>
+
+      {/* Idea Simulator - Demo/Testing Tool */}
+      <IdeaSimulator
+        onIdeaCountChange={handleSimulatorIdeaCountChange}
+        onFloodGatesOpen={handleSimulatorFloodGates}
+        onIdeasGenerated={handleIdeasGenerated}
+        disabled={isClustering}
+      />
 
       {/* Modern Share Modal */}
       <Dialog open={showShareModal} onOpenChange={setShowShareModal}>

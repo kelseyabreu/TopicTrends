@@ -468,8 +468,6 @@ async def update_database_and_emit(discussion_id: str, topics_temp_data: dict) -
         topic_insert_tasks = []
         idea_update_tasks = []
 
-        # Create a unique prefix for this batch of topics
-        base_topic_id_prefix = f"{discussion_id}_topic_{uuid.uuid4().hex[:8]}"
 
         for label, topic_ideas_data in topics_temp_data.items():
             if not topic_ideas_data:
@@ -524,8 +522,8 @@ async def update_database_and_emit(discussion_id: str, topics_temp_data: dict) -
                 }
                 ideas_for_output.append(idea_output)
 
-            # Create topic ID
-            topic_id = f"{base_topic_id_prefix}_{label}"
+            # Create topic ID using UUID
+            topic_id = str(uuid.uuid4())
 
             # Prepare topic document
             topic_doc = {
@@ -636,7 +634,6 @@ async def generate_topic_results(topic_id: str, topics_temp_data: dict) -> list:
         List of subtopic results
     """
     topic_results = []
-    base_topic_id_prefix = f"{topic_id}_sub_{uuid.uuid4().hex[:4]}"
 
     try:
         for label, topic_ideas_data in topics_temp_data.items():
@@ -692,8 +689,8 @@ async def generate_topic_results(topic_id: str, topics_temp_data: dict) -> list:
                 }
                 ideas_for_output.append(idea_output)
 
-            # Create subtopic ID
-            subtopic_id = f"{base_topic_id_prefix}_{label}"
+            # Create subtopic ID using UUID
+            subtopic_id = str(uuid.uuid4())
 
             # Add to results
             topic_results.append(

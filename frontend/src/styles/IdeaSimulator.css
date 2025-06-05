@@ -1,0 +1,515 @@
+/* Idea Simulator - Movable Demo Button */
+.idea-simulator-container {
+  position: fixed;
+  z-index: 1000;
+  user-select: none;
+  pointer-events: auto;
+}
+
+.idea-simulator-button {
+  position: relative;
+  min-width: 160px;
+  height: 60px;
+  border-radius: var(--radius-base);
+  background: var(--main); /* Use codebase primary blue */
+  border: 2px solid var(--border);
+  color: var(--main-foreground);
+  font-weight: var(--font-weight-base);
+  font-size: 0.875rem;
+  box-shadow: var(--shadow);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  overflow: hidden;
+}
+
+
+
+.button-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  width: 100%;
+  position: relative;
+  z-index: 3;
+}
+
+.button-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.idea-simulator-button:active {
+  transform: translate(var(--spacing-reverseBoxShadowX), var(--spacing-reverseBoxShadowY));
+  box-shadow: var(--shadow);
+}
+
+.idea-simulator-button.dragging {
+  cursor: grabbing;
+  transform: scale(1.05);
+  box-shadow: 8px 8px 0px 0px var(--border);
+  z-index: 1001;
+}
+
+.idea-simulator-button.collecting {
+  animation: pulse-collecting 2s ease-in-out infinite;
+}
+
+/* Button fill effect */
+.idea-simulator-button::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--button-fill-height, 0%);
+  background: #3b82f6; /* Lighter blue for fill effect */
+  transition: height 0.1s ease-out;
+  z-index: 0;
+  pointer-events: none;
+}
+
+@keyframes pulse-collecting {
+  0%, 100% {
+    box-shadow: var(--shadow);
+  }
+  50% {
+    box-shadow: 8px 8px 0px 0px var(--border);
+  }
+}
+
+
+
+.button-text {
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  white-space: nowrap;
+}
+
+.button-counter {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--main-foreground);
+  background: var(--secondary-background); /* Use codebase secondary background */
+  padding: 3px 8px;
+  border-radius: 5px; /* Using --radius-base */
+  border: 2px solid var(--border);
+  box-shadow: var(--shadow);
+  animation: bounce-counter 0.5s ease-out;
+  position: relative;
+  overflow: hidden;
+}
+
+/* AI data flow effect on counter */
+.button-counter::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  animation: data-flow 1.5s ease-in-out infinite;
+}
+
+@keyframes data-flow {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+.idea-counter {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background: #ef4444;
+  color: white;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 800;
+  border: 3px solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  animation: bounce-counter 0.5s ease-out;
+  z-index: 10;
+}
+
+.idea-counter-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(239, 68, 68, 0.95);
+  color: white;
+  border-radius: 12px;
+  padding: 4px 8px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  border: 2px solid white;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  animation: bounce-counter 0.5s ease-out;
+  z-index: 10;
+  backdrop-filter: blur(4px);
+  min-width: 32px;
+  text-align: center;
+}
+
+@keyframes bounce-counter {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Background Fill Animation - Sequential filling from bottom to top */
+
+/* Modern Content Area (fills first: 0-100 ideas) */
+.modern-content {
+  position: relative;
+  overflow: hidden;
+}
+
+.modern-content::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--content-fill-height, 0%);
+  background: linear-gradient(
+    to top,
+    rgba(16, 185, 129, 0.1) 0%,
+    rgba(16, 185, 129, 0.05) 50%,
+    rgba(59, 130, 246, 0.05) 100%
+  );
+  transition: height 0.1s ease-out;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Enhanced background when content is full */
+.modern-content.content-full::before {
+  background: linear-gradient(
+    to top,
+    rgba(16, 185, 129, 0.15) 0%,
+    rgba(16, 185, 129, 0.08) 50%,
+    rgba(59, 130, 246, 0.08) 100%
+  );
+}
+
+/* Quick Actions Bar (fills second: 100+ ideas) */
+.quick-actions-bar {
+  position: relative;
+  overflow: hidden;
+}
+
+.quick-actions-bar::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--actions-fill-height, 0%);
+  background: linear-gradient(
+    to top,
+    rgba(16, 185, 129, 0.2) 0%,
+    rgba(16, 185, 129, 0.1) 50%,
+    rgba(59, 130, 246, 0.1) 100%
+  );
+  transition: height 0.1s ease-out;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Enhanced background when actions bar is full */
+.quick-actions-bar.actions-full::before {
+  background: linear-gradient(
+    to top,
+    rgba(16, 185, 129, 0.25) 0%,
+    rgba(16, 185, 129, 0.15) 50%,
+    rgba(59, 130, 246, 0.15) 100%
+  );
+}
+
+/* Submission Animation for both areas */
+.modern-content.submitting::before,
+.quick-actions-bar.submitting::before {
+  animation: submission-wave 3s ease-in-out;
+}
+
+@keyframes submission-wave {
+  0% {
+    background: linear-gradient(
+      to top,
+      rgba(16, 185, 129, 0.2) 0%,
+      rgba(16, 185, 129, 0.1) 50%,
+      rgba(59, 130, 246, 0.1) 100%
+    );
+  }
+  50% {
+    background: linear-gradient(
+      to top,
+      rgba(59, 130, 246, 0.3) 0%,
+      rgba(139, 92, 246, 0.2) 50%,
+      rgba(16, 185, 129, 0.1) 100%
+    );
+  }
+  100% {
+    height: 0%;
+    background: transparent;
+  }
+}
+
+/* Ensure content stays above the background fill */
+.quick-actions-content {
+  position: relative;
+  z-index: 1;
+}
+
+/* Ensure modern content elements stay above the background fill */
+.modern-content > * {
+  position: relative;
+  z-index: 1;
+}
+
+.empty-state,
+.modern-topics-list,
+.error-state {
+  position: relative;
+  z-index: 1;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .idea-simulator-button {
+    min-width: 140px;
+    height: 50px;
+    font-size: 0.75rem;
+    border-radius: 25px;
+  }
+  
+  .idea-counter {
+    width: 24px;
+    height: 24px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    top: -8px;
+    right: -8px;
+    border: 2px solid white;
+  }
+
+  .idea-counter-center {
+    font-size: 0.8rem;
+    padding: 3px 6px;
+    min-width: 28px;
+    border-radius: 10px;
+  }
+
+  .button-counter {
+    font-size: 0.7rem;
+    padding: 1px 6px;
+    border-radius: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .idea-simulator-button {
+    min-width: 120px;
+    height: 45px;
+    font-size: 0.7rem;
+    padding: 0 0.75rem;
+  }
+  
+  .button-text {
+    font-size: 0.7rem;
+  }
+
+  .idea-counter-center {
+    font-size: 0.75rem;
+    padding: 2px 5px;
+    min-width: 24px;
+    border-radius: 8px;
+  }
+
+  .button-counter {
+    font-size: 0.65rem;
+    padding: 1px 5px;
+    border-radius: 8px;
+  }
+}
+
+/* Accessibility improvements */
+.idea-simulator-button:focus-visible {
+  outline: 2px solid #fbbf24;
+  outline-offset: 2px;
+}
+
+.idea-simulator-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.idea-simulator-button:disabled:hover {
+  transform: none !important;
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+}
+
+/* Simulator Controls */
+.simulator-controls {
+  position: absolute;
+  top: -50px;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  z-index: 1002;
+}
+
+.controls-toggle {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-base);
+  background: var(--secondary-background);
+  border: 2px solid var(--border);
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.controls-toggle:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  cursor: grab;
+}
+
+.controls-toggle:active,
+.controls-toggle.dragging {
+  transform: scale(1.05);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+  z-index: 1003;
+  cursor: grabbing;
+}
+
+.controls-panel {
+  background: var(--background);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-base);
+  box-shadow: var(--shadow);
+  padding: 1rem;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.control-label {
+  font-size: 0.75rem;
+  font-weight: var(--font-weight-base);
+  color: var(--foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.control-input {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.control-input button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.control-value {
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-base);
+  color: var(--foreground);
+  min-width: 3rem;
+  text-align: center;
+}
+
+.control-buttons {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.speed-button {
+  min-width: 40px;
+  height: 32px;
+  font-size: 0.75rem;
+  font-weight: var(--font-weight-base);
+}
+
+.set-button {
+  width: 100%;
+  margin-top: 0.5rem;
+  font-weight: var(--font-weight-base);
+}
+
+/* Mobile adjustments for controls */
+@media (max-width: 768px) {
+  .simulator-controls {
+    top: -60px;
+    right: -10px;
+  }
+
+  .controls-panel {
+    min-width: 180px;
+    padding: 0.75rem;
+  }
+
+  .control-input {
+    gap: 0.25rem;
+  }
+
+  .control-input button {
+    width: 28px;
+    height: 28px;
+  }
+
+  .speed-button {
+    min-width: 35px;
+    height: 28px;
+  }
+}
