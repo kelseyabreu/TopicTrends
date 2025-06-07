@@ -21,8 +21,8 @@ from app.services.auth import (
 # Rate Limiting
 from app.core.limiter import limiter
 
-# Clustering function
-from app.services.genkit.cluster import cluster_ideas_into_topics
+# Agglomerative With Outliers clustering function
+from app.services.genkit.agglomerative_clustering import cluster_ideas_into_topics
 
 # Query executor for standardized pagination
 from app.services.query_executor import create_discussion_query_executor
@@ -253,7 +253,37 @@ async def trigger_discussion_clustering(
     # if discussion.get("creator_id") != user_id:
     #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the discussion creator can trigger clustering.")
 
-    # 2. Add clustering task to background
-    background_tasks.add_task(cluster_ideas_into_topics, discussion_id=discussion_id, persist_results=True)
+    # 2. Add Big Bang clustering task to background
+    background_tasks.add_task(_trigger_bigbang_clustering, discussion_id=discussion_id)
 
     return {"message": "Idea grouping process initiated."}
+
+
+async def _trigger_bigbang_clustering(discussion_id: str):
+    """Background task to trigger Big Bang clustering with consistency management."""
+    try:
+        from app.services.clustering_coordinator import ClusteringCoordinator
+        coordinator = ClusteringCoordinator()
+
+        # Set consistency lock
+        await coordinator.set_consistency_lock(discussion_id)
+
+        # Perform Big Bang clustering
+        result = await coordinator.process_bigbang_clustering(discussion_id)
+
+        # Process any queued ideas
+        await coordinator.process_queued_ideas(discussion_id)
+
+        # Clear consistency lock
+        await coordinator.clear_consistency_lock(discussion_id)
+
+        logger.info(f"Big Bang clustering completed for discussion {discussion_id}: {len(result)} topics created")
+
+    except Exception as e:
+        logger.error(f"Big Bang clustering failed for discussion {discussion_id}: {e}")
+        # Ensure lock is cleared on error
+        try:
+            coordinator = ClusteringCoordinator()
+            await coordinator.clear_consistency_lock(discussion_id)
+        except Exception as cleanup_error:
+            logger.error(f"Failed to clear consistency lock after error: {cleanup_error}")

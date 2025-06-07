@@ -696,33 +696,82 @@ function DiscussionViewContent() {
       }
     };
 
-    // >>> Handler for the new_idea event <<<
-    const handleNewIdea = (data: { discussion_id: string; idea: Idea }) => {
+    // >>> Handler for batch_processed event (optimized batch processing) <<<
+    const handleBatchProcessed = (data: {
+      discussion_id: string;
+      ideas: Idea[];
+      count: number;
+      unclustered_count?: number;
+      incremental_update: boolean;
+    }) => {
       if (data.discussion_id === discussionId && isMounted) {
         console.log(
-          `[Socket ${discussionId}] Received new_idea event:`,
-          data.idea.id
+          `[Socket ${discussionId}] Received batch_processed event:`,
+          `${data.ideas.length} ideas`
         );
 
-        // Update overall discussion idea count
+        // Update discussion idea count
         setDiscussion((prevDiscussion) =>
           prevDiscussion
             ? {
                 ...prevDiscussion,
-                idea_count: (prevDiscussion.idea_count || 0) + 1,
+                idea_count: (prevDiscussion.idea_count || 0) + data.ideas.length,
               }
             : null
         );
 
-        // Increment unclustered count since new ideas are now unclustered
-        setUnclusteredCount((prev) => prev + 1);
+        // Update unclustered count from WebSocket event (real-time)
+        if (typeof data.unclustered_count === 'number') {
+          setUnclusteredCount(data.unclustered_count);
+        } else {
+          // Fallback: calculate from ideas if unclustered_count not provided
+          const unclusteredCount = data.ideas.filter(idea => !idea.topic_id).length;
+          setUnclusteredCount((prev) => prev + unclusteredCount);
+        }
+
+        // Refresh topics if any ideas were clustered
+        const clusteredCount = data.ideas.filter(idea => idea.topic_id).length;
+        if (clusteredCount > 0) {
+          fetchTopics(); // Background refresh for clustered ideas
+        }
       } else if (isMounted) {
         console.log(
-          `[Socket ${discussionId}] Ignored 'new_idea' event for different discussion (${data.discussion_id})`
+          `[Socket ${discussionId}] Ignored 'batch_processed' event for different discussion (${data.discussion_id})`
         );
       }
     };
-    // >>> END Handler for new_idea <<<
+    // >>> END Handler for batch_processed <<<
+
+    // Handler for idea_submitted event (immediate feedback)
+    const handleIdeaSubmitted = (data: {
+      discussion_id: string;
+      idea: {
+        id: string;
+        text: string;
+        status: string;
+        timestamp: string;
+      };
+    }) => {
+      if (data.discussion_id === discussionId && isMounted) {
+        console.log(`[Socket ${discussionId}] Idea submitted:`, data.idea.text.substring(0, 50) + "...");
+        // Show immediate feedback to user
+        toast.success("Idea submitted! Processing...");
+      }
+    };
+
+    // Handler for unprocessed_count_updated event (real-time count updates)
+    const handleUnprocessedCountUpdate = (data: {
+      discussion_id: string;
+      total_unprocessed: number;
+      needs_embedding: number;
+      needs_clustering: number;
+    }) => {
+      if (data.discussion_id === discussionId && isMounted) {
+        console.log(`[Socket ${discussionId}] Unprocessed count updated:`, data);
+        // Update the unclustered count directly
+        setUnclusteredCount(data.total_unprocessed);
+      }
+    };
 
     // --- Attach Listeners ---
     socket.on("connect", handleConnect);
@@ -731,8 +780,10 @@ function DiscussionViewContent() {
     socket.on("topics_updated", handleTopicsUpdated);
     socket.on("processing_error", handleProcessingError);
     socket.on("idea_processing_error", handleIdeaProcessingError);
-    // >>> Attach the new listener <<<
-    socket.on("new_idea", handleNewIdea);
+    // >>> Attach the batch processing listener <<<
+    socket.on("batch_processed", handleBatchProcessed);
+    socket.on("idea_submitted", handleIdeaSubmitted);
+    socket.on("unprocessed_count_updated", handleUnprocessedCountUpdate);
 
     // --- Cleanup Function ---
     return () => {
@@ -752,8 +803,10 @@ function DiscussionViewContent() {
           "idea_processing_error",
           handleIdeaProcessingError
         );
-        // >>> Remove the new listener <<<
-        socketRef.current.off("new_idea", handleNewIdea);
+        // >>> Remove the batch processing listener <<<
+        socketRef.current.off("batch_processed", handleBatchProcessed);
+        socketRef.current.off("idea_submitted", handleIdeaSubmitted);
+        socketRef.current.off("unprocessed_count_updated", handleUnprocessedCountUpdate);
 
         // Emit leave and disconnect
         if (discussionId) socketRef.current.emit("leave", discussionId);

@@ -30,9 +30,22 @@ async def initialize_database():
         logger.info("Connecting to MongoDB...")
         client = motor.motor_asyncio.AsyncIOMotorClient(
             mongodb_url,
+            # Million-user performance settings
+            maxPoolSize=500,                # Massive connection pool for high concurrency
+            minPoolSize=20,                 # Higher minimum connections
+            maxIdleTimeMS=30000,           # 30 second idle timeout
             serverSelectionTimeoutMS=5000,  # 5 second timeout
             connectTimeoutMS=10000,         # 10 second timeout
-            uuidRepresentation='standard'   # Fix UUID encoding issues
+            socketTimeoutMS=20000,         # 20 second socket timeout
+            waitQueueTimeoutMS=5000,       # 5 second wait queue timeout
+            retryWrites=True,              # Enable retry writes
+            retryReads=True,               # Enable retry reads
+            uuidRepresentation='standard', # Fix UUID encoding issues
+            # Optimize for maximum throughput
+            compressors='zlib',     # Enable compression
+            zlibCompressionLevel=6,        # Balanced compression
+            # Additional optimizations for bulk operations
+            maxConnecting=50,              # Allow more concurrent connections
         )
         # Force a connection to verify it works
         await client.admin.command('ping')

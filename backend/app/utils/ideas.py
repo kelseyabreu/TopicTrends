@@ -4,10 +4,10 @@ from typing import List, Dict, Any
 from app.models.schemas import Idea
 
 async def get_idea_by_id(idea_id: str) -> Idea:
-    """Helper function to fetch ideas for a given discussion ID from the database."""
+    """Helper function to fetch a single idea by its ID from the database."""
     db = await get_db()
-    ideas = await db.ideas.findOne({"id": idea_id})
-    return ideas
+    idea = await db.ideas.find_one({"_id": idea_id})
+    return idea
 
 
 async def get_ideas_by_discussion_id(discussion_id: str) -> list:

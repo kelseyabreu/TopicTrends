@@ -394,7 +394,7 @@ def create_entity_query_params(entity_name: str, allowed_fields: List[str]) -> t
 # These should align with your MongoDB schema and indexing strategy
 DISCUSSION_ALLOWED_FIELDS = ["title", "prompt", "require_verification", "creator_id", "created_at", "last_activity", "idea_count", "topic_count", "tags"]
 TOPIC_ALLOWED_FIELDS = ["representative_idea_id", "representative_text", "count", "discussion_id", "generated_summary"]
-IDEA_ALLOWED_FIELDS = ["text", "user_id", "anonymous_user_id", "verified", "timestamp", "topic_id", "discussion_id", "intent", "sentiment", "keywords", "submitter_display_id", "on_topic", "specificity", "language"]
+IDEA_ALLOWED_FIELDS = ["text", "user_id", "anonymous_user_id", "verified", "timestamp", "topic_id", "discussion_id", "intent", "sentiment", "keywords", "submitter_display_id", "on_topic", "specificity", "language", "status", "tab"]
 ENTITY_METRICS_ALLOWED_FIELDS = ["entity_id", "entity_type", "parent_id", "metrics.view_count", "metrics.like_count", "metrics.pin_count", "metrics.save_count", "metrics.last_activity_at", "metrics.unique_view_count", "time_window_metrics.hourly.timestamp", "time_window_metrics.daily.date"]
 INTERACTION_ALLOWED_FIELDS = ["entity_id", "entity_type", "action_type", "user_id", "anonymous_id", "timestamp", "parent_id", "client_info.ip_hash", "client_info.user_agent", "value", "session_id"]
 USER_INTERACTION_STATE_ALLOWED_FIELDS = ["user_identifier", "entity_id", "entity_type", "state.liked", "state.pinned", "state.saved", "state.view_count", "state.first_viewed_at", "state.last_viewed_at", "last_updated_at"]

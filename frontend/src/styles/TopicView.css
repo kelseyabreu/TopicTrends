@@ -2,7 +2,7 @@
 /* Extending DiscussionView styles with topic-specific additions */
 
 .topic-title {
-  font-size: 1.8rem;
+  font-size: 1.2rem;
   font-weight: 700;
   margin-bottom: 15px;
   color: var(--dark);

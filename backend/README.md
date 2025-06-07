@@ -35,7 +35,8 @@ backend/
 │   │   ├── auth.py         # Authentication services
 │   │   ├── email.py        # Email service
 │   │   └── genkit/         # AI services
-│   │       ├── ai.py       # Main clustering implementation
+│   │       ├── agglomerative_clustering.py  # Agglomerative With Outliers clustering implementation (kelsey)
+│   │       ├── centroid_clustering.py       # Centroid Clustering implementation (jasons)
 │   │       └── flows/      # AI workflows
 │   └── utils/              # Utility functions
 ├── main.py                 # Application entry point
@@ -115,7 +116,7 @@ The backend uses Genkit to perform text embedding and clustering:
 2. **Clustering**: Performs hierarchical agglomerative clustering on the embeddings with cosine distance
 3. **Naming**: Uses the gemma3 model to generate descriptive titles for each topic based on the ideas it contains
 
-The implementation can be found in `app/services/genkit/ai.py` and relies on a threshold-based approach that adjusts clustering parameters based on the number of ideas.
+The implementation can be found in `app/services/batch_processor.py` and `app/services/genkit/agglomerative_clustering.py` with optimized batch processing for millions of users and Agglomerative With Outliers clustering for comprehensive accuracy.
 
 ### Clustering Algorithm
 

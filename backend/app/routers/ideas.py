@@ -10,7 +10,7 @@ from app.core.database import get_db
 from app.core.socketio import sio
 from app.models.schemas import Idea, IdeaSubmit, Discussion # Import Discussion model
 from app.models.user_schemas import User # Pydantic User model
-from app.services.genkit.ai import background_ai_processes # Keep background task
+# Legacy background_ai_processes removed - using optimized batch processor
 # Import security functions and constants
 from app.services.auth import (
     get_optional_current_user,
@@ -36,10 +36,8 @@ from app.core.limiter import limiter
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
-from app.models.schemas import Idea, IdeaSubmit
-from app.services.genkit.ai import cluster_ideas_into_topics
-from app.core.redis import add_to_queue
-from app.services.genkit.idea import process_idea
+from app.models.schemas import Idea, IdeaSubmit, IdeaStatus, BulkIdeaSubmit
+from app.services.batch_processor import idea_processing_service
 
 # Create router
 router = APIRouter(tags=["ideas"])
@@ -70,7 +68,8 @@ async def get_idea_by_id(
     idea.setdefault("related_topics", [])
     idea.setdefault("on_topic", None)
     idea.setdefault("anonymous_user_id", None)
-    idea.setdefault("submitter_display_id", "anonymous") 
+    idea.setdefault("submitter_display_id", "anonymous")
+    idea.setdefault("status", IdeaStatus.COMPLETED)  # Default for existing ideas
     return Idea(**idea)
 
 
@@ -198,6 +197,8 @@ async def submit_idea(
         "submitter_display_id": submitter_display_id, # Username or anonymous ID
         "timestamp": now_utc,
         "topic_id": None,
+        # Initialize processing status
+        "status": IdeaStatus.PENDING,
         # Initialize AI-populated fields to null/empty states
         "embedding": None,
         "intent": None,
@@ -217,40 +218,8 @@ async def submit_idea(
         await db.ideas.insert_one(idea_data)
         logger.info(f"Idea {idea_id} saved for discussion {discussion_id}.")
 
-        try:
-            # Prepare data matching the Idea Pydantic model for the client
-            idea_for_client_dict = {
-                "id": idea_data["_id"], 
-                "text": idea_data["text"],
-                "user_id": idea_data["user_id"],
-                "anonymous_user_id": idea_data["anonymous_user_id"],
-                "verified": idea_data["verified"],
-                "submitter_display_id": idea_data["submitter_display_id"],
-                "timestamp": idea_data["timestamp"].isoformat(), # Already datetime object
-                "embedding": None, # Don't send embedding
-                "topic_id": None,
-                "intent": idea_data["intent"],
-                "keywords": idea_data["keywords"],
-                "sentiment": idea_data["sentiment"],
-                "specificity": idea_data["specificity"],
-                "related_topics": idea_data["related_topics"],
-                "on_topic": idea_data["on_topic"]
-            }
-            # Optionally validate with Pydantic model before sending, though dict is fine
-            # idea_pydantic = Idea(**idea_for_client_dict)
-
-            await sio.emit(
-                'new_idea',
-                {
-                    'discussion_id': discussion_id,
-                    'idea': idea_for_client_dict # Send the dict matching Idea schema
-                 },
-                room=discussion_id # Target only clients in this discussion room
-            )
-            logger.info(f"Emitted 'new_idea' event for idea {idea_id} to room {discussion_id}")
-        except Exception as emit_error:
-            logger.error(f"Failed to emit 'new_idea' event for idea {idea_id}: {emit_error}", exc_info=True)
-        # --- END WebSocket EMIT ---
+        # --- WebSocket Events Handled by Batch Processor ---
+        # Individual WebSocket events removed - batch processor handles all real-time updates
 
     except Exception as e:
         logger.error(f"Database error saving idea {idea_id} for discussion {discussion_id}: {e}", exc_info=True)
@@ -271,16 +240,160 @@ async def submit_idea(
         # Log database errors during count updates but allow the request to succeed since the idea is saved
         logger.error(f"Database error updating counts for discussion {discussion_id}: {e}", exc_info=True)
 
-    # --- 9. Trigger Background AI Task (Queues up the idea for later processing ) ---
-    # Schedule the AI processing (like formatting, keyword extraction) to run after the response is sent.
-    background_tasks.add_task(add_to_queue, idea_id=str(idea_data["_id"]))
+    # --- 9. Queue for Batch Processing ---
+    # Queue the idea for efficient batch processing instead of individual processing
+    await idea_processing_service.queue_idea(str(idea_data["_id"]), discussion_id)
 
+    # --- 9.5. Immediate WebSocket Event for Real-Time Feedback ---
+    # Emit immediate event so frontend knows idea was submitted
+    from app.core.socketio import sio
+    await sio.emit('idea_submitted', {
+        'discussion_id': discussion_id,
+        'idea': {
+            'id': str(idea_data["_id"]),
+            'text': idea_data["text"],
+            'status': idea_data["status"],
+            'timestamp': idea_data["timestamp"].isoformat()
+        }
+    }, room=discussion_id)
 
     # --- 10. Prepare and Return API Response ---
     # Map the internal '_id' field to 'id' for the response payload, matching the Pydantic model.
     idea_data["id"] = idea_data["_id"]
     # Return the created idea data, validated and serialized by the 'Idea' Pydantic model.
     return Idea(**idea_data)
+
+
+@router.post("/discussions/{discussion_id}/ideas/bulk", response_model=List[Idea])
+@limiter.limit("10/minute")  # More restrictive rate limit for bulk operations
+async def submit_ideas_bulk(
+    request: Request,
+    discussion_id: str,
+    bulk_payload: BulkIdeaSubmit,
+    background_tasks: BackgroundTasks,
+    db=Depends(get_db),
+    x_participation_token: Annotated[str | None, Header(alias="X-Participation-Token")] = None
+):
+    """
+    Submit multiple ideas to a specific discussion in bulk.
+    Optimized for batch processing with immediate response.
+    """
+    # Validate discussion exists
+    discussion = await get_discussion_by_id_internal(discussion_id)
+
+    # Validate bulk submission size
+    if len(bulk_payload.ideas) == 0:
+        raise HTTPException(status_code=400, detail="No ideas provided")
+
+    if len(bulk_payload.ideas) > 1000:
+        raise HTTPException(status_code=400, detail="Too many ideas in bulk submission")
+
+    # Process authentication similar to single idea submission
+    authenticated_user_id = None
+    anonymous_user_id = None
+    is_verified_submission = False
+    submitter_display_id = "anonymous"
+
+    try:
+        current_user_data = await get_optional_current_user(request)
+        if current_user_data:
+            authenticated_user_id = current_user_data.get("user_id")
+            submitter_display_id = current_user_data.get("username", "authenticated")
+            is_verified_submission = True
+    except Exception:
+        pass
+
+    # Handle participation token for anonymous users
+    if not authenticated_user_id and x_participation_token:
+        try:
+            token_data = verify_participation_token(x_participation_token, discussion_id)
+            anonymous_user_id = token_data.get("anonymous_user_id")
+            submitter_display_id = anonymous_user_id or "anonymous"
+        except Exception:
+            pass
+
+    # Check discussion verification requirements
+    if discussion.require_verification and not is_verified_submission:
+        raise HTTPException(
+            status_code=403,
+            detail="This discussion requires user verification to submit ideas"
+        )
+
+    # Prepare bulk ideas for database insertion
+    now_utc = datetime.utcnow()
+    ideas_to_insert = []
+    created_ideas = []
+
+    for idea_submit in bulk_payload.ideas:
+        idea_text = idea_submit.text.strip()
+        if not idea_text:
+            continue  # Skip empty ideas
+
+        idea_id = str(uuid.uuid4())
+
+        idea_data = {
+            "_id": idea_id,
+            "discussion_id": discussion_id,
+            "text": idea_text,
+            "user_id": authenticated_user_id,
+            "anonymous_user_id": anonymous_user_id,
+            "verified": is_verified_submission,
+            "submitter_display_id": submitter_display_id,
+            "timestamp": now_utc,
+            "topic_id": None,
+            "status": IdeaStatus.PENDING,
+            # Initialize AI-populated fields
+            "embedding": None,
+            "intent": None,
+            "keywords": [],
+            "sentiment": None,
+            "specificity": None,
+            "related_topics": [],
+            "on_topic": None,
+            # Initialize rating fields
+            "average_rating": None,
+            "rating_count": 0,
+            "rating_distribution": {str(i): 0 for i in range(11)}
+        }
+
+        ideas_to_insert.append(idea_data)
+
+        # Prepare response data
+        response_idea = idea_data.copy()
+        response_idea["id"] = response_idea["_id"]
+        created_ideas.append(Idea(**response_idea))
+
+    if not ideas_to_insert:
+        raise HTTPException(status_code=400, detail="No valid ideas to submit")
+
+    # Bulk insert to database
+    try:
+        await db.ideas.insert_many(ideas_to_insert)
+        logger.info(f"Bulk inserted {len(ideas_to_insert)} ideas to discussion {discussion_id}")
+    except Exception as e:
+        logger.error(f"Error bulk inserting ideas: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save ideas")
+
+    # Queue all ideas for batch processing
+    for idea_data in ideas_to_insert:
+        await idea_processing_service.queue_idea(str(idea_data["_id"]), discussion_id)
+
+    # Send immediate WebSocket notification for bulk submission
+    try:
+        await sio.emit(
+            'ideas_bulk_submitted',
+            {
+                'discussion_id': discussion_id,
+                'count': len(created_ideas),
+                'ideas': [idea.dict() for idea in created_ideas]
+            },
+            room=discussion_id
+        )
+        logger.info(f"Emitted bulk submission event for {len(created_ideas)} ideas")
+    except Exception as e:
+        logger.error(f"Failed to emit bulk submission event: {e}")
+
+    return created_ideas
 
 
 @router.get("/discussions/{discussion_id}/ideas", response_model=List[Idea])
@@ -312,6 +425,7 @@ async def get_discussion_ideas(
         idea_doc.setdefault("on_topic", None)
         idea_doc.setdefault("anonymous_user_id", None)
         idea_doc.setdefault("submitter_display_id", "anonymous") # Add default
+        idea_doc.setdefault("status", IdeaStatus.COMPLETED)  # Default for existing ideas
         # Add rating fields defaults
         idea_doc.setdefault("average_rating", None)
         idea_doc.setdefault("rating_count", 0)

@@ -1,14 +1,30 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+from enum import Enum
+
+# Idea processing status enum
+class IdeaStatus(str, Enum):
+    PENDING = "pending"       # Just submitted
+    PROCESSING = "processing" # In AI pipeline
+    EMBEDDED = "embedded"     # Has embedding, waiting for clustering
+    COMPLETED = "completed"   # Fully processed (has embedding + topic)
+    FAILED = "failed"         # Processing failed
+    STUCK = "stuck"           # Stuck in processing (timeout-based)
+
 # Discussion when being received from the front end
 class DiscussionCreate(BaseModel):
     title: str
     prompt: str
     require_verification: bool = False
+
 # Idea when being received from the front end
 class IdeaSubmit(BaseModel):
     text: str
+
+# Bulk idea submission model
+class BulkIdeaSubmit(BaseModel):
+    ideas: List[IdeaSubmit] = Field(..., max_items=1000)
 
 # Rating submission model
 class RatingSubmit(BaseModel):
@@ -22,6 +38,8 @@ class Idea(BaseModel):
     verified: bool
     submitter_display_id: Optional[str] = None
     timestamp: datetime
+    # Processing status field
+    status: IdeaStatus = IdeaStatus.PENDING
     embedding: list[float] | None = None
     topic_id: Optional[str] = None
     discussion_id: Optional[str] = None

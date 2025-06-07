@@ -204,6 +204,19 @@
   color: #6b7280;
 }
 
+.loading-ideas {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  color: #6b7280;
+}
+
 /* Clean Idea Cards */
 .modern-idea-card {
   display: block;

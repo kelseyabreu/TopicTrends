@@ -1,11 +1,10 @@
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, Request
 from app.services.auth import verify_csrf_dependency
 from typing import List, Dict, Any
-from app.services.genkit.ai import cluster_ideas_into_topics
-from app.services.genkit.cluster import _map_ideas_for_output
+from app.services.genkit.agglomerative_clustering import cluster_ideas_into_topics, _map_ideas_for_output
 from app.models.schemas import Topic, TopicIdPayload, TopicsResponse
 from app.models.query_models import TopicQueryParameters, PaginatedResponse
-from app.services.query_executor import create_topic_query_executor
+from app.services.query_executor import create_topic_query_executor, create_idea_query_executor
 from app.core.database import get_db
 from app.core.limiter import limiter
 from app.core.config import settings
@@ -16,8 +15,9 @@ logger = logging.getLogger(__name__)
 # Create router
 router = APIRouter(tags=["topics"])
 
-# Create topic query executor
+# Create query executors
 topic_query_executor = create_topic_query_executor()
+idea_query_executor = create_idea_query_executor()
 
 # Routes
 @router.get("/discussions/{discussion_id}/topics", response_model=None)
@@ -61,50 +61,74 @@ async def get_discussion_topics(
     # Determine MongoDB sort direction
     mongo_sort_direction = -1 if sort_dir == "desc" else 1
 
-    # Fetch all topic documents for the discussion
-    if sort_field == "count":
-        # For count sorting, we need to fetch all topics first, then sort by actual idea count
-        topic_docs = await db.topics.find({"discussion_id": discussion_id}).sort("_id", 1).to_list(length=None)
-    else:
-        # For other fields, we can sort directly in MongoDB
-        topic_docs = await db.topics.find({"discussion_id": discussion_id}).sort(mongo_sort_field, mongo_sort_direction).to_list(length=None)
+    # PERFORMANCE OPTIMIZATION: Use aggregation pipeline to avoid N+1 queries
+    # This replaces 144 individual queries with 1 efficient aggregation
 
-    # Build topics with nested ideas (same as original logic)
+    pipeline = [
+        # Match topics for this discussion
+        {"$match": {"discussion_id": discussion_id}},
+
+        # Lookup to count ideas only (no full idea data for performance)
+        {"$lookup": {
+            "from": "ideas",
+            "localField": "_id",
+            "foreignField": "topic_id",
+            "as": "idea_count_check"
+        }},
+
+        # Add actual count field based on ideas found
+        {"$addFields": {
+            "actual_count": {"$size": "$idea_count_check"}
+        }},
+
+        # Project final fields (no idea data, just metadata)
+        {"$project": {
+            "_id": 1,
+            "representative_text": 1,
+            "count": "$actual_count",
+            "centroid_embedding": 1,
+            "created_at": 1,
+            "updated_at": 1
+        }}
+    ]
+
+    # Add sorting to pipeline if not sorting by count
+    if sort_field != "count":
+        pipeline.append({"$sort": {mongo_sort_field: mongo_sort_direction}})
+
+    # Execute aggregation
+    topic_docs = await db.topics.aggregate(pipeline).to_list(length=None)
+
+    # Build results from aggregated data (no ideas loaded for performance)
     results = []
     for topic_doc in topic_docs:
-        topic_id = str(topic_doc["_id"])
-
-        # Fetch ideas belonging to this specific topic_id from the 'ideas' collection
-        ideas_cursor = db.ideas.find({"topic_id": topic_id}).sort("timestamp", 1)
-        ideas_list = await ideas_cursor.to_list(length=None)
-
-        # Map fetched ideas to the required output format
-        nested_ideas_data = _map_ideas_for_output(ideas_list)
-
-        # Construct the final Topic object using fetched data
+        # Create Topic object without ideas (empty list for fast loading)
         topic_data_for_pydantic = {
-            "id": topic_id,
-            "representative_idea_id": str(topic_doc.get("representative_idea_id")) if topic_doc.get("representative_idea_id") else None,
+            "id": str(topic_doc["_id"]),
+            "representative_idea_id": None,  # Will be loaded on-demand
             "representative_text": topic_doc.get("representative_text", "Untitled Topic"),
-            "count": len(ideas_list),  # Use the actual count of fetched ideas
-            "ideas": nested_ideas_data  # Use the dynamically fetched & mapped ideas
+            "count": topic_doc.get("count", 0),
+            "ideas": [],  # Empty - ideas loaded on-demand via separate endpoint
+            "centroid_embedding": topic_doc.get("centroid_embedding")
         }
 
         try:
-            # Validate and create the Pydantic model instance
             topic_model = Topic(**topic_data_for_pydantic)
             results.append(topic_model)
         except Exception as e:
-            logger.error(f"Pydantic validation failed for topic {topic_id}: {e}. Skipping topic.", exc_info=True)
+            logger.error(f"Pydantic validation failed for topic {topic_doc['_id']}: {e}. Skipping topic.", exc_info=True)
 
     # Sort by count if needed (since we couldn't sort in MongoDB for count)
     if sort_field == "count":
         results.sort(key=lambda t: t.count, reverse=(sort_dir == "desc"))
 
-    # Get unclustered count (needed for both paginated and legacy responses)
+    # Get unclustered count (includes ideas needing processing)
     unclustered_count = await db.ideas.count_documents({
         "discussion_id": discussion_id,
-        "topic_id": None
+        "$or": [
+            {"topic_id": None},  # Not assigned to topic
+            {"status": {"$in": ["pending", "stuck"]}}  # Still processing
+        ]
     })
 
     # Use standardized pagination response
@@ -148,6 +172,47 @@ async def get_discussion_topics(
     response_dict["unclustered_count"] = unclustered_count
 
     return response_dict
+
+
+@router.get("/topics/{topic_id}/ideas", response_model=None)
+@limiter.limit(settings.HIGH_RATE_LIMIT)
+async def get_topic_ideas(
+    request: Request,
+    topic_id: str,
+):
+    """
+    Get ideas for a specific topic with server-side sorting, filtering, and pagination.
+    Uses the standardized query service pattern for consistency with other endpoints.
+
+    Supports advanced querying:
+    - Pagination with page and page_size
+    - Sorting with sort and sort_dir
+    - Filtering with multiple operators (eq, ne, gt, lt, in, etc.)
+    - Text search across relevant fields
+    - Field projection to limit returned data
+
+    Example queries:
+    - `/api/topics/{id}/ideas?page=1&page_size=20&sort=timestamp&sort_dir=desc`
+    - `/api/topics/{id}/ideas?filter.verified=true&sort=sentiment&sort_dir=asc`
+    - `/api/topics/{id}/ideas?search=environment&sort=timestamp&sort_dir=desc`
+    """
+    # Validate topic exists
+    db = await get_db()
+    topic = await db.topics.find_one({"_id": topic_id})
+    if not topic:
+        from fastapi import HTTPException, status
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic not found")
+
+    # Extract query parameters using the standardized service
+    params = await idea_query_executor.query_service.get_query_parameters_dependency()(request)
+
+    # Execute query using the standardized pattern with additional_filter
+    # This follows the established pattern used throughout the codebase
+    result = await idea_query_executor.execute(
+        params=params,
+        additional_filter={"topic_id": topic_id}
+    )
+    return result.to_tanstack_response()
 
 
 @router.post("/topics", response_model=List[dict], dependencies=[Depends(verify_csrf_dependency)])

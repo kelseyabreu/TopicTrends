@@ -33,7 +33,7 @@ from app.core.limiter import limiter
 # Socket.IO setup
 from app.core.socketio import socket_app
 # Routers (import AFTER settings/limiter might be needed if they use them at import time)
-from app.routers import discussions, ideas, topics, auth, users, interaction, analytics
+from app.routers import discussions, ideas, topics, auth, users, interaction, analytics, unprocessed_ideas
 
 # Print all configuration properties at startup
 print("=" * 50)
@@ -128,11 +128,11 @@ async def startup_event():
     try:
         await initialize_database() 
         logger.info("Database initialization complete.")
-        # Start the background worker
-        from app.services.worker import run_worker
-        # Runs concurrently :o
-        asyncio.create_task(run_worker())
-        logger.info("Background worker started.")
+        # Start the idea processing service
+        from app.services.batch_processor import idea_processing_service
+        # Runs concurrently with all optimizations
+        asyncio.create_task(idea_processing_service.start())
+        logger.info("Idea processing service started.")
     except Exception as e:
         logger.exception("FATAL: Database initialization failed. Application will exit.", exc_info=True)
         # Optionally: Send alert here
@@ -198,6 +198,7 @@ app.include_router(topics.router, prefix=api_prefix, tags=["Topics"])
 app.include_router(users.router, prefix=api_prefix, tags=["Users"])
 app.include_router(interaction.router, prefix=api_prefix, tags=["Interaction"])
 app.include_router(analytics.router, prefix=api_prefix, tags=["Analytics"])
+app.include_router(unprocessed_ideas.router, prefix=api_prefix, tags=["Unprocessed Ideas"])
 # Add other routers here
 
 # --- Mount Sub-Applications (like Socket.IO) ---

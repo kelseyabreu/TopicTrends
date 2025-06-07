@@ -55,10 +55,22 @@ class Settings(BaseSettings):
          'model_cache'
      )
 
-    # Clustering settings
-    DISTANCE_THRESHOLD_SMALL: float = 0.45
-    DISTANCE_THRESHOLD_MEDIUM: float = 0.35
-    DISTANCE_THRESHOLD_LARGE: float = 0.25
+    # Dual-Engine Clustering settings
+    CENTROID_CLUSTERING_BATCH_SIZE: int = 100
+    CENTROID_CLUSTERING_TIMEOUT_SECONDS: int = 10
+    CENTROID_CLUSTERING_ADAPTIVE_THRESHOLD_HIGH: float = 0.7  # More reasonable threshold for new topics
+    CENTROID_CLUSTERING_ADAPTIVE_THRESHOLD_LOW: float = 0.6   # Aggressive threshold for mature topics
+    CENTROID_CLUSTERING_TOPIC_MATURITY_THRESHOLD: int = 5     # Lower maturity threshold
+
+    FULL_RECLUSTERING_DISTANCE_THRESHOLD: float = 0.7   # Much more reasonable for grouping
+    FULL_RECLUSTERING_MIN_GROUP_SIZE: int = 2           # Allow smaller groups
+    FULL_RECLUSTERING_CHUNK_SIZE_SMALL: int = 2000
+    FULL_RECLUSTERING_CHUNK_SIZE_LARGE: int = 5000
+
+    # Redis Consistency Lock settings
+    CLUSTERING_LOCK_TIMEOUT_SECONDS: int = 300  # 30 mins
+    CLUSTERING_QUEUE_KEY_PREFIX: str = "clustering:queue:"
+    CLUSTERING_LOCK_KEY_PREFIX: str = "clustering:full_reclustering:"
 
     # Security settings
     SECRET_KEY: str # Used for access tokens (JWT)
@@ -85,7 +97,7 @@ class Settings(BaseSettings):
     REGISTER_RATE_LIMIT: str = "5/minute"
     VERIFY_RATE_LIMIT: str = "10/minute"
     TOKEN_GEN_RATE_LIMIT: str = "30/minute" 
-    IDEA_SUBMIT_RATE_LIMIT: str = "60/minute"
+    IDEA_SUBMIT_RATE_LIMIT: str = "600/minute"
     DISCUSSION_CREATE_RATE_LIMIT: str = "10/minute"
     DISCUSSION_DELETE_RATE_LIMIT: str = "10/minute"
     DISCUSSION_READ_RATE_LIMIT: str = "200/minute"
@@ -108,6 +120,14 @@ class Settings(BaseSettings):
     # Background task settings
     TASK_TIMEOUT_SECONDS: int = 300  # 5 minutes
     MAX_CONCURRENT_TASKS: int = 5
+
+    # High-performance batch processing settings
+    BATCH_SIZE: int = 500  # Ideas per batch
+    BATCH_TIMEOUT_MS: int = 50  # Milliseconds to wait before processing
+    WEBSOCKET_THROTTLE_MS: int = 100  # WebSocket update throttling
+    MAX_CONCURRENT_BATCHES: int = 20  # Maximum concurrent batch processing
+    AI_RATE_LIMIT_PER_SECOND: int = 100  # AI API calls per second
+    MAX_WEBSOCKET_QUEUE_SIZE: int = 1000  # Maximum WebSocket queue size per discussion
 
 
 

@@ -17,7 +17,7 @@ ai = Genkit(
 )
 
 @ai.flow()
-async def topic_name_suggestion_flow(ideas: list) -> MainIdea:
+async def topic_name_suggestion(ideas: list) -> MainIdea:
     # Create a formatted list of idea texts
     idea_texts = "\n".join([f"- {idea['text']}" for idea in ideas])
     response = await ai.generate(
@@ -25,5 +25,5 @@ async def topic_name_suggestion_flow(ideas: list) -> MainIdea:
         prompt=f'You are a expert idea generalization engine, whats the general main idea for this group of ideas:\n{idea_texts}',
         output_schema=MainIdea
     )
-    logging.info(f"topic_name_suggestion_flow!!: {response.output}")
+    logging.info(f"topic_name_suggestion!!: {response.output}")
     return response.output

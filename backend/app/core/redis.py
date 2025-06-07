@@ -1,106 +1,97 @@
 import os
 import asyncio
 from redis import asyncio as aioredis
-from typing import Optional
+from typing import Optional, Dict, Any
 import logging
+import json
+import time
+from collections import defaultdict
+
 logger = logging.getLogger(__name__)
 
 _redis = None
-# queues
-idea_queue = 'idea_queue'
-processing_set = 'processing_set'
-dead_letter_queue = 'dead_letter_queue' # Ideas that failed to process and failed retry
-max_retries = 3
+_fallback_storage = defaultdict(list)  # In-memory fallback for development
 
-# Hash to store retry counts
-retry_count_hash = 'retry_count_hash'
+class RedisFallback:
+    """In-memory Redis fallback for development when Redis is not available"""
+
+    def __init__(self):
+        self.storage = defaultdict(list)
+        self.key_values = {}
+
+    async def lpush(self, key: str, value: str) -> int:
+        """Add value to the left of the list"""
+        self.storage[key].insert(0, value)
+        return len(self.storage[key])
+
+    async def brpop(self, key: str, timeout: float = 0) -> Optional[tuple]:
+        """Remove and return the rightmost element from the list"""
+        if self.storage[key]:
+            value = self.storage[key].pop()
+            return (key, value)
+        return None
+
+    async def exists(self, key: str) -> bool:
+        """Check if key exists"""
+        return key in self.key_values
+
+    async def get(self, key: str) -> Optional[str]:
+        """Get value by key"""
+        return self.key_values.get(key)
+
+    async def setex(self, key: str, time: int, value: str) -> bool:
+        """Set key with expiration"""
+        self.key_values[key] = value
+        return True
+
+    async def delete(self, key: str) -> int:
+        """Delete key"""
+        if key in self.key_values:
+            del self.key_values[key]
+            return 1
+        return 0
+
+    async def keys(self, pattern: str) -> list:
+        """Get keys matching pattern"""
+        if pattern.endswith('*'):
+            prefix = pattern[:-1]
+            return [k for k in self.key_values.keys() if k.startswith(prefix)]
+        return []
+
+    async def ttl(self, key: str) -> int:
+        """Get time to live (always return -1 for fallback)"""
+        return -1
+
+    async def expire(self, key: str, seconds: int) -> bool:
+        """Set expiration (no-op for fallback)"""
+        return True
 
 async def get_redis():
-    """Get Redis connection."""
+    """Get Redis connection with fallback for development."""
     global _redis
     if _redis is None:
-        redis_url = os.getenv('REDIS_URL', 'redis://redis:6379')
-        _redis = await aioredis.from_url(redis_url)
+        redis_url = os.getenv('REDIS_URL', 'redis://localhost:6379')
+        try:
+            _redis = await aioredis.from_url(
+                redis_url,
+                # Million-user connection pool settings
+                max_connections=500,  # Support massive concurrent connections
+                retry_on_timeout=True,
+                retry_on_error=[ConnectionError, TimeoutError],
+                health_check_interval=30,
+                # Optimize for maximum throughput
+                socket_keepalive=True,
+                socket_keepalive_options={},
+                # Aggressive connection timeouts for high performance
+                socket_connect_timeout=2,  # Shorter timeout for faster fallback
+                socket_timeout=2,
+            )
+            # Test the connection
+            await _redis.ping()
+            logger.info("Redis connection established successfully")
+        except Exception as e:
+            logger.warning(f"Redis connection failed ({e}), using in-memory fallback for development")
+            _redis = RedisFallback()
     return _redis
 
-async def add_to_queue(idea_id: str) -> bool:
-    """Add an idea to the processing queue."""
-    redis = await get_redis()
-    logger.info(f"Adding idea {idea_id} to queue")
-    return await redis.rpush(idea_queue, idea_id)
-
-async def move_to_processing(idea_id: str) -> bool:
-    """Move an idea to the processing set."""
-    redis = await get_redis()
-    return await redis.sadd(processing_set, idea_id)
-
-async def remove_from_processing(idea_id: str) -> bool:
-    """Remove an idea from the processing set."""
-    redis = await get_redis()
-    return await redis.srem(processing_set, idea_id)
-
-async def get_batch_from_queue(batch_size: int = 10) -> list[str]:
-    """Get a batch of ideas from the queue.
-    
-    The ideas are moved to a processing set to track in-progress items.
-    If processing fails, items can be retried later.
-    """
-    redis = await get_redis()
-    ideas = []
-    
-    for _ in range(batch_size):
-        # Atomically move item from queue to processing
-        idea_id = await redis.lpop(idea_queue)
-        if not idea_id:
-            break
-        # Decode bytes to string
-        if isinstance(idea_id, bytes):
-            idea_id = idea_id.decode('utf-8')
-        # Add to processing set
-        await move_to_processing(idea_id)
-        ideas.append(idea_id)
-    
-    return ideas
-
-async def retry_failed_item(idea_id: str) -> None:
-    """Move a failed item back to the queue for retry or to dead letter queue if max retries exceeded."""
-    redis = await get_redis()
-    
-    # Get current retry count
-    retry_count = await redis.hget(retry_count_hash, idea_id)
-    retry_count = int(retry_count.decode('utf-8')) if retry_count else 0
-    retry_count += 1
-    
-    if retry_count >= max_retries:
-        # Move to dead letter queue if max retries exceeded
-        logger.warning(f"Max retries ({max_retries}) exceeded for idea {idea_id}, moving to dead letter queue")
-        await redis.rpush(dead_letter_queue, idea_id)
-        await remove_from_processing(idea_id)
-        await redis.hdel(retry_count_hash, idea_id)
-    else:
-        # Update retry count and move back to queue
-        await redis.hset(retry_count_hash, idea_id, retry_count)
-        logger.info(f"Retrying idea {idea_id} (attempt {retry_count} of {max_retries})")
-        await redis.rpush(idea_queue, idea_id)
-        await remove_from_processing(idea_id)
-        # Add exponential backoff delay
-        await asyncio.sleep(2 ** retry_count)
-
-async def remove_from_queue(idea_id: str) -> int:
-    """Remove an idea from the processing queue and processing set.
-    
-    This should be called after successful processing of an idea to clean up
-    both the queue and processing tracking.
-    
-    Args:
-        idea_id: The ID of the idea to remove
-        
-    Returns:
-        The number of items removed from the queue
-    """
-    redis = await get_redis()
-    logger.info(f"Removing idea {idea_id} from queue and processing set")
-    # Remove from processing set first
-    await remove_from_processing(idea_id)
-    # Remove all occurrences from the queue (should be none if processing worked correctly)
-    return await redis.lrem('idea_queue', 0, idea_id)
+# Legacy queue functions removed - now using optimized batch processor

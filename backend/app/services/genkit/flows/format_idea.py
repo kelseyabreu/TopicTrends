@@ -12,9 +12,9 @@ ai = Genkit(
 
 
 @ai.flow()
-async def format_idea_flow(idea_text: str, title_prompt:str) -> FormattedIdea:
+async def format_idea(idea_text: str, title_prompt:str) -> FormattedIdea:
     """
-    Format an idea using a generative AI model.
+    Format an idea to extract intent, keywords, sentiment, specificity, and related topics.
     """
     response = await ai.generate(
         model=settings.GEMINI_MODEL,

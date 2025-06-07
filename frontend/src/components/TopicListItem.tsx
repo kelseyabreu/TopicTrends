@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,13 +19,15 @@ import {
   Eye,
   ArrowRight,
   Sparkles,
-  Users
+  Users,
+  Loader2
 } from "lucide-react";
 import { Topic } from "../interfaces/topics";
 import { Idea } from "../interfaces/ideas";
 import "../styles/components/TopicListItem.css";
 import InteractionButton from "./InteractionButton";
 import RatingComponent from "./RatingComponent";
+import api from "../utils/api";
 
 interface TopicListItemProps {
   topic: Topic;
@@ -43,6 +45,9 @@ const TopicListItem: React.FC<TopicListItemProps> = ({
   disableInitialFetch = false,
 }) => {
   const [expanded, setExpanded] = useState(false);
+  const [ideas, setIdeas] = useState<Idea[]>(topic.ideas || []);
+  const [loadingIdeas, setLoadingIdeas] = useState(false);
+  const [ideasLoaded, setIdeasLoaded] = useState(topic.ideas && topic.ideas.length > 0);
 
   // Modern utility functions
   const getTopicType = (count: number): string => {
@@ -66,7 +71,41 @@ const TopicListItem: React.FC<TopicListItemProps> = ({
     return "tsunami";
   };
 
-  const toggleExpanded = () => {
+  // Lazy load ideas when topic is expanded
+  const loadIdeas = async () => {
+    if (ideasLoaded || loadingIdeas) return;
+
+    setLoadingIdeas(true);
+    try {
+      // Use the standardized API client following established patterns
+      const response = await api.get(`/topics/${topic.id}/ideas`, {
+        params: {
+          page: 1,
+          page_size: 100,
+          sort: 'timestamp',
+          sort_dir: 'asc'
+        }
+      });
+
+      // Handle TanStack response format (data.rows)
+      const ideas = response.data.rows || response.data.data || [];
+      setIdeas(ideas);
+      setIdeasLoaded(true);
+    } catch (error: any) {
+      console.error('Error loading ideas for topic:', topic.id, error);
+      // Follow established error handling pattern
+      const errorMsg = error.response?.data?.detail || error.message || 'Failed to load ideas for this topic';
+      console.error(errorMsg);
+    } finally {
+      setLoadingIdeas(false);
+    }
+  };
+
+  const toggleExpanded = async () => {
+    if (!expanded && !ideasLoaded) {
+      // Load ideas when expanding for the first time
+      await loadIdeas();
+    }
     setExpanded(!expanded);
   };
 
@@ -169,7 +208,7 @@ const TopicListItem: React.FC<TopicListItemProps> = ({
               <div className="ideas-stats">
                 <div className="stat-item">
                   <Users className="w-4 h-4 text-gray-500" />
-                  <span>{topic.ideas?.length || 0} contributors</span>
+                  <span>{ideas.length || topic.count} contributors</span>
                 </div>
                 <div className="stat-item">
                   <BarChart3 className="w-4 h-4 text-gray-500" />
@@ -179,14 +218,19 @@ const TopicListItem: React.FC<TopicListItemProps> = ({
             </div>
 
             <div className="ideas-list">
-              {!topic.ideas || topic.ideas.length === 0 ? (
+              {loadingIdeas ? (
+                <div className="loading-ideas">
+                  <Loader2 className="w-6 h-6 animate-spin text-gray-400 mb-2" />
+                  <p className="text-gray-500 text-sm">Loading ideas...</p>
+                </div>
+              ) : !ideas || ideas.length === 0 ? (
                 <div className="no-ideas">
                   <Sparkles className="w-8 h-8 text-gray-300 mb-2" />
                   <p className="text-gray-500 text-sm">No ideas in this topic yet</p>
                 </div>
               ) : (
                 <>
-                  {(limitIdeas ? topic.ideas.slice(0, 5) : topic.ideas).map((ideaItem: Idea) => (
+                  {(limitIdeas ? ideas.slice(0, 5) : ideas).map((ideaItem: Idea) => (
                     <NavLink
                       key={ideaItem.id}
                       to={`/ideas/${ideaItem.id}`}
@@ -270,13 +314,13 @@ const TopicListItem: React.FC<TopicListItemProps> = ({
                   ))}
 
                   {/* View All Button */}
-                  {limitIdeas && topic.ideas.length > 5 && (
+                  {limitIdeas && ideas.length > 5 && (
                     <NavLink
                       to={`/discussion/${discussionId}/topic/${topic.id}`}
                       className="view-all-ideas-btn"
                     >
                       <div className="view-all-content">
-                        <span>View all {topic.ideas.length} ideas</span>
+                        <span>View all {ideas.length} ideas</span>
                         <ArrowRight className="w-4 h-4" />
                       </div>
                     </NavLink>

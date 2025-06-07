@@ -1,10 +1,11 @@
 import uuid
 import numpy as np
+from datetime import datetime
 from typing import List, Optional, Tuple
 from app.core.database import get_db
 import logging
 from app.core.socketio import sio
-from app.services.genkit.flows.topic_names import topic_name_suggestion_flow
+from app.services.genkit.flows.topic_names import topic_name_suggestion
 from app.utils.ideas import get_ideas_by_topic_id
 
 # Configure logging
@@ -39,8 +40,14 @@ async def generate_topic_title(topic_id: str):
     simplified_ideas = [{"text": idea["text"]} for idea in topic_ideas]
 
     try:
-        topic_main_idea = await topic_name_suggestion_flow(simplified_ideas)
-        return topic_main_idea.get('representative_text')
+        topic_main_idea = await topic_name_suggestion(simplified_ideas)
+        # Handle both dict and object formats
+        if hasattr(topic_main_idea, 'representative_text'):
+            return topic_main_idea.representative_text
+        elif isinstance(topic_main_idea, dict):
+            return topic_main_idea.get('representative_text')
+        else:
+            return str(topic_main_idea)
     except Exception as e:
         logger.warning(f"Error generating topic name: {e}")
 
@@ -61,169 +68,149 @@ class CentroidClustering:
     trigger = trigger_sequence()
     next_trigger_point = next(trigger)
 
-    async def find_closest_topic(self, embedding: np.ndarray, discussion_id: str) -> Tuple[Optional[dict], float]:
+    def find_closest_topic(self, embedding: np.ndarray, existing_topics: List[dict]) -> Optional[dict]:
         """
-        Find the closest topic to the given embedding from MongoDB.
+        Find the closest topic for an idea embedding using adaptive thresholds.
+        Returns operation dictionary instead of executing database operations.
+
+        Args:
+            embedding: The idea embedding to match
+            existing_topics: List of existing topic dictionaries with centroids
+
+        Returns:
+            Dictionary with operation details or None if no match found
+        """
+        if not existing_topics:
+            return None
+
+        best_similarity = 0.0
+        best_topic = None
+
+        for topic in existing_topics:
+            topic_centroid = np.array(topic.get('centroid_embedding', topic.get('centroid', [])))
+            if len(topic_centroid) == 0:
+                continue
+
+            # Calculate cosine similarity
+            similarity = np.dot(embedding, topic_centroid) / (
+                np.linalg.norm(embedding) * np.linalg.norm(topic_centroid)
+            )
+
+            # Adaptive threshold based on topic maturity
+            topic_count = topic.get('count', 1)
+            threshold = self._get_adaptive_threshold(topic_count)
+
+            if similarity > threshold and similarity > best_similarity:
+                best_similarity = similarity
+                best_topic = topic
+
+        if best_topic:
+            return {
+                'action': 'assign',
+                'topic_id': best_topic['_id'],
+                'similarity': best_similarity
+            }
+
+        return None
+
+    def _get_adaptive_threshold(self, topic_count: int) -> float:
+        """Calculate adaptive threshold based on topic maturity."""
+        from app.core.config import settings
+
+        if topic_count >= settings.CENTROID_CLUSTERING_TOPIC_MATURITY_THRESHOLD:
+            # Mature topic - use aggressive threshold
+            return settings.CENTROID_CLUSTERING_ADAPTIVE_THRESHOLD_LOW
+        else:
+            # New topic - use conservative threshold
+            return settings.CENTROID_CLUSTERING_ADAPTIVE_THRESHOLD_HIGH
+
+    def find_closest_topic(self, embedding: np.ndarray, existing_topics: List[dict]) -> Tuple[Optional[dict], float]:
+        """
+        Find the closest topic to the given embedding from a pre-fetched list.
         Returns (topic, similarity) tuple. If no topics exist, returns (None, 0).
         """
-        topics = await get_existing_topics(discussion_id)
-        if not topics:
-            logger.info(f"No existing topics found for discussion {discussion_id}")
+        if not existing_topics:
+            logger.debug("No existing topics provided")
             return None, 0
-            
+
         max_similarity = -1
         closest_topic = None
-        
-        for topic in topics:
-            if topic.get('centroid_embedding') is not None:
-                similarity = cosine_similarity(embedding, np.array(topic['centroid_embedding']))
+
+        for topic in existing_topics:
+            centroid = topic.get('centroid_embedding') or topic.get('centroid')
+            if centroid is not None:
+                similarity = cosine_similarity(embedding, np.array(centroid))
                 logger.debug(f"Similarity with topic {topic['_id']}: {similarity}")
                 if similarity > max_similarity:
                     max_similarity = similarity
                     closest_topic = topic
-        
+
         if closest_topic:
-            logger.info(f"Found closest topic {closest_topic['_id']} with similarity {max_similarity}")
+            logger.debug(f"Found closest topic {closest_topic['_id']} with similarity {max_similarity}")
         else:
-            logger.info("No suitable topic found")
-                    
+            logger.debug("No suitable topic found")
+
         return closest_topic, max_similarity
     
-    async def create_topic(self, embedding: np.ndarray, idea: dict, discussion_id: str) -> dict:
+    def create_topic_operation(self, embedding: np.ndarray, idea: dict, discussion_id: str) -> dict:
         """
-        Create a new topic with the given embedding as its centroid.
+        Create a database operation for inserting a new topic.
+        Returns operation dictionary instead of executing database operations.
         """
-        db = await get_db()
         topic_id = str(uuid.uuid4())
-        
+
         try:
-            # Create a copy of the idea and transform _id to id
-            idea_for_storage = idea.copy()
-            idea_for_storage['id'] = str(idea_for_storage.pop('_id'))
-            
-            topic = {
+            topic_doc = {
                 '_id': topic_id,
                 'discussion_id': discussion_id,
                 'centroid_embedding': embedding.tolist(),
-                'representative_idea_id': idea['_id'],  # Keep original _id for reference
-                'representative_text': idea['text'],
-                'ideas': [idea_for_storage],  # TODO: stop putting ideas in the topic. They're retrieved on GET
+                'representative_idea_id': idea['_id'],
+                'representative_text': idea.get('text', 'New Topic')[:50],
                 'count': 1,
+                'created_at': datetime.utcnow(),
+                'updated_at': datetime.utcnow()
             }
-            
-            # Use a transaction to ensure both operations succeed or fail together
-            async with await db.client.start_session() as session:
-                async with session.start_transaction():
-                    # Insert the topic
-                    await db.topics.insert_one(topic, session=session)
-                    
-                    # Update the idea with the topic ID
-                    await db.ideas.update_one(
-                        {"_id": idea['_id']},
-                        {"$set": {"topic_id": topic_id}},
-                        session=session
-                    )
-            
-            idea_text_preview = idea['text'][:10] + "..." if len(idea['text']) > 10 else idea['text']
-            logger.info(f"Created new topic {topic_id} with representative idea {idea['_id']} ({idea_text_preview})")
-            return topic
-            
+
+            idea_text_preview = idea.get('text', '')[:10] + "..." if len(idea.get('text', '')) > 10 else idea.get('text', '')
+            logger.debug(f"Prepared create operation for topic {topic_id} with idea {idea['_id']} ({idea_text_preview})")
+
+            return {
+                'type': 'INSERT',
+                'doc': topic_doc,
+                'topic_id': topic_id
+            }
+
         except Exception as e:
-            logger.error(f"Failed to create topic for idea {idea['_id']}: {str(e)}")
+            logger.error(f"Failed to prepare create operation for idea {idea['_id']}: {str(e)}")
             raise
 
-    async def update_topic(self, topic: dict, new_embedding: np.ndarray, idea: dict) -> dict:
+    def update_topic_operation(self, topic: dict, new_embedding: np.ndarray, idea: dict) -> dict:
         """
-        Update an existing topic with a new related idea.
+        Create a database operation for updating an existing topic.
+        Returns operation dictionary instead of executing database operations.
         """
         try:
-            db = await get_db()
-            current_centroid = np.array(topic['centroid_embedding'])
-            new_centroid = (current_centroid * topic['count'] + new_embedding) / (topic['count'] + 1)
+            current_centroid = np.array(topic.get('centroid_embedding', topic.get('centroid', [])))
+            current_count = topic.get('count', 1)
+            new_centroid = (current_centroid * current_count + new_embedding) / (current_count + 1)
 
-            # Create a copy of the idea and transform _id to id
-            idea_for_storage = idea.copy()
-            idea_for_storage['id'] = str(idea_for_storage.pop('_id'))
-            idea_for_storage['topic_id'] = topic['_id']
-            # Check if its time to update the topic name
-            topic_name = topic['representative_text'];
-            if topic['count'] + 1 >= self.next_trigger_point:
-                topic_name = await generate_topic_title(topic['_id'])
-                if topic_name:
-                    topic['representative_text'] = topic_name
-                    self.next_trigger_point = next(self.trigger)
-                    logger.info(f"Updated topic name to {topic_name} for topic {topic['_id']}")
-            async with await db.client.start_session() as session:
-                async with session.start_transaction():
-                    # Insert the topic
-                    await db.topics.update_one(
-                        {'_id': topic['_id']},
-                        {
-                            '$set': {
-                                'representative_text': topic_name,
-                                'centroid_embedding': new_centroid.tolist(),
-                                'count': topic['count'] + 1
-                            },
-                            '$push': {
-                                'ideas': idea_for_storage # TODO: stop putting ideas in the topic.
-                            }
-                        },
-                        session=session,
-                    )
-                    # Update the idea with the topic ID
-                    await db.ideas.update_one(
-                        {"_id": idea['_id']},
-                        {"$set": {"topic_id": topic['_id']}},
-                        session=session
-                    )
-            
-            
-            
-            
-            topic['centroid_embedding'] = new_centroid.tolist()
-            topic['count'] += 1
-            logger.info(f"Updated topic {topic['_id']} with new idea {idea['_id']}, new count: {topic['count']}")
-            return topic
-            
-        except Exception as e:
-            logger.error(f"Error updating topic {topic['_id']}: {str(e)}")
-            raise
+            update_ops = {
+                '$set': {
+                    'centroid_embedding': new_centroid.tolist(),
+                    'count': current_count + 1,
+                    'updated_at': datetime.utcnow()
+                }
+            }
 
-    async def process_idea(self, embedding: np.ndarray | List[float], idea: dict, discussion_id: str) -> dict:
-        """
-        Process a new idea by either creating a new topic or updating an existing one.
-        Parameters:
-            embedding: The embedding vector as either numpy array or list of floats
-            idea: The complete idea document containing _id and other properties
-            discussion_id: The ID of the discussion this idea belongs to
-        """
-        # Convert list to numpy array if needed
-        if isinstance(embedding, list):
-            embedding = np.array(embedding)
+            logger.debug(f"Prepared update operation for topic {topic['_id']} with idea {idea['_id']}, new count: {current_count + 1}")
 
-        logger.info(f"Processing idea {idea['_id']} for discussion {discussion_id}")
-        try:
-            closest_topic, similarity = await self.find_closest_topic(embedding, discussion_id)
-
-            if closest_topic is None or similarity < self.similarity_threshold:
-                logger.info(f"No suitable topic found (similarity: {similarity}), creating new topic")
-                create_results = await self.create_topic(embedding, idea, discussion_id)
-                await sio.emit(
-                    "topics_updated",
-                    {"discussion_id": discussion_id, "topic_created": create_results["_id"]},
-                    room=discussion_id
-                )
-                return create_results
-            else:
-                logger.info(f"Found suitable topic {closest_topic['_id']} (similarity: {similarity}), updating")
-                update_results = await self.update_topic(closest_topic, embedding, idea)
-                await sio.emit(
-                    "topics_updated",
-                    {"discussion_id": discussion_id, "topic_updated": update_results["_id"] },
-                    room=discussion_id
-                )
-                return update_results
+            return {
+                'type': 'UPDATE',
+                'id': topic['_id'],
+                'ops': update_ops
+            }
 
         except Exception as e:
-            logger.error(f"Error processing idea {idea['_id']}: {str(e)}")
+            logger.error(f"Error preparing update operation for topic {topic['_id']}: {str(e)}")
             raise
+
